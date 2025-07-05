@@ -1,7 +1,0 @@
-3/_/25
-How should we handle the social elements well? Would the built in chat work or does it need something else?
-How would we enforce the siren's ability to shut down communication?
-
-
-7/4/25
-How exactly does the shoot ye treasure work? Who can shoot treasure? How many treasures can be shot (per person/cannon)? Does everyone have a chance to discard a treasure and fire a missed cannon or just the person who chose that action? If they fire the treasure and the reroll misses, can they keep trying?
