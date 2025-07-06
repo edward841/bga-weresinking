@@ -1,5 +1,14 @@
 <?php
 
+/* ------
+ * BGA framework: Gregory Isabelli & Emmanuel Colin & BoardGameArena
+ * weresinking implementation : © Edward Niemann <edward.niemann841@gmail.com>
+ * 
+ * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
+ * See http://en.boardgamearena.com/#!doc/Studio for more information.
+ * -----
+*/
+
 /*
  * From this file, you can edit the various meta-information of your game.
  *
@@ -75,7 +84,7 @@ $gameinfos = [
     'language_dependency' => false,
 
     // Colors attributed to players
-    'player_colors' => ["ff0000", "008000", "0000ff", "ffa500", "773300"],
+	'player_colors' => ["ff5165", "f19c27", "00c398", "4ccaf2", "af73b1", "646D74"],
 
     // Favorite colors support : if set to "true", support attribution of favorite colors based on player's preferences (see reattributeColorsBasedOnPreferences PHP method)
     // NB: this parameter is used only to flag games supporting this feature; you must use (or not use) reattributeColorsBasedOnPreferences PHP method to actually enable or disable the feature.
