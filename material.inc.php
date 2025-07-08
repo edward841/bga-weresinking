@@ -35,8 +35,7 @@ $this->tokens = [
 	],
 	
 	// Encodes information in the player sheets (name, job, starting item).
-	// Key is the english name of their color. Will probably change later
-	'player_sheets' => [
+	// Key is the english name of their color. Will probably change lateplayer_sheets' => [
 		'red' => [
 			'name'=>'\'Honest\' Pete',
 			'job'=>'The Boatswain',
@@ -71,6 +70,123 @@ $this->tokens = [
 			'name'=>'\'Questy\' Quinn',
 			'job'=>'The Navigator',
 			'item'=>'Spy Glass',
+			],
+	],
+
+	// Critical info needed for the breaches: Organized by type of breach:
+	// 	name, scale, and player counts. The player counts element is designed
+	// 	for setting up a new game. An n player game would need the breaches from
+	//
+	// 	['breaches']['minor'][n],
+	// 	['breaches']['minor']['all'],
+	// 	['breaches']['major'][n],
+	// 	['breaches']['major']['all'],
+	// 	.
+	// 	.
+	// 	['breaches']['monster']['all']
+	//
+	// *only applies to those cases where the key exists
+	
+	// Ex: ['breaches']['minor']['all'] -> [0, 0] means the following:
+	//  for every player count, the breach deck has two minor breaches (the array's length) and the associated image is located at index 0 for both.
+	'breaches' => [
+		'minor' => [
+			'name' => 'Minor Breach',
+			'scale' => 1,
+			'player counts' => [
+				'all' => [0, 0],
+				3 => [1, 2, 2, 3],
+				4 => [2,2,3],
+				5 => [3]
+				]
+			],
+		'major' => [
+			'name' => 'Major Breach',
+			'scale' => 2,
+			'player counts' => [
+				'all' => [4, 4, 4],
+				4 => [5]
+				]
+			],
+		'massive' => [
+			'name' => 'Massive Breach',
+			'scale' => 3,
+			'player counts' => [
+				5 => [6, 7, 7],
+				6 => [7, 7]
+				]
+			],
+		'monster' => [
+			'name' => 'Monster Breach',
+			'scale' => 4,
+			'player counts' => [
+				6 => [8, 8]
+				]
+			]
+	],
+
+	'treasure' => [
+		'amethyst' => [
+			'type' => 'gem',
+			'value' => 2,
+			'quantity' => 9,
+			],
+		'topaz' => [
+			'type' => 'gem',
+			'value' => 3,
+			'quantity' => 7,
+			],
+		'sapphire' => [
+			'type' => 'gem',
+			'value' => 4,
+			'quantity' => 5,
+			],
+		'emerald' => [
+			'type' => 'gem',
+			'value' => 5,
+			'quantity' => 3,
+			],
+		'ruby' => [
+			'type' => 'gem',
+			'value' => 6,
+			'quantity' => 2,
+			],
+
+		'bottle o\' rum' => [
+			'type' => 'item',
+			'value' => 1,
+			],
+		'captain\'s key' => [
+			'type' => 'item',
+			'value' => 1,
+			],		
+		'cracked compass' => [
+			'type' => 'item',
+			'value' => 1,
+			],
+		'decoy cannon' => [
+			'type' => 'item',
+			'value' => 0,
+			],
+		'fishing net' => [
+			'type' => 'item',
+			'value' => 0,
+			],
+		'fishing rod' => [
+			'type' => 'item',
+			'value' => 1,
+			],
+		'flint pistol' => [
+			'type' => 'item',
+			'value' => 1,
+			],
+		'gem sifter' => [
+			'type' => 'item',
+			'value' => 0,
+			],
+		'grabby crabby' => [
+			'type' => 'item',
+			'value' => 0,
 			],
 	],
 
