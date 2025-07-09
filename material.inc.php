@@ -125,7 +125,17 @@ $this->tokens = [
 			]
 	],
 
-	'treasure' => [
+	'water deck' => [
+		'clear water' => [
+			'quantity' => 30,
+			'remove' => [
+				3 => 15,
+				4 => 10,
+				5 => 5,
+				6 => 0,
+				],
+			],
+
 		'amethyst' => [
 			'type' => 'gem',
 			'value' => 2,
@@ -155,38 +165,99 @@ $this->tokens = [
 		'bottle o\' rum' => [
 			'type' => 'item',
 			'value' => 1,
+			'trigger' => 'resolve bucket',
+			'text' => clienttranslate('Swap this card with 1 random card in another player\'s hand.'),
 			],
 		'captain\'s key' => [
 			'type' => 'item',
 			'value' => 1,
+			'trigger' => 'reveal dial',
+			'text' => clienttranslate('Take 1 Chest Token from the Breaches Column.'),
 			],		
 		'cracked compass' => [
 			'type' => 'item',
 			'value' => 1,
+			'trigger' => 'reveal dial',
+			'text' => clienttranslate('Change your Dial to a different action.'),
 			],
 		'decoy cannon' => [
 			'type' => 'item',
 			'value' => 0,
+			'trigger' => 'enemy dice rolled',
+			'text' => clienttranlsate('Ignore 1 cannon result.'),
 			],
 		'fishing net' => [
 			'type' => 'item',
 			'value' => 0,
+			'trigger' => 'resolve bucket',
+			'text' => clienttranslate('Peek at the top 5 cards of the Discard Pile. Reveal all Treasures and add them to your hand.'),
 			],
 		'fishing rod' => [
 			'type' => 'item',
 			'value' => 1,
+			'trigger' => 'resolve bucket',
+			'text' => clienttranslate('Peek at 1 random card in a player\'s hand. If it\'s a Treasure, swap it with a Treasure in your hand.'),
 			],
 		'flint pistol' => [
 			'type' => 'item',
 			'value' => 1,
+			'trigger' => 'resolve dial',
+			'text' => clienttranslate('Roll 1 Single-Shot die against the enemy for each cannon card in the Breaches Column.'),
 			],
 		'gem sifter' => [
 			'type' => 'item',
 			'value' => 0,
+			'trigger' => 'resolve bucket',
+			'text' => clienttranslate('Peek at the top 3 cards of the Water Deck. You may reveal 1 Gem and add it to your hand.'),
 			],
 		'grabby crabby' => [
 			'type' => 'item',
 			'value' => 0,
+			'trigger' => 'declare dial',
+			'text' => clienttranslate('Swap this card with a card in the Treasure Column.'),
+			],
+			
+		'cutlass' => [
+			'type' => 'player item',
+			'player' => 'red',
+			'value' => 0,
+			'trigger' => 'reveal treasure',
+			'text' => clienttranslate('Move your Dial to the top of the Treasure Column.'),
+			],
+		'trusty carrot' => [
+			'type' => 'player item',
+			'player' => 'orange',
+			'value' => 0,
+			'trigger' => 'reveal repair',
+			'text' => clienttranslate('Discard a Minor Breach from the Breaches Column.'),
+			],
+		'bone club' => [
+			'type' => 'player item',
+			'player' => 'green',
+			'value' => 0,
+			'trigger' => 'resolve repair OR resolve fire',
+			'text' => clienttranslate('Steal 1 random card from a player who resolved a Treasure this round.'),
+			],
+		'harpoon' => [
+			'type' => 'player item',
+			'player' => 'blue',
+			'value' => 0,
+			'trigger' => 'resolve bucket',
+			'text' => clienttranslate('Reveal a card in the Water Column. If it\'s a Treasure, add it to your hand.'),
+			],
+		'grenado' => [
+			'type' => 'player item',
+			'player' => 'purple',
+			'value' => 0,
+			'trigger' => 'resolve fire',
+			'text' => clienttranslate('Roll 1 Triple-Shot die against the enemy. On a miss, deal a Breach card to the Breaches Column.'),
+			],
+		'spy glass' => [
+			'type' => 'player item',
+			'player' => 'gray',
+			'value' => 0,
+			'trigger' => 'declare dial',
+			'text' => clienttranslate('Reveal a player\'s Dial. If they lied, draw 2 cards from the Water Deck. Otherwise, discard 2 cards.'),
 			],
 	],
 

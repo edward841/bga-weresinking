@@ -8,3 +8,10 @@ How would we enforce the siren's ability to shut down communication?
 How exactly does the shoot ye treasure work? Who can shoot treasure? How many treasures can be shot (per person/cannon)? Does everyone have a chance to discard a treasure and fire a missed cannon or just the person who chose that action? If they fire the treasure and the reroll misses, can they keep trying?
 
 How do we want to handle people that speak different languages? Should we use language dependency to force a game to agree on a common language?
+
+7/9/25
+Do we decide who went on a swim most recently for first player or do we randomly choose it online?
+
+When exactly do all of the triggers occur? 
+
+When should the game stop and prompt players to play treasure cards actions? For every possible moment? or every moment someone has a card for?
