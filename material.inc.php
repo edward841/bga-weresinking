@@ -126,6 +126,7 @@ $this->tokens = [
 	],
 
 	'water deck' => [
+		// Clear Water
 		'clear water' => [
 			'quantity' => 30,
 			'remove' => [
@@ -136,6 +137,7 @@ $this->tokens = [
 				],
 			],
 
+		// Gems
 		'amethyst' => [
 			'type' => 'gem',
 			'value' => 2,
@@ -162,55 +164,65 @@ $this->tokens = [
 			'quantity' => 2,
 			],
 
-		'bottle o\' rum' => [
+		// Basic Items
+		'bottleORum' => [
+			'name' => clienttranslate('Bottle O\' Rum'),
 			'type' => 'item',
 			'value' => 1,
 			'trigger' => 'resolve bucket',
 			'text' => clienttranslate('Swap this card with 1 random card in another player\'s hand.'),
 			],
-		'captain\'s key' => [
+		'captainsKey' => [		
+			'name' => clienttranslate('Captain\'s Key'),
 			'type' => 'item',
 			'value' => 1,
 			'trigger' => 'reveal dial',
 			'text' => clienttranslate('Take 1 Chest Token from the Breaches Column.'),
 			],		
-		'cracked compass' => [
+		'crackedCompass' => [
+			'name' => clienttranslate('Cracked Compass'),
 			'type' => 'item',
 			'value' => 1,
 			'trigger' => 'reveal dial',
 			'text' => clienttranslate('Change your Dial to a different action.'),
 			],
-		'decoy cannon' => [
+		'decoyCannon' => [
+			'name' => clienttranslate('Decoy Cannon'),
 			'type' => 'item',
 			'value' => 0,
 			'trigger' => 'enemy dice rolled',
 			'text' => clienttranlsate('Ignore 1 cannon result.'),
 			],
-		'fishing net' => [
+		'fishingNet' => [
+			'name' => clienttranslate('Fishing Net'),
 			'type' => 'item',
 			'value' => 0,
 			'trigger' => 'resolve bucket',
 			'text' => clienttranslate('Peek at the top 5 cards of the Discard Pile. Reveal all Treasures and add them to your hand.'),
 			],
-		'fishing rod' => [
+		'fishingRod' => [
+			'name' => clienttranslate('Fishing Rod'),
 			'type' => 'item',
 			'value' => 1,
 			'trigger' => 'resolve bucket',
 			'text' => clienttranslate('Peek at 1 random card in a player\'s hand. If it\'s a Treasure, swap it with a Treasure in your hand.'),
 			],
-		'flint pistol' => [
+		'flintPistol' => [
+			'name' => clienttranslate('Flint Pistol'),
 			'type' => 'item',
 			'value' => 1,
 			'trigger' => 'resolve dial',
 			'text' => clienttranslate('Roll 1 Single-Shot die against the enemy for each cannon card in the Breaches Column.'),
 			],
-		'gem sifter' => [
+		'gemSifter' => [
+			'name' => clienttranslate('Gem Sifter'),
 			'type' => 'item',
 			'value' => 0,
 			'trigger' => 'resolve bucket',
 			'text' => clienttranslate('Peek at the top 3 cards of the Water Deck. You may reveal 1 Gem and add it to your hand.'),
 			],
-		'grabby crabby' => [
+		'grabbyCrabby' => [
+			'name' => clienttranslate('Grabby Crabby'),
 			'type' => 'item',
 			'value' => 0,
 			'trigger' => 'declare dial',
@@ -218,27 +230,31 @@ $this->tokens = [
 			],
 			
 		'cutlass' => [
+			'name' => clienttranslate('Cutlass'),
 			'type' => 'player item',
 			'player' => 'red',
 			'value' => 0,
-			'trigger' => 'reveal treasure',
+			'trigger' => 'reveal plunder',
 			'text' => clienttranslate('Move your Dial to the top of the Treasure Column.'),
 			],
-		'trusty carrot' => [
+		'trustyCarrot' => [
+			'name' => clienttranslate('Trusty Carrot'),
 			'type' => 'player item',
 			'player' => 'orange',
 			'value' => 0,
-			'trigger' => 'reveal repair',
+			'trigger' => 'reveal patch',
 			'text' => clienttranslate('Discard a Minor Breach from the Breaches Column.'),
 			],
-		'bone club' => [
+		'boneClub' => [
+			'name' => clienttranslate('Bone Club'),
 			'type' => 'player item',
 			'player' => 'green',
 			'value' => 0,
-			'trigger' => 'resolve repair OR resolve fire',
+			'trigger' => 'resolve patch OR resolve fire',
 			'text' => clienttranslate('Steal 1 random card from a player who resolved a Treasure this round.'),
 			],
 		'harpoon' => [
+			'name' => clienttranslate('Harpoon'),
 			'type' => 'player item',
 			'player' => 'blue',
 			'value' => 0,
@@ -246,13 +262,15 @@ $this->tokens = [
 			'text' => clienttranslate('Reveal a card in the Water Column. If it\'s a Treasure, add it to your hand.'),
 			],
 		'grenado' => [
+			'name' => clienttranslate('Grenado'),
 			'type' => 'player item',
 			'player' => 'purple',
 			'value' => 0,
 			'trigger' => 'resolve fire',
 			'text' => clienttranslate('Roll 1 Triple-Shot die against the enemy. On a miss, deal a Breach card to the Breaches Column.'),
 			],
-		'spy glass' => [
+		'spyGlass' => [
+			'name' => clienttranslate('Spy Glass'),
 			'type' => 'player item',
 			'player' => 'gray',
 			'value' => 0,
