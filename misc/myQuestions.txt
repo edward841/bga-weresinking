@@ -15,3 +15,9 @@ Do we decide who went on a swim most recently for first player or do we randomly
 When exactly do all of the triggers occur? 
 
 When should the game stop and prompt players to play treasure cards actions? For every possible moment? or every moment someone has a card for?
+
+7/11/25
+I identified 10 distinct triggers:
+	declare dial, reveal dial, reveal plunder, reveal patch, reveal fire, resolve dial, resolve water, resolve patch, resolve fire, enemy dice rolled
+
+What is the precise meaning of the rule that prevents playing several cards with the same trigger event?  "A player can use multiple items in a round as long as they do not share the same condition. i.e. Declare, Reveal, Resolve, etc." -pg 8. Can you play two items in the same round with two different resolves? or two different declare? Or must they have different verbs?

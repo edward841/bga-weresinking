@@ -37,39 +37,39 @@ $this->tokens = [
 	// Encodes information in the player sheets (name, job, starting item).
 	// Key is the english name of their color. Will probably change lateplayer_sheets' => [
 		'red' => [
-			'name'=>'\'Honest\' Pete',
-			'job'=>'The Boatswain',
-			'item'=>'Cutlass',
+			'name'=> clienttranslate('\'Honest\' Pete')
+			'job'=> clienttranslate('The Boatswain')
+			'item'=> clienttranslate('Cutlass')
 			],
 
 		'orange' => [
-			'name'=>'Frankie \'Forks\'',
-			'job'=>'The Cook',
-			'item'=>'Trusty Carrot',
+			'name'=> clienttranslate('Frankie \'Forks\'')
+			'job'=> clienttranslate('The Cook')
+			'item'=> clienttranslate('Trusty Carrot')
 			],
 
 		'green' => [
-			'name'=>'Billy \'Bones\'',
-			'job'=>'The Heavy',
-			'item'=>'Bone Club',
+			'name'=> clienttranslate('Billy \'Bones\'')
+			'job'=> clienttranslate('The Heavy')
+			'item'=> clienttranslate('Bone Club')
 			],
 
 		'blue' => [
-			'name'=>'\'Netty\' Arnetta',
-			'job'=>'The Fisher',
-			'item'=>'Harpoon',
+			'name'=> clienttranslate('\'Netty\' Arnetta')
+			'job'=> clienttranslate('The Fisher')
+			'item'=> clienttranslate('Harpoon')
 			],
 	
 		'purple' => [
-			'name'=>'\'Gunny\' Genny',
-			'job'=>'The Gunner',
-			'item'=>'Grenado',
+			'name'=> clienttranslate('\'Gunny\' Genny')
+			'job'=> clienttranslate('The Gunner')
+			'item'=> clienttranslate('Grenado')
 			],
 
 		'gray' => [
-			'name'=>'\'Questy\' Quinn',
-			'job'=>'The Navigator',
-			'item'=>'Spy Glass',
+			'name'=> clienttranslate('\'Questy\' Quinn')
+			'job'=> clienttranslate('The Navigator')
+			'item'=> clienttranslate('Spy Glass')
 			],
 	],
 
