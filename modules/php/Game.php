@@ -54,21 +54,12 @@ class Game extends \Table
             ],
             // ...
         ];
+		
+		$this->water = $this->getNew('module.common.deck');
+		$this->water->init('water');
 
-        /* example of notification decorator.
-        // automatically complete notification args when needed
-        $this->notify->addDecorator(function(string $message, array $args) {
-            if (isset($args['player_id']) && !isset($args['player_name']) && str_contains($message, '${player_name}')) {
-                $args['player_name'] = $this->getPlayerNameById($args['player_id']);
-            }
-        
-            if (isset($args['card_id']) && !isset($args['card_name']) && str_contains($message, '${card_name}')) {
-                $args['card_name'] = self::$CARD_TYPES[$args['card_id']]['card_name'];
-                $args['i18n'][] = ['card_name'];
-            }
-            
-            return $args;
-        });*/
+		$this->breaches = $this->getNew('module.common.deck');
+		$this->breaches->init('breach');
     }
 
     /**
@@ -277,11 +268,15 @@ class Game extends \Table
         $this->reattributeColorsBasedOnPreferences($players, $gameinfos["player_colors"]);
         $this->reloadPlayersBasicInfos();
 
-        // Init global values with their initial values.
+		// Init global values with their initial values.
 
         // Dummy content.
         $this->setGameStateInitialValue("my_first_global_variable", 0);
-
+		$this->globals->set('ENEMY', 'kraken');
+		$this->globals->set('ENEMY_HP', 6);
+		$this->globals->set('THRESHOLD_LEVEL', 1);
+		$this->globals->set('PERMANENT_BREACHES', 0);
+		
         // Init game statistics.
         //
         // NOTE: statistics used in this file must be defined in your `stats.inc.php` file.
@@ -290,11 +285,103 @@ class Game extends \Table
         // $this->initStat("table", "table_teststat1", 0);
         // $this->initStat("player", "player_teststat1", 0);
 
-        // TODO: Setup the initial game situation here.
+		// TODO: Setup the initial game situation here.
+		$this->populateDatabase();
 
         // Activate first player once everything has been initialized and ready.
         $this->activeNextPlayer();
-    }
+	}
+	
+	/**
+	 * Responsible for populating the Database to reflect initial game state. 
+	 * Called in setupNewGame.
+	 * See pages 6-7 of the rule book for details on game setup.
+	 */
+	protected function populateDatabase()
+	{
+		// Build the water deck
+		$waterDeckCards = [];
+
+		// Randomly choose the apropriate number of clear water cards.
+		// (randomized to preserve the fun detail of unique text on each water card, indicated by type_arg)
+		$clearWaterToRemoveCt = $this->tokens['water deck']['clearWater']['remove'][$this->getPlayersNumber()];
+		$deckContainsCard = array_fill(1, 30, true);
+		while ($clearWaterToRemoveCt > 0)
+		{
+			$rand = \bga_rand(1,30);
+			if ($deckContainsCard[$rand])
+			{
+				$deckContainsCard[$rand] = false;
+				$clearWaterToRemoveCt--;
+			}
+		}
+		foreach ($deckContainsCard as $cardNo => $contains)
+		{
+			if ($contains)
+				$waterDeckCards[] = ['type' => 'clearWater', 'type_arg' => $cardNo, 'nbr' => 1];
+		}
+
+		// Add gem cards
+		foreach ($this->tokens['water deck'] as $card => $details)
+		{
+			switch($details['type'])
+			{
+				case 'gem':
+					$waterDeckCards[] = ['type' => $card, 'type_arg' => 0, 'nbr' => $details['quantity']];
+					break;
+
+				case 'item':
+				case 'player item':
+					$waterDeckCards[] = ['type' => $card, 'type_arg' => 0, 'nbr' => 1];
+					break;	
+			}
+		}
+
+		$this->water->createCards($waterDeckCards, 'deck');
+		
+		// Create players' hands
+		$waterCards = $this->water->getCardsOfType('clearWater');
+		foreach($this->loadPlayersBasicInfos() as $id => $details)
+		{
+			$playerHand = [];
+			for ($i = 0; $i < 3; $i++)
+				$playerHand[] = array_pop($waterCards)['id'];
+			$itemInArray = $this->water->getCardsOfType($this->tokens['player_sheets'][$details['player_color']]['item']);
+			$playerHand[] = array_pop($itemInArray)['id'];
+			$this->water->moveCards($playerHand, 'hand', $id);
+		}
+		$this->water->shuffle('deck');
+
+		// Draw water cards for the water and treasure columns
+		//TODO 	
+
+		// Now create the breaches deck ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		$breachDeckCards = [];
+		$playerCounts = ['all', $this->getPlayersNumber()];
+
+		// For each size breach ('minor', 'major', 'massive', 'monster'),
+		foreach ($this->tokens['breaches'] as $breachSize => $details)
+		{
+			// For each appropriate player count value that exists,
+			foreach ($playerCounts as $count)
+			{
+				if (!array_key_exists($count, $details['player counts']))
+					continue;
+				// For each type_arg, create a breach card 
+				foreach ($details['player counts'][$count] as $cardTypeArg)
+				{
+					$breachDeckCards[] = ['type' => $breachSize, 'type_arg' => $cardTypeArg, 'nbr' => 1];
+				}
+			}
+		}
+		$this->breaches->createCards($breachDeckCards, 'deck');
+		// Put one minor breach into the breachs column
+		$minorBreaches = $this->breaches->getCardsOfType('minor');
+		$initialBreach = array_pop($minorBreaches);
+		$this->breaches->moveCard($initialBreach['id'], 'breaches column');
+		$this->breaches->shuffle('deck');
+
+	}
 
     /**
      * This method is called each time it is the turn of a player who has quit the game (= "zombie" player).

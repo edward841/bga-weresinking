@@ -1,5 +1,19 @@
 <?php
 
+namespace Bga\Games\weresinking;
+
+//'player_colors' => ['ff5165', 'f19c27', '00c398', '4ccaf2', 'af73b1', '646D74'],
+
+if (!defined('RED'))
+{
+	define('RED', 'ff5165');
+	define('ORANGE','f19c27');
+	define('GREEN','00c398');
+	define('BLUE','4ccaf2');
+	define('PURPLE', 'af73b1');
+	define('GRAY', '646D74');
+}
+
 $this->tokens = [
 	// Encodes the information in the threshold sheets 
 	// (for each player count and level: threshold, water, treasure)
@@ -35,41 +49,42 @@ $this->tokens = [
 	],
 	
 	// Encodes information in the player sheets (name, job, starting item).
-	// Key is the english name of their color. Will probably change lateplayer_sheets' => [
-		'red' => [
-			'name'=> clienttranslate('\'Honest\' Pete')
-			'job'=> clienttranslate('The Boatswain')
-			'item'=> clienttranslate('Cutlass')
+	// Key is the english name of their color. Will probably change later
+	'player_sheets' => [
+		RED => [
+			'name'=> clienttranslate('\'Honest\' Pete'),
+			'job'=> clienttranslate('The Boatswain'),
+			'item'=> 'cutlass' 
 			],
 
-		'orange' => [
-			'name'=> clienttranslate('Frankie \'Forks\'')
-			'job'=> clienttranslate('The Cook')
-			'item'=> clienttranslate('Trusty Carrot')
+		ORANGE => [
+			'name'=> clienttranslate('Frankie \'Forks\''),
+			'job'=> clienttranslate('The Cook'),
+			'item'=> 'trustyCarrot' 
 			],
 
-		'green' => [
-			'name'=> clienttranslate('Billy \'Bones\'')
-			'job'=> clienttranslate('The Heavy')
-			'item'=> clienttranslate('Bone Club')
+		GREEN => [
+			'name'=> clienttranslate('Billy \'Bones\''),
+			'job'=> clienttranslate('The Heavy'),
+			'item'=> 'boneClub' 
 			],
 
-		'blue' => [
-			'name'=> clienttranslate('\'Netty\' Arnetta')
-			'job'=> clienttranslate('The Fisher')
-			'item'=> clienttranslate('Harpoon')
+		BLUE => [
+			'name'=> clienttranslate('\'Netty\' Arnetta'),
+			'job'=> clienttranslate('The Fisher'),
+			'item'=> 'harpoon'
 			],
 	
-		'purple' => [
-			'name'=> clienttranslate('\'Gunny\' Genny')
-			'job'=> clienttranslate('The Gunner')
-			'item'=> clienttranslate('Grenado')
+		PURPLE => [
+			'name'=> clienttranslate('\'Gunny\' Genny'),
+			'job'=> clienttranslate('The Gunner'),
+			'item'=> 'grenado' 
 			],
 
-		'gray' => [
-			'name'=> clienttranslate('\'Questy\' Quinn')
-			'job'=> clienttranslate('The Navigator')
-			'item'=> clienttranslate('Spy Glass')
+		GRAY => [
+			'name'=> clienttranslate('\'Questy\' Quinn'),
+			'job'=> clienttranslate('The Navigator'),
+			'item'=> 'spyGlass'
 			],
 	],
 
@@ -124,11 +139,12 @@ $this->tokens = [
 				]
 			]
 	],
-
+	
+	// Info about all the cards in the water deck. Clear waters, gems, basic items,  character items, enemy cards
 	'water deck' => [
 		// Clear Water
-		'clear water' => [
-			'quantity' => 30,
+		'clearWater' => [
+			'type' => 'water',
 			'remove' => [
 				3 => 15,
 				4 => 10,
@@ -191,7 +207,7 @@ $this->tokens = [
 			'type' => 'item',
 			'value' => 0,
 			'trigger' => 'enemy dice rolled',
-			'text' => clienttranlsate('Ignore 1 cannon result.'),
+			'text' => clienttranslate('Ignore 1 cannon result.'),
 			],
 		'fishingNet' => [
 			'name' => clienttranslate('Fishing Net'),
@@ -232,7 +248,7 @@ $this->tokens = [
 		'cutlass' => [
 			'name' => clienttranslate('Cutlass'),
 			'type' => 'player item',
-			'player' => 'red',
+			'player' => RED,
 			'value' => 0,
 			'trigger' => 'reveal plunder',
 			'text' => clienttranslate('Move your Dial to the top of the Treasure Column.'),
@@ -240,7 +256,7 @@ $this->tokens = [
 		'trustyCarrot' => [
 			'name' => clienttranslate('Trusty Carrot'),
 			'type' => 'player item',
-			'player' => 'orange',
+			'player' => ORANGE,
 			'value' => 0,
 			'trigger' => 'reveal patch',
 			'text' => clienttranslate('Discard a Minor Breach from the Breaches Column.'),
@@ -248,7 +264,7 @@ $this->tokens = [
 		'boneClub' => [
 			'name' => clienttranslate('Bone Club'),
 			'type' => 'player item',
-			'player' => 'green',
+			'player' => GREEN,
 			'value' => 0,
 			'trigger' => 'resolve patch OR resolve fire',
 			'text' => clienttranslate('Steal 1 random card from a player who resolved a Treasure this round.'),
@@ -256,7 +272,7 @@ $this->tokens = [
 		'harpoon' => [
 			'name' => clienttranslate('Harpoon'),
 			'type' => 'player item',
-			'player' => 'blue',
+			'player' => BLUE,
 			'value' => 0,
 			'trigger' => 'resolve bucket',
 			'text' => clienttranslate('Reveal a card in the Water Column. If it\'s a Treasure, add it to your hand.'),
@@ -264,7 +280,7 @@ $this->tokens = [
 		'grenado' => [
 			'name' => clienttranslate('Grenado'),
 			'type' => 'player item',
-			'player' => 'purple',
+			'player' => PURPLE,
 			'value' => 0,
 			'trigger' => 'resolve fire',
 			'text' => clienttranslate('Roll 1 Triple-Shot die against the enemy. On a miss, deal a Breach card to the Breaches Column.'),
@@ -272,7 +288,7 @@ $this->tokens = [
 		'spyGlass' => [
 			'name' => clienttranslate('Spy Glass'),
 			'type' => 'player item',
-			'player' => 'gray',
+			'player' => GRAY,
 			'value' => 0,
 			'trigger' => 'declare dial',
 			'text' => clienttranslate('Reveal a player\'s Dial. If they lied, draw 2 cards from the Water Deck. Otherwise, discard 2 cards.'),
