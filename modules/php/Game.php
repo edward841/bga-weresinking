@@ -299,7 +299,8 @@ class Game extends \Table
 	 */
 	protected function populateDatabase()
 	{
-		// Build the water deck
+		// Setup the water cards ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// Build the deck, make player hands, setup the water and treasure columns
 		$waterDeckCards = [];
 
 		// Randomly choose the apropriate number of clear water cards.
@@ -321,39 +322,48 @@ class Game extends \Table
 				$waterDeckCards[] = ['type' => 'clearWater', 'type_arg' => $cardNo, 'nbr' => 1];
 		}
 
-		// Add gem cards
-		foreach ($this->tokens['water deck'] as $card => $details)
+		// Add gem and item cards
+		foreach ($this->tokens['water deck'] as $cardType => $details)
 		{
 			switch($details['type'])
 			{
 				case 'gem':
-					$waterDeckCards[] = ['type' => $card, 'type_arg' => 0, 'nbr' => $details['quantity']];
+					$waterDeckCards[] = ['type' => $cardType, 'type_arg' => 0, 'nbr' => $details['quantity']];
 					break;
 
 				case 'item':
 				case 'player item':
-					$waterDeckCards[] = ['type' => $card, 'type_arg' => 0, 'nbr' => 1];
+					$waterDeckCards[] = ['type' => $cardType, 'type_arg' => 0, 'nbr' => 1];
 					break;	
 			}
 		}
 
 		$this->water->createCards($waterDeckCards, 'deck');
-		
-		// Create players' hands
-		$waterCards = $this->water->getCardsOfType('clearWater');
+
+		// STEP G: Create players' hands
+		// First we set aside all the clear water cards in their own temporary deck
+		// Then we give each player their special item and 3 clear water cards.
+		$this->water->moveCards(array_column($this->water->getCardsOfType('clearWater'), 'id'), 'setupBuffer');
+		$this->water->shuffle('setupBuffer');
 		foreach($this->loadPlayersBasicInfos() as $id => $details)
 		{
-			$playerHand = [];
-			for ($i = 0; $i < 3; $i++)
-				$playerHand[] = array_pop($waterCards)['id'];
 			$itemInArray = $this->water->getCardsOfType($this->tokens['player_sheets'][$details['player_color']]['item']);
-			$playerHand[] = array_pop($itemInArray)['id'];
-			$this->water->moveCards($playerHand, 'hand', $id);
+			$this->water->moveCard(array_pop($itemInArray)['id'], 'hand', $id);
+			$this->water->pickCards(3, 'setupBuffer', $id);	
 		}
-		$this->water->shuffle('deck');
 
-		// Draw water cards for the water and treasure columns
-		//TODO 	
+		// STEP H: Draw water cards for the water and treasure columns
+		// Because the clear waters were set aside in their own buffer deck and player hands are done, 
+		// the regular deck only has gems, basic items, unused character items, and enemy items. 
+		// Exactly what we need for the treasure column!
+		$this->water->shuffle('deck');
+		$this->water->pickCardsForLocation(2, 'deck', 'treasureColumn');
+
+		// STEP I, J: Assemble water deck and water column
+		// Now we just need to add the clear waters back into the deck, shuffle, and put one in the water column.
+		$this->water->moveAllCardsInLocation('setupBuffer', 'deck');
+		$this->water->shuffle('deck');
+		$this->water->pickCardForLocation('deck', 'waterColumn');
 
 		// Now create the breaches deck ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		$breachDeckCards = [];
