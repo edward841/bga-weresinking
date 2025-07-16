@@ -58,11 +58,10 @@ CREATE TABLE IF NOT EXISTS `breach` (
 --  `order` int(4) NOT NULL,
 --  PRIMARY KEY (`card_id`)
 --) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
---
+
 --CREATE TABLE IF NOT EXISTS `dice` (
---  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
---  `value` int(3) unsigned NOT NULL,
 --  `type` varchar(16) NOT NULL,
---  `location` int(4) NOT NULL,
---  PRIMARY_KEY (`id`)
+--  `location` tinyint NOT NULL,
+--  `value` tinyint unsigned NOT NULL,
+--  PRIMARY_KEY (`type`, `location`)
 --) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;

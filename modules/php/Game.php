@@ -323,6 +323,7 @@ class Game extends \Table
 		}
 
 		// Add gem and item cards
+		$enemy = $this->globals->get('ENEMY');
 		foreach ($this->tokens['water deck'] as $cardType => $details)
 		{
 			switch($details['type'])
@@ -335,6 +336,10 @@ class Game extends \Table
 				case 'player item':
 					$waterDeckCards[] = ['type' => $cardType, 'type_arg' => 0, 'nbr' => 1];
 					break;	
+
+				case 'enemy item':
+					if ($details['enemy'] === $enemy)
+						$waterDeckCards[] = ['type' => $cardType, 'type_arg' => 0, 'nbr' => $details['quantity']];
 			}
 		}
 
