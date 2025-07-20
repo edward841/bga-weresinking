@@ -1,0 +1,23 @@
+The purpose of this file is to document the process of working with the art assets (managing file types, compressions, making sprite sheets, etc.). This will make it easier to reproduce similar results, adjust small details like compression or add extra spacing later, and prevent wasting time refiguring out how to do it :)
+
+I am using magick software to achieve all of this (and yes this is my first time using magick so I am sure I will get better at it as I go).
+
+// Game board
+magick gameBoard.png -resize 40% gameBoard.jpg
+
+// Enemy Sheets:
+magick montage *).png -resize 20% -mode Concatenate -tile 1x2 montageBuffer.jpg
+magick montage montageBuffer*.jpg -mode Concatenate -tile x1 finalMontage.jpg
+
+// Threshold sheets
+magick montage *.png -resize 20% -mode Concatenate -tile 1x2 montageBuffer.jpg 
+magick montage montageBuffer-*.jpg -mode Concatenate -tile x1 thresholdSheets.jpg 
+
+// Breaches
+magick montage BreachBackside.png MinorBreachAll.png MinorBreach_3.png MinorBreach_3-4.png MinorBreach_3-5.png MajorBreachAll.png MajorBreach_4.png MassiveBreach_5.png MassiveBreach_5-6.png MonsterBreach_6.png -resize 10% -mode Concatenate -tile x1 Breaches.jpg
+
+// Permanent Breach token
+magick *.png -resize 15% * PermanentBreach.jpg
+
+// First Mate token
+magick montage *.png -resize 20% -mode Concatenate -tile x1 FirstMate.png
