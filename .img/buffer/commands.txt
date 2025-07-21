@@ -1,6 +1,7 @@
 The purpose of this file is to document the process of working with the art assets (managing file types, compressions, making sprite sheets, etc.). This will make it easier to reproduce similar results, adjust small details like compression or add extra spacing later, and prevent wasting time refiguring out how to do it :)
 
-I am using magick software to achieve all of this (and yes this is my first time using magick so I am sure I will get better at it as I go).
+https://www.imagemagick.org/
+I am using image magick software to achieve all of this (and yes this is my first time using it so I am sure I will get better at it as I go).
 
 // Game board
 magick gameBoard.png -resize 40% gameBoard.jpg
@@ -21,3 +22,9 @@ magick *.png -resize 15% * PermanentBreach.jpg
 
 // First Mate token
 magick montage *.png -resize 20% -mode Concatenate -tile x1 FirstMate.png
+
+// Damage token was just converted to png and moved, already small and compression made it look worse and increased file size
+magick *.png DamageCounter.png
+
+// Clear Water cards
+magick montage *.png -resize 10% -mode Concatenate -tile 10x3 WaterDeck.jpg

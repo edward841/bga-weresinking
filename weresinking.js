@@ -1,7 +1,7 @@
 /**
  *------
  * BGA framework: Gregory Isabelli & Emmanuel Colin & BoardGameArena
- * weresinking implementation : © <Your name here> <Your email address here>
+ * weresinking implementation : © Edward Niemann <edward.niemann841@gmail.com>
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -47,6 +47,9 @@ function (dojo, declare) {
         setup: function( gamedatas )
         {
             console.log( "Starting game setup" );
+			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
+				<div id="gameboard"></div>
+			`);
 
             // Example to add a div on the game area
             document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
