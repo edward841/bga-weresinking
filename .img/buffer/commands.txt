@@ -4,7 +4,7 @@ https://www.imagemagick.org/
 I am using image magick software to achieve all of this (and yes this is my first time using it so I am sure I will get better at it as I go).
 
 // Game board
-magick gameBoard.png -resize 40% gameBoard.jpg
+magick gameBoard.png -resize 16% gameBoard.jpg
 
 // Enemy Sheets:
 magick montage *).png -resize 20% -mode Concatenate -tile 1x2 montageBuffer.jpg

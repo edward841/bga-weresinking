@@ -48,7 +48,21 @@ function (dojo, declare) {
         {
             console.log( "Starting game setup" );
 			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
-				<div id="gameboard"></div>
+			<div id="gameCenter" class="grid">
+				<div id="sideSheets">
+					<div id="thresholdSheet" class="panel"></div>
+					<div id="enemySheet" class="panel"></div>
+				</div>
+				<div id="gameCore"> 
+					<div id="gameboard"></div>
+					<div id="columns">
+						<div id="waterColumn"></div>
+						<div id="treasureColumn"></div>
+						<div id="breachesColumn"></div>
+						<div id="cannonsColumn"></div>
+					</div>
+				</div>
+			</div>
 			`);
 
             // Example to add a div on the game area

@@ -330,15 +330,15 @@ $this->tokens = [
 			],
 
 		// Kraken cards
-		'warDrum' => [
-			'name' => clienttranslate('War Drum'),
-			'type' => 'enemy item',
-			'enemy' => 'kraken',
-			'quantity' => 1,
-			'value' => 0,
-			'trigger' => 'enemy dice rolled',
-			'text' => clienttranslate('Ignore 1 Splash result this round.'),
-			],
+//			'warDrum' => [
+//			'name' => clienttranslate('War Drum'),
+//			'type' => 'enemy item',
+//			'enemy' => 'kraken',
+//			'quantity' => 1,
+//			'value' => 0,
+//			'trigger' => 'enemy dice rolled',
+//			'text' => clienttranslate('Ignore 1 Splash result this round.'),
+//			],
 		'hurdyGurdy' => [
 			'name' => clienttranslate('Hurdy Gurdy'),
 			'type' => 'enemy item',

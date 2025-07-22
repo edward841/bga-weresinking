@@ -66,17 +66,55 @@
         background-repeat: none;
     }
 */
+/* https://stackoverflow.com/questions/4191260/drawing-a-grid-using-css 
+ * The grid will help scale elements to appropriate sizes. (each square is 1"x1")
+ */
+.grid {
+	height: 100%;
+	width: 100%;
+	margin: 0;
+	background-image:
+		repeating-linear-gradient(#000 0 1px, transparent 1px 100%),
+		repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 100%);
+	background-size: 48px 48px;
 
-/*
+}
+
+.panel {
+	width: 240px;
+	height: 336px;
+	border-radius: 20px;
+	border-style: solid;
+}
+
+#thresholdSheet {
+	position: absolute;
+	z-index: -1;
+	background-color: #5E4C42;
+	top: 110px;
+}
+
+#gameCore {
+	position: absolute;
+	z-index: 0;
+	left: 132px;
+}
+
+#enemySheet {
+	position: absolute;
+	z-index: -1;
+	background-color: #E289DC;
+	top: 110px;
+	left: 860px;
+}
+
 #gameboard {
+	width: 720px;
+	height: 447px;
+	background-image: url('img/GameBoard.png');
+}
+
+#columns {
 	position: relative;
-	width: 500px;
-	height: 500px;
-	background-image: url('img/gameboard.jpg');
+	height: 200px;
 }
-*/
-
-.game_play_area {
-	background-image: url('img/grid.png');
-}
-
