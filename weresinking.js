@@ -66,19 +66,17 @@ function (dojo, declare) {
 				</div>
 				<div id="enemySheetWrapper">
 					<div id="enemySheet" class="panel enemy_kraken_front"></div>
-					<div id="damageTokenSpaces">
-						<div id="6healthPoints" class="damageTokenSpace"></div>
-						<div id="5healthPoints" class="damageTokenSpace"></div>
-						<div id="4healthPoints" class="damageTokenSpace"></div>
-						<div id="3healthPoints" class="damageTokenSpace"></div>
-						<div id="2healthPoints" class="damageTokenSpace"></div>
-						<div id="1healthPoints" class="damageTokenSpace"></div>
-						<div id="0healthPoints" class="damageTokenSpace"></div>
-					</div>
+					<div id="damageTokenSpaces" class="enemy6HP"></div>
 				</div>
 			</div>
 			`);
-
+//						<div id="6healthPoints" class="damageTokenSpace"></div>
+//						<div id="5healthPoints" class="damageTokenSpace"></div>
+//						<div id="4healthPoints" class="damageTokenSpace"></div>
+//						<div id="3healthPoints" class="damageTokenSpace"></div>
+//						<div id="2healthPoints" class="damageTokenSpace"></div>
+//						<div id="1healthPoints" class="damageTokenSpace"></div>
+//						<div id="0healthPoints" class="damageTokenSpace"></div>
             // Example to add a div on the game area
             document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
                 <div id="player-tables"></div>

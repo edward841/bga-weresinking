@@ -21,3 +21,12 @@ I identified 10 distinct triggers:
 	declare dial, reveal dial, reveal plunder, reveal patch, reveal fire, resolve dial, resolve water, resolve patch, resolve fire, enemy dice rolled
 
 What is the precise meaning of the rule that prevents playing several cards with the same trigger event?  "A player can use multiple items in a round as long as they do not share the same condition. i.e. Declare, Reveal, Resolve, etc." -pg 8. Can you play two items in the same round with two different resolves? or two different declare? Or must they have different verbs?
+
+7/23/25
+Questions about the art files:
+	Do you have an ETA for the remainder of the art assets (like the kraken's war drums?)
+	Games metadata images? (Box, Icon, Banner, Publisher images, display images, title images)
+	Do you have any specific ideas for any of the metadata images? Should I try to make these or do you have a different plan?
+
+	Complexity, Luck, Strategy, Diplomacy rating (1-5?)
+	Tags?

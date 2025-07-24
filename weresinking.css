@@ -107,20 +107,59 @@
 }
 
 #damageTokenSpaces {
-	display: grid;
-	grid-auto-flow: column;
-	margin-top: -42px;
+	width: 200px;
+	height: 25px;
+	margin-top: -43px;
+	margin-left: 18px;
+	background-image: url('img/DamageCounter.png');
+	background-size: 40px;
+	background-repeat: no-repeat;
+}
+
+.enemy6HP {
+	background-position: -7px;
+}
+
+.enemy5HP {
+	background-position: 21px;
+}
+
+.enemy4HP {
+	background-position: 49px;
+}
+
+.enemy3HP {
+	background-position: 77px;
+}
+
+.enemy2HP {
+	background-position: 105px;
+}
+
+.enemy1HP {
+	background-position: 133px;
+}
+
+.enemy0HP {
+	background-position: 159px;
+}
+
+/* Trying to make 7 individual divs
+#damageTokenSpaces {
+	display: flex;
+	margin-top: -43px;
 	margin-left: 20px;
-	column-gap: 0px;
-	column-width: 28px;
 }
 
 .damageTokenSpace {
-	width: 25px;
-	height: 25px;
+	width: 24px;
+	height: 24px;
+	border: 1px black solid;
 	border-radius: 5px;
-	background-color: lightgray;
+	background-color: none;
+	margin-right: 1px;
 }
+*/
 
 #gameboard {
 	width: 720px;
