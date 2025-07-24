@@ -83,29 +83,43 @@
 .panel {
 	width: 240px;
 	height: 336px;
-	border-radius: 20px;
-	border-style: solid;
+	border-radius: 10px;
+}
+
+#gameCenter {
+	display: flex;
 }
 
 #thresholdSheet {
-	position: absolute;
-	z-index: -1;
+	z-index: 0;
+	margin-top: 110px;
 	background-color: #5E4C42;
-	top: 110px;
 }
 
 #gameCore {
-	position: absolute;
-	z-index: 0;
-	left: 132px;
+	z-index: 1;
+	margin-left: -110px;
 }
 
-#enemySheet {
-	position: absolute;
-	z-index: -1;
-	background-color: #E289DC;
-	top: 110px;
-	left: 860px;
+#enemySheetWrapper {
+	margin-top: 110px;
+	margin-left: 20px;
+}
+
+#damageTokenSpaces {
+	display: grid;
+	grid-auto-flow: column;
+	margin-top: -42px;
+	margin-left: 20px;
+	column-gap: 0px;
+	column-width: 28px;
+}
+
+.damageTokenSpace {
+	width: 25px;
+	height: 25px;
+	border-radius: 5px;
+	background-color: lightgray;
 }
 
 #gameboard {
@@ -114,7 +128,143 @@
 	background-image: url('img/GameBoard.png');
 }
 
+
 #columns {
 	position: relative;
 	height: 200px;
+}
+
+.card {
+	width: 120px;
+	height: 168px;
+	border-radius: 10px;
+	border: 1px black solid;
+	box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.4);
+}
+
+#cardsOnBoard {
+	display: flex;
+	position: relative;
+	z-index: 1;
+	margin-top: -280px;
+	margin-left: 112px;
+}
+
+.cardOnBoard {
+	margin-right: 66px;
+	box-shadow: none;
+}
+
+/* CSS Sprite magic */
+/* Threshold Sheets: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * 3 players */
+.threshold_3players_level1 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 0px 336px;
+	transform: none; 
+}
+
+.threshold_3players_level2 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 0px 336px;
+	transform: rotate(180deg);
+}
+
+.threshold_3players_level3 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 0px 0px;
+	transform: none;
+}
+
+.threshold_3players_level4 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 0px 0px;
+	transform: rotate(180deg);
+}
+
+/* 4 players */
+.threshold_4players_level1 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 720px 336px;
+	transform: none; 
+}
+
+.threshold_4players_level2 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 720px 336px;
+	transform: rotate(180deg);
+}
+
+.threshold_4players_level3 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 720px 0px;
+	transform: none;
+}
+
+.threshold_4players_level4 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 720px 0px;
+	transform: rotate(180deg);
+}
+
+/* 5 players */
+.threshold_5players_level1 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 480px 336px;
+	transform: none; 
+}
+
+.threshold_5players_level2 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 480px 336px;
+	transform: rotate(180deg);
+}
+
+.threshold_5players_level3 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 480px 0px;
+	transform: none;
+}
+
+.threshold_5players_level4 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 480px 0px;
+	transform: rotate(180deg);
+}
+
+/* 6 players */
+.threshold_6players_level1 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 240px 336px;
+	transform: none; 
+}
+
+.threshold_6players_level2 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 240px 336px;
+	transform: rotate(180deg);
+}
+
+.threshold_6players_level3 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 240px 0px;
+	transform: none;
+}
+
+.threshold_6players_level4 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 240px 0px;
+	transform: rotate(180deg);
+}
+
+/* Enemy Sheets! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/*Kraken: */
+.enemy_kraken_front {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 0px 336px;
+}
+
+.enemy_kraken_back {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 0px 0px;
 }

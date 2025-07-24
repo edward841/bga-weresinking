@@ -49,17 +49,31 @@ function (dojo, declare) {
             console.log( "Starting game setup" );
 			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
 			<div id="gameCenter" class="grid">
-				<div id="sideSheets">
-					<div id="thresholdSheet" class="panel"></div>
-					<div id="enemySheet" class="panel"></div>
-				</div>
+				<div id="thresholdSheet" class="panel threshold_3players_level2"></div>
 				<div id="gameCore"> 
 					<div id="gameboard"></div>
+					<div id="cardsOnBoard">
+						<div id="waterDrawPile" class="card cardOnBoard"></div>
+						<div id="waterDiscardPile" class="card cardOnBoard"></div>
+						<div id="breachesDrawPile" class="card cardOnBoard"></div>
+					</div>
 					<div id="columns">
 						<div id="waterColumn"></div>
 						<div id="treasureColumn"></div>
 						<div id="breachesColumn"></div>
 						<div id="cannonsColumn"></div>
+					</div>
+				</div>
+				<div id="enemySheetWrapper">
+					<div id="enemySheet" class="panel enemy_kraken_front"></div>
+					<div id="damageTokenSpaces">
+						<div id="6healthPoints" class="damageTokenSpace"></div>
+						<div id="5healthPoints" class="damageTokenSpace"></div>
+						<div id="4healthPoints" class="damageTokenSpace"></div>
+						<div id="3healthPoints" class="damageTokenSpace"></div>
+						<div id="2healthPoints" class="damageTokenSpace"></div>
+						<div id="1healthPoints" class="damageTokenSpace"></div>
+						<div id="0healthPoints" class="damageTokenSpace"></div>
 					</div>
 				</div>
 			</div>
