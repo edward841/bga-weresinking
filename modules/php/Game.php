@@ -272,7 +272,14 @@ class Game extends \Table
 
         // Dummy content.
         $this->setGameStateInitialValue("my_first_global_variable", 0);
-		$this->globals->set('ENEMY', 'kraken');
+		
+		$gameOptions = $this->getTableOptions();
+		$enemyNumber = (int) $gameOptions['100'];
+		if ($enemyNumber == 5)
+			$enemyNumber = \bga_random(1,4);
+		$enemies = [1=>'kraken', 2=>'shark', 3=>'sirens', 4=>'skullsairs'];
+		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
+		
 		$this->globals->set('ENEMY_HP', 6);
 		$this->globals->set('THRESHOLD_LEVEL', 1);
 		$this->globals->set('PERMANENT_BREACHES', 0);
@@ -290,6 +297,17 @@ class Game extends \Table
 
         // Activate first player once everything has been initialized and ready.
         $this->activeNextPlayer();
+	}
+
+	protected function testtest()
+	{
+		$gameOptions = $this->getTableOptions();
+		$enemyNumber = $gameOptions['100'];
+		var_dump($enemyNumber);
+		if ($enemyNumber == 5)
+			$enemyNumber = \bga_random(1,4);
+//		$enemies = [1=>'kraken', 2=>'shark', 3=>'sirens', 4=>'skullsairs'];
+//		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
 	}
 	
 	/**

@@ -49,7 +49,7 @@ function (dojo, declare) {
             console.log( "Starting game setup" );
 			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
 			<div id="gameCenter" class="grid">
-				<div id="thresholdSheet" class="panel threshold_3players_level2"></div>
+				<div id="thresholdSheet" class="panel threshold_3players_level1"></div>
 				<div id="gameCore"> 
 					<div id="gameboard"></div>
 					<div id="cardsOnBoard">
