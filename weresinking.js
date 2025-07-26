@@ -46,10 +46,14 @@ function (dojo, declare) {
         
         setup: function( gamedatas )
         {
-            console.log( "Starting game setup" );
+			var playerCount = Object.values(gamedatas.players).length;
+			console.log( "Starting game setup" );
+			console.log( `Enemy is ${gamedatas.globals.enemy}.`);
+			console.log( `There are ${playerCount} players!`);
+
 			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
 			<div id="gameCenter" class="grid">
-				<div id="thresholdSheet" class="panel threshold_3players_level1"></div>
+				<div id="thresholdSheet" class="panel threshold_${playerCount}players_level${gamedatas.globals.threshold}"></div>
 				<div id="gameCore"> 
 					<div id="gameboard"></div>
 					<div id="cardsOnBoard">
@@ -65,38 +69,27 @@ function (dojo, declare) {
 					</div>
 				</div>
 				<div id="enemySheetWrapper">
-					<div id="enemySheet" class="panel enemy_kraken_front"></div>
-					<div id="damageTokenSpaces" class="enemy6HP"></div>
+					<div id="enemySheet" class="panel enemy${gamedatas.globals.enemy}Front"></div>
+					<div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
 				</div>
 			</div>
 			`);
-//						<div id="6healthPoints" class="damageTokenSpace"></div>
-//						<div id="5healthPoints" class="damageTokenSpace"></div>
-//						<div id="4healthPoints" class="damageTokenSpace"></div>
-//						<div id="3healthPoints" class="damageTokenSpace"></div>
-//						<div id="2healthPoints" class="damageTokenSpace"></div>
-//						<div id="1healthPoints" class="damageTokenSpace"></div>
-//						<div id="0healthPoints" class="damageTokenSpace"></div>
-            // Example to add a div on the game area
-            document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
-                <div id="player-tables"></div>
-            `);
-            
-            // Setting up player boards
-            Object.values(gamedatas.players).forEach(player => {
-                // example of setting up players boards
-                this.getPlayerPanelElement(player.id).insertAdjacentHTML('beforeend', `
-                    <div id="player-counter-${player.id}">A player counter</div>
-                `);
-
-                // example of adding a div for each player
-                document.getElementById('player-tables').insertAdjacentHTML('beforeend', `
-                    <div id="player-table-${player.id}">
-                        <strong>${player.name}</strong>
-                        <div>Player zone content goes here</div>
-                    </div>
-                `);
-            });
+			
+//            // Setting up player boards
+//            Object.values(gamedatas.players).forEach(player => {
+//                // example of setting up players boards
+//                this.getPlayerPanelElement(player.id).insertAdjacentHTML('beforeend', `
+//                    <div id="player-counter-${player.id}">A player counter</div>
+//                `);
+//
+//                // example of adding a div for each player
+//                document.getElementById('player-tables').insertAdjacentHTML('beforeend', `
+//                    <div id="player-table-${player.id}">
+//                        <strong>${player.name}</strong>
+//                        <div>Player zone content goes here</div>
+//                    </div>
+//                `);
+//            });
             
             // TODO: Set up your game interface here, according to "gamedatas"
             

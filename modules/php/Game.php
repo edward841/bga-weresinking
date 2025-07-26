@@ -218,6 +218,11 @@ class Game extends \Table
         );
 
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
+		$globals['threshold'] = $this->globals->get('THRESHOLD_LEVEL');
+		$globals['enemy'] = $this->globals->get('ENEMY');
+		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
+		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
+		$result['globals'] = $globals;
 
         return $result;
     }
@@ -273,11 +278,10 @@ class Game extends \Table
         // Dummy content.
         $this->setGameStateInitialValue("my_first_global_variable", 0);
 		
-		$gameOptions = $this->getTableOptions();
-		$enemyNumber = (int) $gameOptions['100'];
+		$enemyNumber = $this->tableOptions->get(100);
 		if ($enemyNumber == 5)
-			$enemyNumber = \bga_random(1,4);
-		$enemies = [1=>'kraken', 2=>'shark', 3=>'sirens', 4=>'skullsairs'];
+			$enemyNumber = \bga_rand(1,4);
+		$enemies = [1=>'Kraken', 2=>'Shark', 3=>'Sirens', 4=>'Skullsairs'];
 		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
 		
 		$this->globals->set('ENEMY_HP', 6);
@@ -299,17 +303,6 @@ class Game extends \Table
         $this->activeNextPlayer();
 	}
 
-	protected function testtest()
-	{
-		$gameOptions = $this->getTableOptions();
-		$enemyNumber = $gameOptions['100'];
-		var_dump($enemyNumber);
-		if ($enemyNumber == 5)
-			$enemyNumber = \bga_random(1,4);
-//		$enemies = [1=>'kraken', 2=>'shark', 3=>'sirens', 4=>'skullsairs'];
-//		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
-	}
-	
 	/**
 	 * Responsible for populating the Database to reflect initial game state. 
 	 * Called in setupNewGame.

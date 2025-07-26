@@ -11,7 +11,7 @@
  *
  * weresinking stylesheet
  *
- */
+ *
 
 /*
     This is the CSS stylesheet of your game User Interface.
@@ -109,15 +109,30 @@
 #damageTokenSpaces {
 	width: 200px;
 	height: 25px;
-	margin-top: -43px;
 	margin-left: 18px;
 	background-image: url('img/DamageCounter.png');
 	background-size: 40px;
 	background-repeat: no-repeat;
 }
 
+.damageCounterKraken {
+	margin-top: -42px;
+}
+
+.damageCounterShark {
+	margin-top: -56px;
+}
+
+.damageCounterSirens {
+	margin-top: -36px;
+}
+
+.damageCounterSkullsairs {
+	margin-top: -54px;
+}
+
 .enemy6HP {
-	background-position: -7px;
+	background-position: -6px;
 }
 
 .enemy5HP {
@@ -141,25 +156,12 @@
 }
 
 .enemy0HP {
-	background-position: 159px;
+	background-position: 160px;
 }
 
-/* Trying to make 7 individual divs
-#damageTokenSpaces {
-	display: flex;
-	margin-top: -43px;
-	margin-left: 20px;
+.noDamageCounter {
+	background-position: -50px;
 }
-
-.damageTokenSpace {
-	width: 24px;
-	height: 24px;
-	border: 1px black solid;
-	border-radius: 5px;
-	background-color: none;
-	margin-right: 1px;
-}
-*/
 
 #gameboard {
 	width: 720px;
@@ -297,13 +299,46 @@
 }
 
 /* Enemy Sheets! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-/*Kraken: */
-.enemy_kraken_front {
+/* Kraken: */
+.enemyKrakenFront {
 	background-image: url('img/EnemySheets.jpg');
 	background-position: 0px 336px;
 }
 
-.enemy_kraken_back {
+.enemyKrakenBack {
 	background-image: url('img/EnemySheets.jpg');
 	background-position: 0px 0px;
+}
+
+/* The Shark: */
+.enemySharkFront {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 240px 336px;
+}
+
+.enemySharkBack {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 240px 0px;
+}
+
+/* The Sirens: */
+.enemySirensFront {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 480px 336px;
+}
+
+.enemySirensBack {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 480px 0px;
+}
+
+/* The Skullsairs: */
+.enemySkullsairsFront {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 720px 336px;
+}
+
+.enemySkullsairsBack {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 720px 0px;
 }
