@@ -316,7 +316,7 @@ class Game extends \Table
 
 		// Randomly choose the apropriate number of clear water cards.
 		// (randomized to preserve the fun detail of unique text on each water card, indicated by type_arg)
-		$clearWaterToRemoveCt = $this->tokens['water deck']['clearWater']['remove'][$this->getPlayersNumber()];
+		$clearWaterToRemoveCt = $this->tokens['waterDeck']['clearWater']['remove'][$this->getPlayersNumber()];
 		$deckContainsCard = array_fill(1, 30, true);
 		while ($clearWaterToRemoveCt > 0)
 		{
@@ -335,7 +335,7 @@ class Game extends \Table
 
 		// Add gem and item cards
 		$enemy = $this->globals->get('ENEMY');
-		foreach ($this->tokens['water deck'] as $cardType => $details)
+		foreach ($this->tokens['waterDeck'] as $cardType => $details)
 		{
 			switch($details['type'])
 			{
@@ -375,7 +375,7 @@ class Game extends \Table
 		$this->water->shuffle('deck');
 		$this->water->pickCardsForLocation(2, 'deck', 'treasureColumn');
 
-		// STEP I, J: Assemble water deck and water column
+		// STEP I, J: Assemble waterDeck and water column
 		// Now we just need to add the clear waters back into the deck, shuffle, and put one in the water column.
 		$this->water->moveAllCardsInLocation('setupBuffer', 'deck');
 		$this->water->shuffle('deck');
@@ -448,5 +448,5 @@ class Game extends \Table
         }
 
         throw new \feException("Zombie mode not supported at this game state: \"{$state_name}\".");
-    }
+	}
 }

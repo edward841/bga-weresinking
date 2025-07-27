@@ -18,7 +18,8 @@
 define([
     "dojo","dojo/_base/declare",
     "ebg/core/gamegui",
-    "ebg/counter"
+    "ebg/counter",
+	"ebg/stock",
 ],
 function (dojo, declare) {
     return declare("bgagame.weresinking", ebg.core.gamegui, {
@@ -26,9 +27,16 @@ function (dojo, declare) {
             console.log('weresinking constructor');
               
             // Here, you can init the global variables of your user interface
-            // Example:
-            // this.myGlobalValue = 0;
+			this.cardWidth = 120;
+			this.cardHeight = 168;
 
+			// Initialize stock:
+			this.playerHand = null;
+		
+			// This is the backbone of the getCardUniqueId for easily displaying any given item card.
+			// Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
+			var itemsString = 'boneClub harpoon trustyCarrot cutlass grenado spyGlass ruby sapphire emerald topaz amethyst decoyCannon fishingNet spareBarrel somberSkull bottleORum waterFlask rubberDucky stickyStarfish woodenMallot metalMallot treasureMap silverDoubloon captainsKey gemSifter crackedCompass moldyMop fishingRod grabbyCrabby smellySponge flintPistol waterPistol warDrum hurdyGurdy cheekyChum fishingBait sirensSilencers sirenShiner cursedAmulet';
+			this.items = items.split(' ');	
         },
         
         /*
@@ -74,6 +82,7 @@ function (dojo, declare) {
 				</div>
 			</div>
 			`);
+
 			
 //            // Setting up player boards
 //            Object.values(gamedatas.players).forEach(player => {
@@ -91,15 +100,59 @@ function (dojo, declare) {
 //                `);
 //            });
             
-            // TODO: Set up your game interface here, according to "gamedatas"
-            
+                document.getElementById('player-tables').insertAdjacentHTML('beforeend', `
+	                <div id="myHandWrapper" class="whiteblock">
+	                    <b id="myHandLabel">${_('My hand')}</b>
+	                    <div id="myHand"></div>
+	                </div>
+				`);
+			//this.setupStocks();
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
 
             console.log( "Ending game setup" );
         },
-       
+
+		setupStocks: function ()
+		{
+			// Initialize
+			var imagesPerRow = 10;
+
+			this.playerHand = new ebg.stock();
+			this.playerHand.create(this, $('myHand'), this.cardWidth, this.cardHeight);
+			this.playerHand.image_items_per_row = imagesPerRow;
+
+			// Create card types
+			// Clear Water
+			for (var i = 0; i < 30; i++)
+			{
+				var cardTypeId = this.getCardUniqueId('clearWater', i);
+				this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
+			}
+			// Items
+			for (var i = 1; i <= 39; i++)
+			{
+				this.playerHand.addItemType(i, i, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
+			}
+		},
+
+		getCardUniqueId: function(type, type_arg)
+		{
+			if (type == 'clearWater')
+			{
+				return 100 + type_arg;
+			}			
+			// TODO: Maybe remove this check later for slight performance boost?
+			else if (this.items.includes(type))
+			{
+				return this.items.indexOf(type) + 1;
+			}
+			else
+			{
+				Console.log(`getCardUniqueId: type <${type}> not recognized.`);
+			}
+		},
 
         ///////////////////////////////////////////////////
         //// Game & client states
