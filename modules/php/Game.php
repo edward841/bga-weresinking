@@ -224,6 +224,7 @@ class Game extends \Table
 		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
 		$result['globals'] = $globals;
 
+		$result['hand'] = $this->water->getCardsInLocation('hand', $current_player_id);
         return $result;
     }
 

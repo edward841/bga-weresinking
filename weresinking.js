@@ -19,7 +19,7 @@ define([
     "dojo","dojo/_base/declare",
     "ebg/core/gamegui",
     "ebg/counter",
-	"ebg/stock",
+	"ebg/stock"
 ],
 function (dojo, declare) {
     return declare("bgagame.weresinking", ebg.core.gamegui, {
@@ -32,11 +32,12 @@ function (dojo, declare) {
 
 			// Initialize stock:
 			this.playerHand = null;
+			this.waterColumn = null;
 		
 			// This is the backbone of the getCardUniqueId for easily displaying any given item card.
 			// Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
-			var itemsString = 'boneClub harpoon trustyCarrot cutlass grenado spyGlass ruby sapphire emerald topaz amethyst decoyCannon fishingNet spareBarrel somberSkull bottleORum waterFlask rubberDucky stickyStarfish woodenMallot metalMallot treasureMap silverDoubloon captainsKey gemSifter crackedCompass moldyMop fishingRod grabbyCrabby smellySponge flintPistol waterPistol warDrum hurdyGurdy cheekyChum fishingBait sirensSilencers sirenShiner cursedAmulet';
-			this.items = items.split(' ');	
+			var itemsString = 'backside boneClub harpoon trustyCarrot cutlass grenado spyGlass ruby sapphire emerald topaz amethyst decoyCannon fishingNet spareBarrel somberSkull bottleORum waterFlask rubberDucky stickyStarfish woodenMallot metalMallot treasureMap silverDoubloon captainsKey gemSifter crackedCompass moldyMop fishingRod grabbyCrabby smellySponge flintPistol waterPistol warDrum hurdyGurdy cheekyChum fishingBait sirensSilencers sirenShiner cursedAmulet';
+			this.items = itemsString.split(' ');	
         },
         
         /*
@@ -83,51 +84,41 @@ function (dojo, declare) {
 			</div>
 			`);
 
-			
-//            // Setting up player boards
-//            Object.values(gamedatas.players).forEach(player => {
-//                // example of setting up players boards
-//                this.getPlayerPanelElement(player.id).insertAdjacentHTML('beforeend', `
-//                    <div id="player-counter-${player.id}">A player counter</div>
-//                `);
-//
-//                // example of adding a div for each player
-//                document.getElementById('player-tables').insertAdjacentHTML('beforeend', `
-//                    <div id="player-table-${player.id}">
-//                        <strong>${player.name}</strong>
-//                        <div>Player zone content goes here</div>
-//                    </div>
-//                `);
-//            });
-            
-                document.getElementById('player-tables').insertAdjacentHTML('beforeend', `
-	                <div id="myHandWrapper" class="whiteblock">
-	                    <b id="myHandLabel">${_('My hand')}</b>
-	                    <div id="myHand"></div>
-	                </div>
-				`);
-			//this.setupStocks();
- 
-            // Setup game notifications to handle (see "setupNotifications" method below)
+			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
+                <div id="myHandWrapper" class="whiteblock">
+                    <b id="myHandLabel">${_('My hand')}</b>
+                    <div id="myHand"></div>
+                </div>
+			`);
+
+			this.setupStocks(gamedatas);
             this.setupNotifications();
 
             console.log( "Ending game setup" );
         },
 
-		setupStocks: function ()
+		setupStocks: function(gamedatas)
 		{
-			// Initialize
+			// Initialize ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			console.log("Setting up stocks...");
 			var imagesPerRow = 10;
 
 			this.playerHand = new ebg.stock();
 			this.playerHand.create(this, $('myHand'), this.cardWidth, this.cardHeight);
 			this.playerHand.image_items_per_row = imagesPerRow;
-
-			// Create card types
+		
+			this.waterColumn = new ebg.stock();
+			this.waterColumn.create(this, $('waterColumn'), this.cardWidth, this.cardHeight);
+			this.waterColumn.image_items_per_row = imagesPerRow;
+		
+			// Create card types ~~~~~~~~~~~~~~~~~~~~
+			// Card Backside
+			this.waterColumn.addItemType(i, i, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
 			// Clear Water
 			for (var i = 0; i < 30; i++)
 			{
 				var cardTypeId = this.getCardUniqueId('clearWater', i);
+				this.waterColumn.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
 				this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
 			}
 			// Items
@@ -135,18 +126,27 @@ function (dojo, declare) {
 			{
 				this.playerHand.addItemType(i, i, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
 			}
+
+			// Populate: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			for (var i in gamedatas.hand) 
+			{
+				var card = gamedatas.hand[i];
+				//console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}, jsId: ${this.getCardUniqueId(card.type, card.type_arg)}`);
+				this.playerHand.addToStockWithId(this.getCardUniqueId(card.type, card.type_arg), card.id);
+			}
+
 		},
 
 		getCardUniqueId: function(type, type_arg)
 		{
 			if (type == 'clearWater')
 			{
-				return 100 + type_arg;
+				return 100 + Number(type_arg);
 			}			
 			// TODO: Maybe remove this check later for slight performance boost?
 			else if (this.items.includes(type))
 			{
-				return this.items.indexOf(type) + 1;
+				return this.items.indexOf(type);
 			}
 			else
 			{
