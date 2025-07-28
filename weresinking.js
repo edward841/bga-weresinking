@@ -65,7 +65,7 @@ function (dojo, declare) {
 				<div id="thresholdSheet" class="panel threshold_${playerCount}players_level${gamedatas.globals.threshold}"></div>
 				<div id="gameCore"> 
 					<div id="gameboard"></div>
-					<div id="cardsOnBoard">
+					<div id="cardsOnBoardWrapper">
 						<div id="waterDrawPile" class="card cardOnBoard"></div>
 						<div id="waterDiscardPile" class="card cardOnBoard"></div>
 						<div id="breachesDrawPile" class="card cardOnBoard"></div>

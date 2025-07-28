@@ -183,17 +183,39 @@
 	box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.4);
 }
 
-#cardsOnBoard {
+#cardsOnBoardWrapper {
 	display: flex;
-	position: relative;
+	position: absolute;
 	z-index: 1;
 	margin-top: -280px;
 	margin-left: 112px;
 }
 
+#waterDrawPile {
+	background-image: url('img/WaterDeckItems.jpg');
+	background-position: 0px 0px;
+}
+
+#waterDiscardPile {
+	position: absolute;
+	margin-left: 189px;
+}
+
+#breachesDrawPile {
+	position: absolute;
+	margin-left: 378px;
+	background-image: url('img/BreachDeck.jpg');
+	background-position: 0px 0px;
+}
+
 .cardOnBoard {
-	margin-right: 66px;
 	box-shadow: none;
+}
+
+.noCard {
+	border: none;
+	background-image: none;
+	background: none;
 }
 
 /* CSS Sprite magic */
