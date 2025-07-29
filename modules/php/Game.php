@@ -223,8 +223,22 @@ class Game extends \Table
 		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
 		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
 		$result['globals'] = $globals;
-
+		
+		// This player's hand
 		$result['hand'] = $this->water->getCardsInLocation('hand', $current_player_id);
+
+		// Cards in the waterColumn, either 'backside' or a clear water
+		$waterColumn = array();
+		$cards = $this->getCollectionFromDB("SELECT `card_id`, `card_face_up`, `card_type_arg` FROM `water` WHERE `card_location`='waterColumn' ORDER BY `card_location_arg`");
+		foreach ($cards as $id => $details)
+		{
+			if ($details['card_face_up'] == "1")
+				$waterColumn[$id] = ['id' => $id, 'type' => 'clearWater', 'type_arg' => $details['card_type_arg']];
+			else
+				$waterColumn[$id] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
+		}
+		$result['waterColumnData'] = $waterColumn;
+		
         return $result;
     }
 
@@ -360,13 +374,13 @@ class Game extends \Table
 		// STEP G: Create players' hands
 		// First we set aside all the clear water cards in their own temporary deck
 		// Then we give each player their special item and 3 clear water cards.
-		$this->water->moveCards(array_column($this->water->getCardsOfType('clearWater'), 'id'), 'setupBuffer');
-		$this->water->shuffle('setupBuffer');
-		foreach($this->loadPlayersBasicInfos() as $id => $details)
+		$this->water->moveCards(array_column($this->water->getCardsOfType('clearWater'), 'id'), 'clearWaterDeck');
+		$this->water->shuffle('clearWaterDeck');
+		foreach($this->loadPlayersBasicInfos() as $playerId => $details)
 		{
 			$itemInArray = $this->water->getCardsOfType($this->tokens['player_sheets'][$details['player_color']]['item']);
-			$this->water->moveCard(array_pop($itemInArray)['id'], 'hand', $id);
-			$this->water->pickCards(3, 'setupBuffer', $id);	
+			$this->water->moveCard(array_pop($itemInArray)['id'], 'hand', $playerId);
+			$this->water->pickCards(3, 'clearWaterDeck', $playerId);	
 		}
 
 		// STEP H: Draw water cards for the water and treasure columns
@@ -378,9 +392,10 @@ class Game extends \Table
 
 		// STEP I, J: Assemble waterDeck and water column
 		// Now we just need to add the clear waters back into the deck, shuffle, and put one in the water column.
-		$this->water->moveAllCardsInLocation('setupBuffer', 'deck');
+		$this->water->moveAllCardsInLocation('clearWaterDeck', 'deck');
 		$this->water->shuffle('deck');
 		$this->water->pickCardForLocation('deck', 'waterColumn');
+		$this->DbQuery("UPDATE `water` SET `card_face_up`='0' WHERE `card_location`='waterColumn'");
 
 		// Now create the breaches deck ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		$breachDeckCards = [];

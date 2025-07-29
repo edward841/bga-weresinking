@@ -101,24 +101,18 @@ function (dojo, declare) {
 		{
 			// Initialize ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			console.log("Setting up stocks...");
-			var imagesPerRow = 10;
-
-			this.playerHand = new ebg.stock();
-			this.playerHand.create(this, $('myHand'), this.cardWidth, this.cardHeight);
-			this.playerHand.image_items_per_row = imagesPerRow;
-		
-//			this.waterColumn = new ebg.stock();
-//			this.waterColumn.create(this, $('waterColumn'), this.cardWidth, this.cardHeight);
-//			this.waterColumn.image_items_per_row = imagesPerRow;
+			this.playerHand = this.initializeCardStock('myHand', true);
+			this.waterColumn = this.initializeCardStock('waterColumn');
 		
 			// Create card types ~~~~~~~~~~~~~~~~~~~~
 			// Card Backside
-			//this.waterColumn.addItemType(i, i, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
+			this.waterColumn.addItemType(this.getCardUniqueId('backside'), 0, g_gamethemeurl + 'img/WaterDeckItems.jpg', 0);
+
 			// Clear Water
 			for (var i = 0; i < 30; i++)
 			{
 				var cardTypeId = this.getCardUniqueId('clearWater', i);
-//				this.waterColumn.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
+				this.waterColumn.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
 				this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
 			}
 			// Items
@@ -128,31 +122,68 @@ function (dojo, declare) {
 			}
 
 			// Populate: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			this.playerHand.removeAll();
+			// Water column:
+			console.log("Displaying water column:");
+			for (var i in gamedatas.waterColumnData)
+			{
+				var card = gamedatas.waterColumnData[i];
+				this.printCard(card);
+				this.waterColumn.addToStockWithId(this.getCardUniqueId(card.type, card.type_arg), card.id);
+			}
+//			for (var i = 0; i < 3; i++)
+//				this.waterColumn.addToStockWithId(this.getCardUniqueId('backside', 0), i);
+
+			// Player hand:
+			console.log("Displaying player hand:");
 			for (var i in gamedatas.hand) 
 			{
 				var card = gamedatas.hand[i];
-				console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}, jsId: ${this.getCardUniqueId(card.type, card.type_arg)}`);
+				this.printCard(card);
 				this.playerHand.addToStockWithId(this.getCardUniqueId(card.type, card.type_arg), card.id);
 			}
+			
+			// Add the card class to all stock items
+			dojo.query('.stockitem').forEach(node=>dojo.addClass(node, 'card'));
+			// Add the cardInHand to all the children divs of #myHand
+			dojo.query('#myHand div').forEach(node=>dojo.addClass(node, 'cardInHand'));
+		},
 
+		initializeCardStock: function(div_container, hand)
+		{
+			var stock = new ebg.stock();
+			stock.create(this, $(div_container), this.cardWidth, this.cardHeight);
+			stock.image_items_per_row = 10;
+			stock.setSelectionMode(1);
+			
+			if (hand != true)
+			{
+				stock.container_div.width = "120px"; // enought just for 1 card
+				stock.autowidth = false; // this is required so it obeys the width set above
+				stock.use_vertical_overlap_as_offset = false; // this is to use normal vertical_overlap
+				stock.vertical_overlap = 75; // overlap
+				stock.horizontal_overlap  = -1; // current bug in stock - this is needed to enable z-index on overlapping items
+				stock.item_margin = 0; // has to be 0 if using overlap
+			}
+
+			return stock;
 		},
 
 		getCardUniqueId: function(type, type_arg)
 		{
 			if (type == 'clearWater')
-			{
 				return 100 + Number(type_arg);
-			}			
+			else if (type == 'backside')
+				return 99;
 			// TODO: Maybe remove this check later for slight performance boost?
 			else if (this.items.includes(type))
-			{
 				return this.items.indexOf(type);
-			}
 			else
-			{
-				Console.log(`getCardUniqueId: type <${type}> not recognized.`);
-			}
+				console.log(`getCardUniqueId: type <${type}> not recognized.`);
+		},
+
+		printCard: function(card)
+		{
+				console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}, jsId: ${this.getCardUniqueId(card.type, card.type_arg)}`);
 		},
 
         ///////////////////////////////////////////////////

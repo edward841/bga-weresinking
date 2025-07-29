@@ -166,21 +166,19 @@
 #gameboard {
 	width: 720px;
 	height: 447px;
+	margin-bottom: 15px;
 	background-image: url('img/GameBoard.png');
 }
 
 
 #columns {
 	position: relative;
-	height: 200px;
 }
 
 .card {
 	width: 120px;
 	height: 168px;
 	border-radius: 10px;
-	border: 1px black solid;
-	box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.4);
 }
 
 #cardsOnBoardWrapper {
@@ -208,14 +206,23 @@
 	background-position: 0px 0px;
 }
 
-.cardOnBoard {
-	box-shadow: none;
+.cardInHand {
+	box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.4);
 }
 
 .noCard {
 	border: none;
 	background-image: none;
 	background: none;
+}
+
+#waterColumn {
+	position: relative;
+	margin-left: 20px;
+}
+
+#myHandWrapper {
+	position: relative;
 }
 
 /* CSS Sprite magic */
