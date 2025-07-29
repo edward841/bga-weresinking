@@ -35,6 +35,8 @@ function (dojo, declare) {
 			this.waterColumn = null;
 			this.treasureColumn = null;
 			this.breaches = null;
+			this.bustedCannons = null;
+			this.operationalCannons = null;
 		
 			// This is the backbone of the getCardUniqueId for easily displaying any given item card.
 			// Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
@@ -75,8 +77,8 @@ function (dojo, declare) {
 					<div id="columns">
 						<div id="waterColumn"></div>
 						<div id="treasureColumn"></div>
+						<div id="bustedCannons"></div>
 						<div id="breachesColumn">
-							<div id="bustedCannons"></div>
 							<div id="breaches"></div>
 						</div>
 						<div id="cannonsColumn"></div>
@@ -103,11 +105,14 @@ function (dojo, declare) {
 		{
 			// Initialize ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			console.log("Setting up stocks...");
-			this.playerHand = this.initializeCardStock('myHand', true);
 			this.waterColumn = this.initializeCardStock('waterColumn');
 			this.treasureColumn = this.initializeCardStock('treasureColumn');
+			this.bustedCannons = this.initializeCardStock('bustedCannons', 6);
 			this.breaches = this.initializeCardStock('breaches');
-		
+			this.operationalCannons = this.initializeCardStock('cannonsColumn', 6);
+
+			this.playerHand = this.initializeCardStock('myHand');
+
 			// Create card types ~~~~~~~~~~~~~~~~~~~~
 			// Card Backside
 			this.waterColumn.addItemType(this.getCardUniqueId('backside'), 0, g_gamethemeurl + 'img/WaterDeckItems.jpg', 0);
@@ -126,6 +131,13 @@ function (dojo, declare) {
 				this.playerHand.addItemType(i, i, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
 			}
 
+			// Cannons
+			for (var strength = 1; strength < 4; strength++)
+			{
+				this.bustedCannons.addItemType(strength, strength, g_gamethemeurl + 'img/Cannons.jpg', strength-1);
+				this.operationalCannons.addItemType(strength, 0, g_gamethemeurl + 'img/Cannons.jpg', strength+2);
+			}
+
 			// Breaches
 			for (var i = 1; i < 10; i++)
 			{
@@ -134,12 +146,12 @@ function (dojo, declare) {
 
 			// Populate the stocks: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
-//			for (var i = 0; i < 3; i++)
-//				this.waterColumn.addToStockWithId(this.getCardUniqueId('backside', 0), i);
-			
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
+			this.populateStock(this.bustedCannons, gamedatas.bustedCannons);
+			this.populateStock(this.operationalCannons, gamedatas.operationalCannons);
+
+			//this.populateStock(this.breaches, gamedatas.breaches);
 			this.populateStock(this.playerHand, gamedatas.hand);
-			this.populateStock(this.breaches, gamedatas.breaches);
 
 			// Add the card class to all stock items
 			dojo.query('.stockitem').forEach(node=>dojo.addClass(node, 'card'));
@@ -147,16 +159,19 @@ function (dojo, declare) {
 			dojo.query('#myHand div').forEach(node=>dojo.addClass(node, 'cardInHand'));
 		},
 
-		initializeCardStock: function(div_container, hand)
+		initializeCardStock: function(div_container, itemsPerRow)
 		{
 			var stock = new ebg.stock();
 			stock.create(this, $(div_container), this.cardWidth, this.cardHeight);
-			stock.image_items_per_row = 10;
+			if (itemsPerRow == undefined)
+				itemsPerRow = 10;
+			stock.image_items_per_row = itemsPerRow;
 			stock.setSelectionMode(1);
 			
-			if (hand != true)
+			if (div_container != 'myHand')
 			{
-				stock.container_div.width = "120px"; // enought just for 1 card
+				console.log(`\n\nTEST TEST\n<<initializing ${div_container}>>`);
+				stock.container_div.width = "120px"; // enough just for 1 card
 				stock.autowidth = false; // this is required so it obeys the width set above
 				stock.use_vertical_overlap_as_offset = false; // this is to use normal vertical_overlap
 				stock.vertical_overlap = 75; // overlap
@@ -175,6 +190,8 @@ function (dojo, declare) {
 				return 99;
 			else if (type == 'minor' || type == 'major' || type == 'massive' || type == 'monster')
 				return type_arg;
+			else if (type == '1' || type == '2' || type == '3')
+				return Number(type);
 			// TODO: Maybe remove this check later for slight performance boost?
 			else if (this.items.includes(type))
 				return this.items.indexOf(type);

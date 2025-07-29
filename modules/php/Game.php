@@ -60,6 +60,9 @@ class Game extends \Table
 
 		$this->breaches = $this->getNew('module.common.deck');
 		$this->breaches->init('breach');
+		
+		$this->cannons = $this->getNew('module.common.deck');
+		$this->cannons->init('cannon');
     }
 
     /**
@@ -225,6 +228,8 @@ class Game extends \Table
 		$result['globals'] = $globals;
 		
 		// Cards in the waterColumn, either 'backside' or a clear water
+		// It is important we only tell the client backside or face up clear water. Anything more would be revealing more info than we should,
+		// telling them information hidden to the players (known to the backend of course)
 		$waterColumn = array();
 		$cards = $this->getCollectionFromDB("SELECT `card_id`, `card_face_up`, `card_type_arg` FROM `water` WHERE `card_location`='waterColumn' ORDER BY `card_location_arg`");
 		foreach ($cards as $id => $details)
@@ -235,12 +240,19 @@ class Game extends \Table
 				$waterColumn[$id] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
 		}
 		$result['waterColumn'] = $waterColumn;
-	
+
+		// We can tell the client all details of the treasureColumn, breachColumn, and cannonsColumn
+		// since all cards in these locations are known. We are not revealing any info the players should not have.
+
 		// Treasure column
 		$result['treasureColumn'] = $this->water->getCardsInLocation('treasureColumn');
 
 		// Breaches
 		$result['breaches'] = $this->breaches->getCardsInLocation('breachesColumn');
+
+		// Cannons
+		$result['bustedCannons'] = $this->cannons->getCardsInLocation('breachesColumn');
+		$result['operationalCannons'] = $this->cannons->getCardsInLocation('cannonsColumn');
 		
 		// This player's hand
 		$result['hand'] = $this->water->getCardsInLocation('hand', $current_player_id);
@@ -430,6 +442,19 @@ class Game extends \Table
 		$this->breaches->moveCard($initialBreach['id'], 'breachesColumn');
 		$this->breaches->shuffle('deck');
 
+		// Assemble Cannons! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// STEP N, O: Setup cannons, both busted and operational
+		$cannons = [];
+		for ($strength = 1; $strength < 4; $strength++)
+		{
+			$cannons[] = ['type' => $strength, 'type_arg' => 0, 'nbr' => 3];	
+		}	
+		$this->cannons->createCards($cannons, 'deck');
+		$singleShots = $this->cannons->getCardsOfType(1);
+		$doubleShots = $this->cannons->getCardsOFType(2);
+		$this->cannons->moveCard(array_pop($singleShots)['id'], 'breachesColumn');
+		$this->cannons->moveCard(array_pop($doubleShots)['id'], 'breachesColumn');
+		$this->cannons->moveCard(array_pop($singleShots)['id'], 'cannonsColumn');
 	}
 
     /**

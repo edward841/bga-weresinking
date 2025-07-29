@@ -229,6 +229,11 @@
 	margin-left: 396px;
 }
 
+#cannonsColumn {
+	position: absolute;
+	margin-left: 583px;
+}
+
 #myHandWrapper {
 	position: relative;
 }
