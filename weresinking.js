@@ -33,6 +33,7 @@ function (dojo, declare) {
 			// Initialize stock:
 			this.playerHand = null;
 			this.waterColumn = null;
+			this.treasureColumn = null;
 		
 			// This is the backbone of the getCardUniqueId for easily displaying any given item card.
 			// Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
@@ -61,7 +62,7 @@ function (dojo, declare) {
 			console.log( `There are ${playerCount} players!`);
 
 			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
-			<div id="gameCenter" class="grid">
+			<div id="gameCenter"> 
 				<div id="thresholdSheet" class="panel threshold_${playerCount}players_level${gamedatas.globals.threshold}"></div>
 				<div id="gameCore"> 
 					<div id="gameboard"></div>
@@ -82,13 +83,10 @@ function (dojo, declare) {
 					<div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
 				</div>
 			</div>
-			`);
-
-			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
-                <div id="myHandWrapper" class="whiteblock">
-                    <b id="myHandLabel">${_('My hand')}</b>
-                    <div id="myHand"></div>
-                </div>
+			<div id="myHandWrapper" class="whiteblock">
+				<b id="myHandLabel">${_('My hand')}</b>
+				<div id="myHand"></div>
+			</div>
 			`);
 
 			this.setupStocks(gamedatas);
@@ -103,6 +101,7 @@ function (dojo, declare) {
 			console.log("Setting up stocks...");
 			this.playerHand = this.initializeCardStock('myHand', true);
 			this.waterColumn = this.initializeCardStock('waterColumn');
+			this.treasureColumn = this.initializeCardStock('treasureColumn');
 		
 			// Create card types ~~~~~~~~~~~~~~~~~~~~
 			// Card Backside
@@ -118,30 +117,18 @@ function (dojo, declare) {
 			// Items
 			for (var i = 1; i <= 39; i++)
 			{
+				this.treasureColumn.addItemType(i, 0, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
 				this.playerHand.addItemType(i, i, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
 			}
 
-			// Populate: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			// Water column:
-			console.log("Displaying water column:");
-			for (var i in gamedatas.waterColumnData)
-			{
-				var card = gamedatas.waterColumnData[i];
-				this.printCard(card);
-				this.waterColumn.addToStockWithId(this.getCardUniqueId(card.type, card.type_arg), card.id);
-			}
+			// Populate the stocks: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 //			for (var i = 0; i < 3; i++)
 //				this.waterColumn.addToStockWithId(this.getCardUniqueId('backside', 0), i);
-
-			// Player hand:
-			console.log("Displaying player hand:");
-			for (var i in gamedatas.hand) 
-			{
-				var card = gamedatas.hand[i];
-				this.printCard(card);
-				this.playerHand.addToStockWithId(this.getCardUniqueId(card.type, card.type_arg), card.id);
-			}
 			
+			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
+			this.populateStock(this.playerHand, gamedatas.hand);	
+
 			// Add the card class to all stock items
 			dojo.query('.stockitem').forEach(node=>dojo.addClass(node, 'card'));
 			// Add the cardInHand to all the children divs of #myHand
@@ -181,6 +168,17 @@ function (dojo, declare) {
 				console.log(`getCardUniqueId: type <${type}> not recognized.`);
 		},
 
+		populateStock: function(stockVariable, stockCards)
+		{
+			console.log(`Populating ${stockVariable.control_name}:`);
+			for (var i in stockCards) 
+			{
+				var card = stockCards[i];
+				this.printCard(card);
+				stockVariable.addToStockWithId(this.getCardUniqueId(card.type, card.type_arg), card.id);
+			}
+		},
+		
 		printCard: function(card)
 		{
 				console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}, jsId: ${this.getCardUniqueId(card.type, card.type_arg)}`);

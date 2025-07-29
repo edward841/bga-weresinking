@@ -224,9 +224,6 @@ class Game extends \Table
 		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
 		$result['globals'] = $globals;
 		
-		// This player's hand
-		$result['hand'] = $this->water->getCardsInLocation('hand', $current_player_id);
-
 		// Cards in the waterColumn, either 'backside' or a clear water
 		$waterColumn = array();
 		$cards = $this->getCollectionFromDB("SELECT `card_id`, `card_face_up`, `card_type_arg` FROM `water` WHERE `card_location`='waterColumn' ORDER BY `card_location_arg`");
@@ -237,8 +234,14 @@ class Game extends \Table
 			else
 				$waterColumn[$id] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
 		}
-		$result['waterColumnData'] = $waterColumn;
+		$result['waterColumn'] = $waterColumn;
+	
+		// Treasure column
+		$result['treasureColumn'] = $this->water->getCardsInLocation('treasureColumn');
 		
+		// This player's hand
+		$result['hand'] = $this->water->getCardsInLocation('hand', $current_player_id);
+
         return $result;
     }
 
