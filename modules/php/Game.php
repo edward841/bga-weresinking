@@ -238,6 +238,9 @@ class Game extends \Table
 	
 		// Treasure column
 		$result['treasureColumn'] = $this->water->getCardsInLocation('treasureColumn');
+
+		// Breaches
+		$result['breaches'] = $this->breaches->getCardsInLocation('breachesColumn');
 		
 		// This player's hand
 		$result['hand'] = $this->water->getCardsInLocation('hand', $current_player_id);
@@ -401,6 +404,7 @@ class Game extends \Table
 		$this->DbQuery("UPDATE `water` SET `card_face_up`='0' WHERE `card_location`='waterColumn'");
 
 		// Now create the breaches deck ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// STEP K: Create the breaches deck and place one minor breah in the breaches column
 		$breachDeckCards = [];
 		$playerCounts = ['all', $this->getPlayersNumber()];
 
@@ -423,7 +427,7 @@ class Game extends \Table
 		// Put one minor breach into the breachs column
 		$minorBreaches = $this->breaches->getCardsOfType('minor');
 		$initialBreach = array_pop($minorBreaches);
-		$this->breaches->moveCard($initialBreach['id'], 'breaches column');
+		$this->breaches->moveCard($initialBreach['id'], 'breachesColumn');
 		$this->breaches->shuffle('deck');
 
 	}

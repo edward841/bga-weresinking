@@ -34,6 +34,7 @@ function (dojo, declare) {
 			this.playerHand = null;
 			this.waterColumn = null;
 			this.treasureColumn = null;
+			this.breaches = null;
 		
 			// This is the backbone of the getCardUniqueId for easily displaying any given item card.
 			// Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
@@ -63,7 +64,7 @@ function (dojo, declare) {
 
 			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
 			<div id="gameCenter"> 
-				<div id="thresholdSheet" class="panel threshold_${playerCount}players_level${gamedatas.globals.threshold}"></div>
+				<div id="thresholdSheet" class="sheet threshold_${playerCount}players_level${gamedatas.globals.threshold}"></div>
 				<div id="gameCore"> 
 					<div id="gameboard"></div>
 					<div id="cardsOnBoardWrapper">
@@ -74,12 +75,15 @@ function (dojo, declare) {
 					<div id="columns">
 						<div id="waterColumn"></div>
 						<div id="treasureColumn"></div>
-						<div id="breachesColumn"></div>
+						<div id="breachesColumn">
+							<div id="bustedCannons"></div>
+							<div id="breaches"></div>
+						</div>
 						<div id="cannonsColumn"></div>
 					</div>
 				</div>
 				<div id="enemySheetWrapper">
-					<div id="enemySheet" class="panel enemy${gamedatas.globals.enemy}Front"></div>
+					<div id="enemySheet" class="sheet enemy${gamedatas.globals.enemy}Front"></div>
 					<div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
 				</div>
 			</div>
@@ -102,6 +106,7 @@ function (dojo, declare) {
 			this.playerHand = this.initializeCardStock('myHand', true);
 			this.waterColumn = this.initializeCardStock('waterColumn');
 			this.treasureColumn = this.initializeCardStock('treasureColumn');
+			this.breaches = this.initializeCardStock('breaches');
 		
 			// Create card types ~~~~~~~~~~~~~~~~~~~~
 			// Card Backside
@@ -121,13 +126,20 @@ function (dojo, declare) {
 				this.playerHand.addItemType(i, i, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
 			}
 
+			// Breaches
+			for (var i = 1; i < 10; i++)
+			{
+				this.breaches.addItemType(i, i, g_gamethemeurl + 'img/BreachDeck.jpg', i);
+			}
+
 			// Populate the stocks: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 //			for (var i = 0; i < 3; i++)
 //				this.waterColumn.addToStockWithId(this.getCardUniqueId('backside', 0), i);
 			
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
-			this.populateStock(this.playerHand, gamedatas.hand);	
+			this.populateStock(this.playerHand, gamedatas.hand);
+			this.populateStock(this.breaches, gamedatas.breaches);
 
 			// Add the card class to all stock items
 			dojo.query('.stockitem').forEach(node=>dojo.addClass(node, 'card'));
@@ -161,6 +173,8 @@ function (dojo, declare) {
 				return 100 + Number(type_arg);
 			else if (type == 'backside')
 				return 99;
+			else if (type == 'minor' || type == 'major' || type == 'massive' || type == 'monster')
+				return type_arg;
 			// TODO: Maybe remove this check later for slight performance boost?
 			else if (this.items.includes(type))
 				return this.items.indexOf(type);

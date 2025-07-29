@@ -77,29 +77,23 @@
 		repeating-linear-gradient(#000 0 1px, transparent 1px 100%),
 		repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 100%);
 	background-size: 48px 48px;
-
 }
 
-.panel {
+/* Everything about sheets! (Threshold sheets, enemy sheets, player sheets) 
+ * Actually they are all the same dimensions and have a front and backside. 
+ * Here we define the look of the sheet, their precise positions, and
+ * add the enemy damage counter while we're at it.
+ */
+.sheet {
 	width: 240px;
 	height: 336px;
 	border-radius: 10px;
-}
-
-#gameCenter {
-	display: flex;
-	padding-bottom: 200px;
 }
 
 #thresholdSheet {
 	z-index: 0;
 	margin-top: 110px;
 	background-color: #5E4C42;
-}
-
-#gameCore {
-	z-index: 1;
-	margin-left: -110px;
 }
 
 #enemySheetWrapper {
@@ -164,6 +158,24 @@
 	background-position: -50px;
 }
 
+/* Critical divs positioning/styling:
+ * gameCenter: Everything that goes in the middle of the table (threshold sheet, enemy sheet, game board, all the columns)
+ * gameCore: Everything in the game center except for the threshold and enemy sheets (game board, cards, columns) 
+ * gameBoard: The actual game board with the curved top that defines the location of all the other gameCenter components.
+ * cardsOnBoardWrapper: Wrapper div that contains the three card piles on the game board (#waterDrawPile, #waterDiscardPile, #breachDrawPile)
+ * columns: Wrapper div that contains all four columns (#waterColumn, #treasureColumn, #breachesColumn, #cannonColumn)
+ * myHandWrapper: Wrapper div for #myHand div that displays the current player's hand
+ */
+#gameCenter {
+	display: flex;
+	padding-bottom: 200px;
+}
+
+#gameCore {
+	z-index: 1;
+	margin-left: -110px;
+}
+
 #gameboard {
 	width: 720px;
 	height: 447px;
@@ -171,17 +183,6 @@
 	background-image: url('img/GameBoard.png');
 }
 
-
-#columns {
-	position: relative;
-	display: flex;
-}
-
-.card {
-	width: 120px;
-	height: 168px;
-	border-radius: 10px;
-}
 
 #cardsOnBoardWrapper {
 	display: flex;
@@ -208,14 +209,9 @@
 	background-position: 0px 0px;
 }
 
-.cardInHand {
-	box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.4);
-}
-
-.noCard {
-	border: none;
-	background-image: none;
-	background: none;
+#columns {
+	position: relative;
+	display: flex;
 }
 
 #waterColumn {
@@ -228,8 +224,30 @@
 	margin-left: 210px;
 }
 
+#breachesColumn {
+	position: absolute;
+	margin-left: 396px;
+}
+
 #myHandWrapper {
 	position: relative;
+}
+
+/* Time to define the look of the card! Dimensions, border, selected/not selected looks, etc */
+.card {
+	width: 120px;
+	height: 168px;
+	border-radius: 5px;
+}
+
+.cardInHand {
+	box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.4);
+}
+
+.noCard {
+	border: none;
+	background-image: none;
+	background: none;
 }
 
 /* CSS Sprite magic */
