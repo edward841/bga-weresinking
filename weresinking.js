@@ -107,18 +107,18 @@ function (dojo, declare) {
 			this.playerHand.create(this, $('myHand'), this.cardWidth, this.cardHeight);
 			this.playerHand.image_items_per_row = imagesPerRow;
 		
-			this.waterColumn = new ebg.stock();
-			this.waterColumn.create(this, $('waterColumn'), this.cardWidth, this.cardHeight);
-			this.waterColumn.image_items_per_row = imagesPerRow;
+//			this.waterColumn = new ebg.stock();
+//			this.waterColumn.create(this, $('waterColumn'), this.cardWidth, this.cardHeight);
+//			this.waterColumn.image_items_per_row = imagesPerRow;
 		
 			// Create card types ~~~~~~~~~~~~~~~~~~~~
 			// Card Backside
-			this.waterColumn.addItemType(i, i, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
+			//this.waterColumn.addItemType(i, i, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
 			// Clear Water
 			for (var i = 0; i < 30; i++)
 			{
 				var cardTypeId = this.getCardUniqueId('clearWater', i);
-				this.waterColumn.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
+//				this.waterColumn.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
 				this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
 			}
 			// Items
@@ -128,10 +128,11 @@ function (dojo, declare) {
 			}
 
 			// Populate: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			this.playerHand.removeAll();
 			for (var i in gamedatas.hand) 
 			{
 				var card = gamedatas.hand[i];
-				//console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}, jsId: ${this.getCardUniqueId(card.type, card.type_arg)}`);
+				console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}, jsId: ${this.getCardUniqueId(card.type, card.type_arg)}`);
 				this.playerHand.addToStockWithId(this.getCardUniqueId(card.type, card.type_arg), card.id);
 			}
 

@@ -315,13 +315,13 @@ class Game extends \Table
 		// Build the deck, make player hands, setup the water and treasure columns
 		$waterDeckCards = [];
 
-		// Randomly choose the apropriate number of clear water cards.
+		// Randomly choose the apropriate number of clear water cards. (0 indexed, so 0-29)
 		// (randomized to preserve the fun detail of unique text on each water card, indicated by type_arg)
 		$clearWaterToRemoveCt = $this->tokens['waterDeck']['clearWater']['remove'][$this->getPlayersNumber()];
-		$deckContainsCard = array_fill(1, 30, true);
+		$deckContainsCard = array_fill(0, 30, true);
 		while ($clearWaterToRemoveCt > 0)
 		{
-			$rand = \bga_rand(1,30);
+			$rand = \bga_rand(0,29);
 			if ($deckContainsCard[$rand])
 			{
 				$deckContainsCard[$rand] = false;

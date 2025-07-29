@@ -36,3 +36,7 @@ Call notes
 Tabletopia version for reference
 Tabletop simulator
 Does the first mate token need the bleed? The brown border needed for printing
+
+
+7/28
+Is the discard pile face up or face down?
