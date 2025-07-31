@@ -193,7 +193,7 @@ function (dojo, declare) {
 			else if (type == 'backside')
 				return 99;
 			else if (type == 'minor' || type == 'major' || type == 'massive' || type == 'monster')
-				return type_arg;
+				return 1 + Number(type_arg);
 			else if (type == '1' || type == '2' || type == '3')
 				return Number(type);
 			// TODO: Maybe remove this check later for slight performance boost?

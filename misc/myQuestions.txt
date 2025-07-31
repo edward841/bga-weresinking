@@ -49,3 +49,6 @@ What is the look of the selected card vs the not selected cards? Or should we di
 Any ideas for statistics?
 Complexity/Strategy/Luck/Interaction scores? (0-5)
 Average game duration?
+
+7/31
+Should I use the icons in the same way as the source material in the game? Should I put the symbol for the action in the card description field? In the notifications? I would think so?
