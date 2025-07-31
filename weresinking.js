@@ -114,6 +114,10 @@ function (dojo, declare) {
 			this.breaches = this.initializeCardStock('breaches');
 			this.playerHand = this.initializeCardStock('myHand');
 
+			// Busted Cannons, Breaches, and Player hand are ordered by a static ordering
+			// Water column, treasure column, cannons column are ordered by deck order (impacts gameplay)
+			// 		*Right now the latter ordering is actually a lack of ordering with weight of 0, may cause issues later? Maybe unstable? Not sure yet
+
 			// Create card types ~~~~~~~~~~~~~~~~~~~~
 			// Card Backside
 			this.waterColumn.addItemType(this.getCardUniqueId('backside'), 0, g_gamethemeurl + 'img/WaterDeckItems.jpg', 0);
@@ -122,7 +126,7 @@ function (dojo, declare) {
 			for (var i = 0; i < 30; i++)
 			{
 				var cardTypeId = this.getCardUniqueId('clearWater', i);
-				this.waterColumn.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
+				this.waterColumn.addItemType(cardTypeId, 0, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
 				this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
 			}
 			// Items

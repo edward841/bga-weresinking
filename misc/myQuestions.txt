@@ -40,3 +40,12 @@ Does the first mate token need the bleed? The brown border needed for printing
 
 7/28
 Is the discard pile face up or face down?
+
+7/30
+How do we want to style the cards? What about the other elementents (the dice, the panels, etc)?
+Should they have a border or no? If so what color/thickness?
+What is the look of the selected card vs the not selected cards? Or should we disable selection altogether and make everything pure reactions?
+
+Any ideas for statistics?
+Complexity/Strategy/Luck/Interaction scores? (0-5)
+Average game duration?
