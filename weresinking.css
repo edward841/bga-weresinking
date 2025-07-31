@@ -168,7 +168,6 @@
  */
 #gameCenter {
 	display: flex;
-	padding-bottom: 200px;
 }
 
 #gameCore {
@@ -214,23 +213,29 @@
 	display: flex;
 }
 
-#waterColumn {
+.column {
 	position: absolute;
+	width: 120px;
+}
+
+#waterColumn {
 	margin-left: 20px;
 }
 
 #treasureColumn {
-	position: absolute;
 	margin-left: 210px;
 }
 
 #breachesColumn {
-	position: absolute;
 	margin-left: 396px;
+	width: 120px;
+}
+
+#breaches {
+	margin-top: 140px;
 }
 
 #cannonsColumn {
-	position: absolute;
 	margin-left: 583px;
 }
 

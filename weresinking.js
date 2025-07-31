@@ -35,8 +35,8 @@ function (dojo, declare) {
 			this.waterColumn = null;
 			this.treasureColumn = null;
 			this.breaches = null;
-			this.bustedCannons = null;
 			this.operationalCannons = null;
+			this.bustedCannons = null;
 		
 			// This is the backbone of the getCardUniqueId for easily displaying any given item card.
 			// Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
@@ -75,13 +75,13 @@ function (dojo, declare) {
 						<div id="breachesDrawPile" class="card cardOnBoard"></div>
 					</div>
 					<div id="columns">
-						<div id="waterColumn"></div>
-						<div id="treasureColumn"></div>
-						<div id="bustedCannons"></div>
-						<div id="breachesColumn">
+						<div id="waterColumn" class="column"></div>
+						<div id="treasureColumn" class="column"></div>
+						<div id="breachesColumn" class="column">
+							<div id="bustedCannons"></div>
 							<div id="breaches"></div>
 						</div>
-						<div id="cannonsColumn"></div>
+						<div id="cannonsColumn" class="column"></div>
 					</div>
 				</div>
 				<div id="enemySheetWrapper">
@@ -96,6 +96,8 @@ function (dojo, declare) {
 			`);
 
 			this.setupStocks(gamedatas);
+			dojo.style('gameCenter', 'marginBottom', `${this.columnsHeight() + 10}px`)
+
             this.setupNotifications();
 
             console.log( "Ending game setup" );
@@ -108,9 +110,8 @@ function (dojo, declare) {
 			this.waterColumn = this.initializeCardStock('waterColumn');
 			this.treasureColumn = this.initializeCardStock('treasureColumn');
 			this.bustedCannons = this.initializeCardStock('bustedCannons', 6);
-			this.breaches = this.initializeCardStock('breaches');
 			this.operationalCannons = this.initializeCardStock('cannonsColumn', 6);
-
+			this.breaches = this.initializeCardStock('breaches');
 			this.playerHand = this.initializeCardStock('myHand');
 
 			// Create card types ~~~~~~~~~~~~~~~~~~~~
@@ -134,8 +135,8 @@ function (dojo, declare) {
 			// Cannons
 			for (var strength = 1; strength < 4; strength++)
 			{
-				this.bustedCannons.addItemType(strength, strength, g_gamethemeurl + 'img/Cannons.jpg', strength-1);
 				this.operationalCannons.addItemType(strength, 0, g_gamethemeurl + 'img/Cannons.jpg', strength+2);
+				this.bustedCannons.addItemType(strength, strength, g_gamethemeurl + 'img/Cannons.jpg', strength-1);
 			}
 
 			// Breaches
@@ -148,9 +149,9 @@ function (dojo, declare) {
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
 			this.populateStock(this.bustedCannons, gamedatas.bustedCannons);
+			this.populateStock(this.breaches, gamedatas.breaches);
 			this.populateStock(this.operationalCannons, gamedatas.operationalCannons);
 
-			//this.populateStock(this.breaches, gamedatas.breaches);
 			this.populateStock(this.playerHand, gamedatas.hand);
 
 			// Add the card class to all stock items
@@ -170,7 +171,6 @@ function (dojo, declare) {
 			
 			if (div_container != 'myHand')
 			{
-				console.log(`\n\nTEST TEST\n<<initializing ${div_container}>>`);
 				stock.container_div.width = "120px"; // enough just for 1 card
 				stock.autowidth = false; // this is required so it obeys the width set above
 				stock.use_vertical_overlap_as_offset = false; // this is to use normal vertical_overlap
@@ -213,6 +213,24 @@ function (dojo, declare) {
 		printCard: function(card)
 		{
 				console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}, jsId: ${this.getCardUniqueId(card.type, card.type_arg)}`);
+		},
+
+		stockHeight: function(stock)
+		{
+			return (1 - stock.vertical_overlap / 100) * stock.item_height * (stock.count() - 1) + stock.item_height;
+		},
+
+		columnsHeight: function()
+		{
+			columnHeights = [
+				this.stockHeight(this.waterColumn),
+				this.stockHeight(this.treasureColumn),
+				this.stockHeight(this.bustedCannons) + this.stockHeight(this.breaches) + 10,
+				this.stockHeight(this.operationalCannons)
+			];
+			
+			// The +15 accounts for the bottom padding of the #gameboard 
+			return Math.max(...columnHeights) + 15;
 		},
 
         ///////////////////////////////////////////////////
