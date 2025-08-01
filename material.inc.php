@@ -244,8 +244,8 @@ $this->tokens = [
 			'trigger' => 'declare dial',
 			'text' => clienttranslate('Swap this card with a card in the Treasure Column.'),
 			],
-		'metalMallot' => [
-			'name' => clienttranslate('Metal Mallot'),
+		'metalMallet' => [
+			'name' => clienttranslate('Metal Mallet'),
 			'type' => 'item',
 			'value' => 1,
 			'trigger' => 'reveal fire',
