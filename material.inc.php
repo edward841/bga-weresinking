@@ -141,7 +141,7 @@ $this->tokens = [
 	],
 	
 	// Info about all the cards in the water deck. Clear waters, gems, basic items,  character items, enemy cards
-	'water deck' => [
+	'waterDeck' => [
 		// Clear Water
 		'clearWater' => [
 			'type' => 'water',
@@ -244,8 +244,8 @@ $this->tokens = [
 			'trigger' => 'declare dial',
 			'text' => clienttranslate('Swap this card with a card in the Treasure Column.'),
 			],
-		'metalMallot' => [
-			'name' => clienttranslate('Metal Mallot'),
+		'metalMallet' => [
+			'name' => clienttranslate('Metal Mallet'),
 			'type' => 'item',
 			'value' => 1,
 			'trigger' => 'reveal fire',
@@ -329,11 +329,12 @@ $this->tokens = [
 			'text' => clienttranslate('Gain 1 extra Hammer this round.'),
 			],
 
+			// Enemy Cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// Kraken cards
 		'warDrum' => [
 			'name' => clienttranslate('War Drum'),
 			'type' => 'enemy item',
-			'enemy' => 'kraken',
+			'enemy' => 'Kraken',
 			'quantity' => 1,
 			'value' => 0,
 			'trigger' => 'enemy dice rolled',
@@ -342,20 +343,62 @@ $this->tokens = [
 		'hurdyGurdy' => [
 			'name' => clienttranslate('Hurdy Gurdy'),
 			'type' => 'enemy item',
-			'enemy' => 'kraken',
+			'enemy' => 'Kraken',
 			'quantity' => 1,
 			'value' => 0,
 			'trigger' => 'enemy dice rolled',
 			'text' => clienttranslate('Ignore 1 Angered result this round.'),
 			],
-//		'' => [
-//			'name' => clienttranslate(''),
-//			'type' => 'item',
-//			'value' => 0,
-//			'trigger' => '',
-//			'text' => clienttranslate(''),
-//			],
-			
+		// Shark cards	
+		'fishyBait' => [
+			'name' => clienttranslate('Fishy Bait'),
+			'type' => 'enemy item',
+			'enemy' => 'Shark',
+			'quantity' => 1,
+			'value' => 0,
+			'trigger' => 'resolve water',
+			'text' => clienttranslate('Move the top 3 cards from the Shark\'s Belly to the Discard.'),
+			],
+		'cheekyChum' => [
+			'name' => clienttranslate('Cheeky Chum'),
+			'type' => 'enemy item',
+			'enemy' => 'Shark',
+			'quantity' => 1,
+			'value' => 0,
+			'trigger' => 'resolve water',
+			'text' => clienttranslate('Ignore all Submerged results this round.'),
+			],
+		// Sirens' cards
+		'sirenSilencers' => [
+			'name' => clienttranslate('Siren Silencers'),
+			'type' => 'enemy item',
+			'enemy' => 'Sirens',
+			'quantity' => 1,
+			'value' => 0,
+			'trigger' => 'enemy dice rolled',
+			'text' => clienttranslate('Ignore all Screech results this round.'),
+			],
+		'sirenShiner' => [
+			'name' => clienttranslate('Siren Shiner'),
+			'type' => 'enemy item',
+			'enemy' => 'Sirens',
+			'quantity' => 1,
+			'value' => 0,
+			'trigger' => 'enemy dice rolled',
+			'text' => clienttranslate('Before resolving dice, flip all Basic Attack dice to their opposite sides.'),
+			],
+		// Skullsairs	
+		'cursedAmulet' => [
+			'name' => clienttranslate('Cursed Amulet'),
+			'type' => 'enemy item',
+			'enemy' => 'Skullsairs',
+			'quantity' => 6,
+			'value' => 0,
+			'trigger' => 'none',
+			'text' => clienttranslate('Collect more for a combined value: 1=1VP, 2=4VP, 4=12VP, 6=24VP.'),
+			],
+
+		// Player cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	
 		'cutlass' => [
 			'name' => clienttranslate('Cutlass'),
 			'type' => 'player item',

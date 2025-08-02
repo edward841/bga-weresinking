@@ -60,6 +60,9 @@ class Game extends \Table
 
 		$this->breaches = $this->getNew('module.common.deck');
 		$this->breaches->init('breach');
+		
+		$this->cannons = $this->getNew('module.common.deck');
+		$this->cannons->init('cannon');
     }
 
     /**
@@ -218,6 +221,41 @@ class Game extends \Table
         );
 
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
+		$globals['threshold'] = $this->globals->get('THRESHOLD_LEVEL');
+		$globals['enemy'] = $this->globals->get('ENEMY');
+		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
+		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
+		$result['globals'] = $globals;
+		
+		// Cards in the waterColumn, either 'backside' or a clear water
+		// It is important we only tell the client backside or face up clear water. Anything more would be revealing more info than we should,
+		// telling them information hidden to the players (known to the backend of course)
+		$waterColumn = array();
+		$cards = $this->getCollectionFromDB("SELECT `card_id`, `card_face_up`, `card_type_arg` FROM `water` WHERE `card_location`='waterColumn' ORDER BY `card_location_arg`");
+		foreach ($cards as $id => $details)
+		{
+			if ($details['card_face_up'] == "1")
+				$waterColumn[$id] = ['id' => $id, 'type' => 'clearWater', 'type_arg' => $details['card_type_arg']];
+			else
+				$waterColumn[$id] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
+		}
+		$result['waterColumn'] = $waterColumn;
+
+		// We can tell the client all details of the treasureColumn, breachColumn, and cannonsColumn
+		// since all cards in these locations are known. We are not revealing any info the players should not have.
+
+		// Treasure column
+		$result['treasureColumn'] = $this->water->getCardsInLocation('treasureColumn');
+
+		// Breaches
+		$result['breaches'] = $this->breaches->getCardsInLocation('breachesColumn');
+
+		// Cannons
+		$result['bustedCannons'] = $this->cannons->getCardsInLocation('breachesColumn');
+		$result['operationalCannons'] = $this->cannons->getCardsInLocation('cannonsColumn');
+		
+		// This player's hand
+		$result['hand'] = $this->water->getCardsInLocation('hand', $current_player_id);
 
         return $result;
     }
@@ -272,7 +310,13 @@ class Game extends \Table
 
         // Dummy content.
         $this->setGameStateInitialValue("my_first_global_variable", 0);
-		$this->globals->set('ENEMY', 'kraken');
+		
+		$enemyNumber = $this->tableOptions->get(100);
+		if ($enemyNumber == 5)
+			$enemyNumber = \bga_rand(1,4);
+		$enemies = [1=>'Kraken', 2=>'Shark', 3=>'Sirens', 4=>'Skullsairs'];
+		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
+		
 		$this->globals->set('ENEMY_HP', 6);
 		$this->globals->set('THRESHOLD_LEVEL', 1);
 		$this->globals->set('PERMANENT_BREACHES', 0);
@@ -291,7 +335,7 @@ class Game extends \Table
         // Activate first player once everything has been initialized and ready.
         $this->activeNextPlayer();
 	}
-	
+
 	/**
 	 * Responsible for populating the Database to reflect initial game state. 
 	 * Called in setupNewGame.
@@ -303,13 +347,13 @@ class Game extends \Table
 		// Build the deck, make player hands, setup the water and treasure columns
 		$waterDeckCards = [];
 
-		// Randomly choose the apropriate number of clear water cards.
+		// Randomly choose the apropriate number of clear water cards. (0 indexed, so 0-29)
 		// (randomized to preserve the fun detail of unique text on each water card, indicated by type_arg)
-		$clearWaterToRemoveCt = $this->tokens['water deck']['clearWater']['remove'][$this->getPlayersNumber()];
-		$deckContainsCard = array_fill(1, 30, true);
+		$clearWaterToRemoveCt = $this->tokens['waterDeck']['clearWater']['remove'][$this->getPlayersNumber()];
+		$deckContainsCard = array_fill(0, 30, true);
 		while ($clearWaterToRemoveCt > 0)
 		{
-			$rand = \bga_rand(1,30);
+			$rand = \bga_rand(0,29);
 			if ($deckContainsCard[$rand])
 			{
 				$deckContainsCard[$rand] = false;
@@ -324,7 +368,7 @@ class Game extends \Table
 
 		// Add gem and item cards
 		$enemy = $this->globals->get('ENEMY');
-		foreach ($this->tokens['water deck'] as $cardType => $details)
+		foreach ($this->tokens['waterDeck'] as $cardType => $details)
 		{
 			switch($details['type'])
 			{
@@ -348,13 +392,13 @@ class Game extends \Table
 		// STEP G: Create players' hands
 		// First we set aside all the clear water cards in their own temporary deck
 		// Then we give each player their special item and 3 clear water cards.
-		$this->water->moveCards(array_column($this->water->getCardsOfType('clearWater'), 'id'), 'setupBuffer');
-		$this->water->shuffle('setupBuffer');
-		foreach($this->loadPlayersBasicInfos() as $id => $details)
+		$this->water->moveCards(array_column($this->water->getCardsOfType('clearWater'), 'id'), 'clearWaterDeck');
+		$this->water->shuffle('clearWaterDeck');
+		foreach($this->loadPlayersBasicInfos() as $playerId => $details)
 		{
 			$itemInArray = $this->water->getCardsOfType($this->tokens['player_sheets'][$details['player_color']]['item']);
-			$this->water->moveCard(array_pop($itemInArray)['id'], 'hand', $id);
-			$this->water->pickCards(3, 'setupBuffer', $id);	
+			$this->water->moveCard(array_pop($itemInArray)['id'], 'hand', $playerId);
+			$this->water->pickCards(3, 'clearWaterDeck', $playerId);	
 		}
 
 		// STEP H: Draw water cards for the water and treasure columns
@@ -364,13 +408,15 @@ class Game extends \Table
 		$this->water->shuffle('deck');
 		$this->water->pickCardsForLocation(2, 'deck', 'treasureColumn');
 
-		// STEP I, J: Assemble water deck and water column
+		// STEP I, J: Assemble waterDeck and water column
 		// Now we just need to add the clear waters back into the deck, shuffle, and put one in the water column.
-		$this->water->moveAllCardsInLocation('setupBuffer', 'deck');
+		$this->water->moveAllCardsInLocation('clearWaterDeck', 'deck');
 		$this->water->shuffle('deck');
 		$this->water->pickCardForLocation('deck', 'waterColumn');
+		$this->DbQuery("UPDATE `water` SET `card_face_up`='0' WHERE `card_location`='waterColumn'");
 
 		// Now create the breaches deck ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// STEP K: Create the breaches deck and place one minor breah in the breaches column
 		$breachDeckCards = [];
 		$playerCounts = ['all', $this->getPlayersNumber()];
 
@@ -393,9 +439,22 @@ class Game extends \Table
 		// Put one minor breach into the breachs column
 		$minorBreaches = $this->breaches->getCardsOfType('minor');
 		$initialBreach = array_pop($minorBreaches);
-		$this->breaches->moveCard($initialBreach['id'], 'breaches column');
+		$this->breaches->moveCard($initialBreach['id'], 'breachesColumn');
 		$this->breaches->shuffle('deck');
 
+		// Assemble Cannons! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// STEP N, O: Setup cannons, both busted and operational
+		$cannons = [];
+		for ($strength = 1; $strength < 4; $strength++)
+		{
+			$cannons[] = ['type' => $strength, 'type_arg' => 0, 'nbr' => 3];	
+		}	
+		$this->cannons->createCards($cannons, 'deck');
+		$singleShots = $this->cannons->getCardsOfType(1);
+		$doubleShots = $this->cannons->getCardsOFType(2);
+		$this->cannons->moveCard(array_pop($singleShots)['id'], 'breachesColumn');
+		$this->cannons->moveCard(array_pop($doubleShots)['id'], 'breachesColumn');
+		$this->cannons->moveCard(array_pop($singleShots)['id'], 'cannonsColumn');
 	}
 
     /**
@@ -437,5 +496,5 @@ class Game extends \Table
         }
 
         throw new \feException("Zombie mode not supported at this game state: \"{$state_name}\".");
-    }
+	}
 }

@@ -33,12 +33,17 @@
 -- Example 2: add a custom field to the standard "player" table
 -- ALTER TABLE `player` ADD `player_my_custom_field` INT UNSIGNED NOT NULL DEFAULT '0';
 
+-- Standard "card" table for the water deck cards
+-- AND card_face_up attribute to indicate the direction card is facing.
+-- card_face_up is always true (and irrelevant) except for the waterColumn, where false is the default and some cards are turned face up during play. 
+-- That orientation needs communicated to the front end so they can be displayed properly.
 CREATE TABLE IF NOT EXISTS `water` (
   `card_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `card_type` varchar(16) NOT NULL,
   `card_type_arg` int(11) NOT NULL,
   `card_location` varchar(16) NOT NULL,
   `card_location_arg` int(11) NOT NULL,
+  `card_face_up` boolean NOT NULL DEFAULT TRUE,
   PRIMARY KEY (`card_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
@@ -51,13 +56,14 @@ CREATE TABLE IF NOT EXISTS `breach` (
   PRIMARY KEY (`card_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
---CREATE TABLE IF NOT EXISTS `cannon` (
---  `card_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
---  `strength` int(2) unsigned NOT NULL,
---  `busted` boolean NOT NULL,
---  `order` int(4) NOT NULL,
---  PRIMARY KEY (`card_id`)
---) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+CREATE TABLE IF NOT EXISTS `cannon` (
+  `card_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `card_type` varchar(16) NOT NULL,
+  `card_type_arg` int(11) NOT NULL,
+  `card_location` varchar(16) NOT NULL,
+  `card_location_arg` int(11) NOT NULL,
+  PRIMARY KEY (`card_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
 --CREATE TABLE IF NOT EXISTS `dice` (
 --  `type` varchar(16) NOT NULL,

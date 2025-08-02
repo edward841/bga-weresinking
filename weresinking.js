@@ -1,7 +1,7 @@
 /**
  *------
  * BGA framework: Gregory Isabelli & Emmanuel Colin & BoardGameArena
- * weresinking implementation : © <Your name here> <Your email address here>
+ * weresinking implementation : © Edward Niemann <edward.niemann841@gmail.com>
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -18,7 +18,8 @@
 define([
     "dojo","dojo/_base/declare",
     "ebg/core/gamegui",
-    "ebg/counter"
+    "ebg/counter",
+	"ebg/stock"
 ],
 function (dojo, declare) {
     return declare("bgagame.weresinking", ebg.core.gamegui, {
@@ -26,9 +27,21 @@ function (dojo, declare) {
             console.log('weresinking constructor');
               
             // Here, you can init the global variables of your user interface
-            // Example:
-            // this.myGlobalValue = 0;
+			this.cardWidth = 120;
+			this.cardHeight = 168;
 
+			// Initialize stock:
+			this.playerHand = null;
+			this.waterColumn = null;
+			this.treasureColumn = null;
+			this.breaches = null;
+			this.operationalCannons = null;
+			this.bustedCannons = null;
+		
+			// This is the backbone of the getCardUniqueId for easily displaying any given item card.
+			// Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
+			var itemsString = 'backside boneClub harpoon trustyCarrot cutlass grenado spyGlass ruby sapphire emerald topaz amethyst decoyCannon fishingNet spareBarrel somberSkull bottleORum waterFlask rubberDucky stickyStarfish woodenMallet metalMallet treasureMap silverDoubloon captainsKey gemSifter crackedCompass moldyMop fishingRod grabbyCrabby smellySponge flintPistol waterPistol warDrum hurdyGurdy cheekyChum fishyBait sirenSilencers sirenShiner cursedAmulet';
+			this.items = itemsString.split(' ');	
         },
         
         /*
@@ -46,38 +59,183 @@ function (dojo, declare) {
         
         setup: function( gamedatas )
         {
-            console.log( "Starting game setup" );
+			var playerCount = Object.values(gamedatas.players).length;
+			console.log( "Starting game setup" );
+			console.log( `Enemy is ${gamedatas.globals.enemy}.`);
+			console.log( `There are ${playerCount} players!`);
 
-            // Example to add a div on the game area
-            document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
-                <div id="player-tables"></div>
-            `);
-            
-            // Setting up player boards
-            Object.values(gamedatas.players).forEach(player => {
-                // example of setting up players boards
-                this.getPlayerPanelElement(player.id).insertAdjacentHTML('beforeend', `
-                    <div id="player-counter-${player.id}">A player counter</div>
-                `);
+			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
+			<div id="gameCenter"> 
+				<div id="thresholdSheet" class="sheet threshold_${playerCount}players_level${gamedatas.globals.threshold}"></div>
+				<div id="gameCore"> 
+					<div id="gameboard"></div>
+					<div id="cardsOnBoardWrapper">
+						<div id="waterDrawPile" class="card cardOnBoard"></div>
+						<div id="waterDiscardPile" class="card cardOnBoard"></div>
+						<div id="breachesDrawPile" class="card cardOnBoard"></div>
+					</div>
+					<div id="columns">
+						<div id="waterColumn" class="column"></div>
+						<div id="treasureColumn" class="column"></div>
+						<div id="breachesColumn" class="column">
+							<div id="bustedCannons"></div>
+							<div id="breaches"></div>
+						</div>
+						<div id="cannonsColumn" class="column"></div>
+					</div>
+				</div>
+				<div id="enemySheetWrapper">
+					<div id="enemySheet" class="sheet enemy${gamedatas.globals.enemy}Front"></div>
+					<div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
+				</div>
+			</div>
+			<div id="myHandWrapper" class="whiteblock">
+				<b id="myHandLabel">${_('My hand')}</b>
+				<div id="myHand"></div>
+			</div>
+			`);
 
-                // example of adding a div for each player
-                document.getElementById('player-tables').insertAdjacentHTML('beforeend', `
-                    <div id="player-table-${player.id}">
-                        <strong>${player.name}</strong>
-                        <div>Player zone content goes here</div>
-                    </div>
-                `);
-            });
-            
-            // TODO: Set up your game interface here, according to "gamedatas"
-            
- 
-            // Setup game notifications to handle (see "setupNotifications" method below)
+			this.setupStocks(gamedatas);
+			dojo.style('gameCenter', 'marginBottom', `${this.columnsHeight() + 10}px`)
+
             this.setupNotifications();
 
             console.log( "Ending game setup" );
         },
-       
+
+		setupStocks: function(gamedatas)
+		{
+			// Initialize ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			console.log("Setting up stocks...");
+			this.waterColumn = this.initializeCardStock('waterColumn');
+			this.treasureColumn = this.initializeCardStock('treasureColumn');
+			this.bustedCannons = this.initializeCardStock('bustedCannons', 6);
+			this.operationalCannons = this.initializeCardStock('cannonsColumn', 6);
+			this.breaches = this.initializeCardStock('breaches');
+			this.playerHand = this.initializeCardStock('myHand');
+
+			// Busted Cannons, Breaches, and Player hand are ordered by a static ordering
+			// Water column, treasure column, cannons column are ordered by deck order (impacts gameplay)
+			// 		*Right now the latter ordering is actually a lack of ordering with weight of 0, may cause issues later? Maybe unstable? Not sure yet
+
+			// Create card types ~~~~~~~~~~~~~~~~~~~~
+			// Card Backside
+			this.waterColumn.addItemType(this.getCardUniqueId('backside'), 0, g_gamethemeurl + 'img/WaterDeckItems.jpg', 0);
+
+			// Clear Water
+			for (var i = 0; i < 30; i++)
+			{
+				var cardTypeId = this.getCardUniqueId('clearWater', i);
+				this.waterColumn.addItemType(cardTypeId, 0, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
+				this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
+			}
+			// Items
+			for (var i = 1; i <= 39; i++)
+			{
+				this.treasureColumn.addItemType(i, 0, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
+				this.playerHand.addItemType(i, i, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
+			}
+
+			// Cannons
+			for (var strength = 1; strength < 4; strength++)
+			{
+				this.operationalCannons.addItemType(strength, 0, g_gamethemeurl + 'img/Cannons.jpg', strength+2);
+				this.bustedCannons.addItemType(strength, strength, g_gamethemeurl + 'img/Cannons.jpg', strength-1);
+			}
+
+			// Breaches
+			for (var i = 1; i < 10; i++)
+			{
+				this.breaches.addItemType(i, i, g_gamethemeurl + 'img/BreachDeck.jpg', i);
+			}
+
+			// Populate the stocks: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			this.populateStock(this.waterColumn, gamedatas.waterColumn);
+			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
+			this.populateStock(this.bustedCannons, gamedatas.bustedCannons);
+			this.populateStock(this.breaches, gamedatas.breaches);
+			this.populateStock(this.operationalCannons, gamedatas.operationalCannons);
+
+			this.populateStock(this.playerHand, gamedatas.hand);
+
+			// Add the card class to all stock items
+			dojo.query('.stockitem').forEach(node=>dojo.addClass(node, 'card'));
+			// Add the cardInHand to all the children divs of #myHand
+			dojo.query('#myHand div').forEach(node=>dojo.addClass(node, 'cardInHand'));
+		},
+
+		initializeCardStock: function(div_container, itemsPerRow)
+		{
+			var stock = new ebg.stock();
+			stock.create(this, $(div_container), this.cardWidth, this.cardHeight);
+			if (itemsPerRow == undefined)
+				itemsPerRow = 10;
+			stock.image_items_per_row = itemsPerRow;
+			stock.setSelectionMode(1);
+			
+			if (div_container != 'myHand')
+			{
+				stock.container_div.width = "120px"; // enough just for 1 card
+				stock.autowidth = false; // this is required so it obeys the width set above
+				stock.use_vertical_overlap_as_offset = false; // this is to use normal vertical_overlap
+				stock.vertical_overlap = 75; // overlap
+				stock.horizontal_overlap  = -1; // current bug in stock - this is needed to enable z-index on overlapping items
+				stock.item_margin = 0; // has to be 0 if using overlap
+			}
+
+			return stock;
+		},
+
+		getCardUniqueId: function(type, type_arg)
+		{
+			if (type == 'clearWater')
+				return 100 + Number(type_arg);
+			else if (type == 'backside')
+				return 99;
+			else if (type == 'minor' || type == 'major' || type == 'massive' || type == 'monster')
+				return 1 + Number(type_arg);
+			else if (type == '1' || type == '2' || type == '3')
+				return Number(type);
+			// TODO: Maybe remove this check later for slight performance boost?
+			else if (this.items.includes(type))
+				return this.items.indexOf(type);
+			else
+				console.log(`getCardUniqueId: type <${type}> not recognized.`);
+		},
+
+		populateStock: function(stockVariable, stockCards)
+		{
+			console.log(`Populating ${stockVariable.control_name}:`);
+			for (var i in stockCards) 
+			{
+				var card = stockCards[i];
+				this.printCard(card);
+				stockVariable.addToStockWithId(this.getCardUniqueId(card.type, card.type_arg), card.id);
+			}
+		},
+		
+		printCard: function(card)
+		{
+				console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}, jsId: ${this.getCardUniqueId(card.type, card.type_arg)}`);
+		},
+
+		stockHeight: function(stock)
+		{
+			return (1 - stock.vertical_overlap / 100) * stock.item_height * (stock.count() - 1) + stock.item_height;
+		},
+
+		columnsHeight: function()
+		{
+			columnHeights = [
+				this.stockHeight(this.waterColumn),
+				this.stockHeight(this.treasureColumn),
+				this.stockHeight(this.bustedCannons) + this.stockHeight(this.breaches) + 10,
+				this.stockHeight(this.operationalCannons)
+			];
+			
+			// The +15 accounts for the bottom padding of the #gameboard 
+			return Math.max(...columnHeights) + 15;
+		},
 
         ///////////////////////////////////////////////////
         //// Game & client states

@@ -1,7 +1,7 @@
 /**
  *------
  * BGA framework: Gregory Isabelli & Emmanuel Colin & BoardGameArena
- * weresinking implementation : © <Your name here> <Your email address here>
+ * weresinking implementation : © Edward Niemann <edward.niemann841@gmail.com>
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -11,7 +11,7 @@
  *
  * weresinking stylesheet
  *
- */
+ *
 
 /*
     This is the CSS stylesheet of your game User Interface.
@@ -66,7 +66,343 @@
         background-repeat: none;
     }
 */
+/* https://stackoverflow.com/questions/4191260/drawing-a-grid-using-css 
+ * The grid will help scale elements to appropriate sizes. (each square is 1"x1")
+ */
+.grid {
+	height: 100%;
+	width: 100%;
+	margin: 0;
+	background-image:
+		repeating-linear-gradient(#000 0 1px, transparent 1px 100%),
+		repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 100%);
+	background-size: 48px 48px;
+}
+
+/* Everything about sheets! (Threshold sheets, enemy sheets, player sheets) 
+ * Actually they are all the same dimensions and have a front and backside. 
+ * Here we define the look of the sheet, their precise positions, and
+ * add the enemy damage counter while we're at it.
+ */
+.sheet {
+	width: 240px;
+	height: 336px;
+	border-radius: 10px;
+}
+
+#thresholdSheet {
+	z-index: 0;
+	margin-top: 110px;
+	background-color: #5E4C42;
+}
+
+#enemySheetWrapper {
+	margin-top: 110px;
+	margin-left: 20px;
+}
+
+#damageTokenSpaces {
+	width: 200px;
+	height: 25px;
+	margin-left: 18px;
+	background-image: url('img/DamageCounter.png');
+	background-size: 40px;
+	background-repeat: no-repeat;
+}
+
+.damageCounterKraken {
+	margin-top: -42px;
+}
+
+.damageCounterShark {
+	margin-top: -56px;
+}
+
+.damageCounterSirens {
+	margin-top: -36px;
+}
+
+.damageCounterSkullsairs {
+	margin-top: -54px;
+}
+
+.enemy6HP {
+	background-position: -6px;
+}
+
+.enemy5HP {
+	background-position: 21px;
+}
+
+.enemy4HP {
+	background-position: 49px;
+}
+
+.enemy3HP {
+	background-position: 77px;
+}
+
+.enemy2HP {
+	background-position: 105px;
+}
+
+.enemy1HP {
+	background-position: 133px;
+}
+
+.enemy0HP {
+	background-position: 160px;
+}
+
+.noDamageCounter {
+	background-position: -50px;
+}
+
+/* Critical divs positioning/styling:
+ * gameCenter: Everything that goes in the middle of the table (threshold sheet, enemy sheet, game board, all the columns)
+ * gameCore: Everything in the game center except for the threshold and enemy sheets (game board, cards, columns) 
+ * gameBoard: The actual game board with the curved top that defines the location of all the other gameCenter components.
+ * cardsOnBoardWrapper: Wrapper div that contains the three card piles on the game board (#waterDrawPile, #waterDiscardPile, #breachDrawPile)
+ * columns: Wrapper div that contains all four columns (#waterColumn, #treasureColumn, #breachesColumn, #cannonColumn)
+ * myHandWrapper: Wrapper div for #myHand div that displays the current player's hand
+ */
+#gameCenter {
+	display: flex;
+}
+
+#gameCore {
+	z-index: 1;
+	margin-left: -110px;
+}
+
+#gameboard {
+	width: 720px;
+	height: 447px;
+	margin-bottom: 15px;
+	background-image: url('img/GameBoard.png');
+}
 
 
+#cardsOnBoardWrapper {
+	display: flex;
+	position: absolute;
+	z-index: 1;
+	margin-top: -290px;
+	margin-left: 112px;
+}
 
+#waterDrawPile {
+	background-image: url('img/WaterDeckItems.jpg');
+	background-position: 0px 0px;
+}
 
+#waterDiscardPile {
+	position: absolute;
+	margin-left: 189px;
+}
+
+#breachesDrawPile {
+	position: absolute;
+	margin-left: 378px;
+	background-image: url('img/BreachDeck.jpg');
+	background-position: 0px 0px;
+}
+
+#columns {
+	position: relative;
+	display: flex;
+}
+
+.column {
+	position: absolute;
+	width: 120px;
+}
+
+#waterColumn {
+	margin-left: 20px;
+}
+
+#treasureColumn {
+	margin-left: 210px;
+}
+
+#breachesColumn {
+	margin-left: 396px;
+	width: 120px;
+}
+
+#breaches {
+	margin-top: 140px;
+}
+
+#cannonsColumn {
+	margin-left: 583px;
+}
+
+#myHandWrapper {
+	position: relative;
+}
+
+/* Time to define the look of the card! Dimensions, border, selected/not selected looks, etc */
+.card {
+	width: 120px;
+	height: 168px;
+	border-radius: 5px;
+}
+
+.cardInHand {
+	box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.4);
+}
+
+.noCard {
+	border: none;
+	background-image: none;
+	background: none;
+}
+
+/* CSS Sprite magic */
+/* Threshold Sheets: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * 3 players */
+.threshold_3players_level1 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 0px 336px;
+	transform: none; 
+}
+
+.threshold_3players_level2 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 0px 336px;
+	transform: rotate(180deg);
+}
+
+.threshold_3players_level3 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 0px 0px;
+	transform: none;
+}
+
+.threshold_3players_level4 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 0px 0px;
+	transform: rotate(180deg);
+}
+
+/* 4 players */
+.threshold_4players_level1 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 720px 336px;
+	transform: none; 
+}
+
+.threshold_4players_level2 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 720px 336px;
+	transform: rotate(180deg);
+}
+
+.threshold_4players_level3 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 720px 0px;
+	transform: none;
+}
+
+.threshold_4players_level4 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 720px 0px;
+	transform: rotate(180deg);
+}
+
+/* 5 players */
+.threshold_5players_level1 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 480px 336px;
+	transform: none; 
+}
+
+.threshold_5players_level2 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 480px 336px;
+	transform: rotate(180deg);
+}
+
+.threshold_5players_level3 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 480px 0px;
+	transform: none;
+}
+
+.threshold_5players_level4 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 480px 0px;
+	transform: rotate(180deg);
+}
+
+/* 6 players */
+.threshold_6players_level1 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 240px 336px;
+	transform: none; 
+}
+
+.threshold_6players_level2 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 240px 336px;
+	transform: rotate(180deg);
+}
+
+.threshold_6players_level3 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 240px 0px;
+	transform: none;
+}
+
+.threshold_6players_level4 {
+	background-image: url('img/ThresholdSheets.jpg');
+	background-position: 240px 0px;
+	transform: rotate(180deg);
+}
+
+/* Enemy Sheets! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/* Kraken: */
+.enemyKrakenFront {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 0px 336px;
+}
+
+.enemyKrakenBack {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 0px 0px;
+}
+
+/* The Shark: */
+.enemySharkFront {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 240px 336px;
+}
+
+.enemySharkBack {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 240px 0px;
+}
+
+/* The Sirens: */
+.enemySirensFront {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 480px 336px;
+}
+
+.enemySirensBack {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 480px 0px;
+}
+
+/* The Skullsairs: */
+.enemySkullsairsFront {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 720px 336px;
+}
+
+.enemySkullsairsBack {
+	background-image: url('img/EnemySheets.jpg');
+	background-position: 720px 0px;
+}
