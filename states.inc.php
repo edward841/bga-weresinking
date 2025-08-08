@@ -49,47 +49,80 @@
 
 //    !! It is not a good idea to modify this file when a game is running !!
 
+// Constants for state ids:
+if (!defined('STATE_END_GAME'))
+{
+	define('STATE_START_GAME', 1);
+	define('STATE_CHECK_FOR_BREACHES', 10);
+	define('STATE_CHECK_WATER_THRESHOLD', 20);
+	define('STATE_DEAL_WATER_AND_TREASURE', 30);
+	define('STATE_ROLL_ENEMY_DICE', 40);
+	define('STATE_RESOLVE_ENEMY_DICE', 45);
+	define('STATE_DECLARE_ACTIONS', 50);
+	define('STATE_REVEAL_ACTIONS', 60);
+	define('STATE_RESOLVE_ACTIONS', 65);
+	define('STATE_END_GAME', 99);
+}
+
+
+
+
 
 $machinestates = [
 
     // The initial state. Please do not modify.
 
-    1 => array(
+    STATE_START_GAME => array(
         "name" => "gameSetup",
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => ["" => 2]
+        "transitions" => ["" => STATE_CHECK_FOR_BREACHES]
     ),
 
-    // Note: ID=2 => your first state
+	STATE_CHECK_FOR_BREACHES => array(
+		'name' => 'checkForBreaches',
+		'description' => '',
+		'type' => 'game',
+		'action' => 'stCheckForBreaches',
+		'transitions' => ['' => STATE_CHECK_WATER_THRESHOLD]
+	),
 
-    2 => [
-        "name" => "playerTurn",
-        "description" => clienttranslate('${actplayer} must play a card or pass'),
-        "descriptionmyturn" => clienttranslate('${you} must play a card or pass'),
-        "type" => "activeplayer",
-        "args" => "argPlayerTurn",
-        "possibleactions" => [
-            // these actions are called from the front with bgaPerformAction, and matched to the function on the game.php file
-            "actPlayCard", 
-            "actPass",
-        ],
-        "transitions" => ["playCard" => 3, "pass" => 3]
-    ],
+	STATE_CHECK_WATER_THRESHOLD => array (
+		'name' => 'checkWaterThreshold',
+		'description' => '',
+		'type' => 'game',
+		'action' => 'stCheckWaterThreshold',
+		'transitions' => ['' => STATE_DEAL_WATER_AND_TREASURE]
+	),
 
-    3 => [
-        "name" => "nextPlayer",
-        "description" => '',
-        "type" => "game",
-        "action" => "stNextPlayer",
-        "updateGameProgression" => true,
-        "transitions" => ["endGame" => 99, "nextPlayer" => 2]
-    ],
+	STATE_DEAL_WATER_AND_TREASURE => array(
+		'name' => 'dealWaterAndTreasure',
+		'description' => '',
+		'type' => 'game',
+		'action' => 'stDealWaterAndTreasure',
+		'transitions' => ['' => STATE_ROLL_ENEMY_DICE]
+	),
+
+	STATE_ROLL_ENEMY_DICE => array(
+		'name' => 'rollEnemyDice',
+		'description' => '',
+		'type' => 'game',
+		'action' => 'stRollEnemyDice',
+		'transitions' => ['' => STATE_RESOLVE_ENEMY_DICE]
+	),
+
+	STATE_RESOLVE_ENEMY_DICE => array(
+		'name' => 'resolveEnemyDice',
+		'description' => '',
+		'type' => 'game',
+		'action' => 'stResolveEnemyDice',
+		'transitions' => ['' => STATE_END_GAME]
+	),
 
     // Final state.
     // Please do not modify (and do not overload action/args methods).
-    99 => [
+    STATE_END_GAME => [
         "name" => "gameEnd",
         "description" => clienttranslate("End of game"),
         "type" => "manager",

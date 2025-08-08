@@ -17,8 +17,8 @@ if (!defined('RED'))
 $this->tokens = [
 	// Encodes the information in the threshold sheets 
 	// (for each player count and level: threshold, water, treasure)
-	// Organization is $this->tokens['threshold_sheets']['# players']['threshold']
-	'threshold_sheets' => [
+	// Organization is $this->tokens['threshold_sheets'][{# players}]['threshold']
+	'thresholdSheets' => [
 		'3 players' => [
 			'level 1' => ['threshold'=>7, 'water'=>2, 'treasure'=>2],
 			'level 2' => ['threshold'=>8, 'water'=>2, 'treasure'=>3],

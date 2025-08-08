@@ -45,16 +45,7 @@ class Game extends \Table
             "my_second_game_variant" => 101,
         ]);        
 
-        self::$CARD_TYPES = [
-            1 => [
-                "card_name" => clienttranslate('Troll'), // ...
-            ],
-            2 => [
-                "card_name" => clienttranslate('Goblin'), // ...
-            ],
-            // ...
-        ];
-		
+		// Initialize the three decks: Water, Breaches, and Cannons
 		$this->water = $this->getNew('module.common.deck');
 		$this->water->init('water');
 
@@ -63,75 +54,79 @@ class Game extends \Table
 		
 		$this->cannons = $this->getNew('module.common.deck');
 		$this->cannons->init('cannon');
-    }
+	}
 
-    /**
-     * Player action, example content.
-     *
-     * In this scenario, each time a player plays a card, this method will be called. This method is called directly
-     * by the action trigger on the front side with `bgaPerformAction`.
-     *
-     * @throws BgaUserException
-     */
-    public function actPlayCard(int $card_id): void
-    {
-        // Retrieve the active player ID.
-        $player_id = (int)$this->getActivePlayerId();
+	public function stCheckForBreaches()
+	{
+		// There is a water card for each permanent breach 
+		$water = (int) $this->globals->get('PERMANENT_BREACHES');
 
-        // check input values
-        $args = $this->argPlayerTurn();
-        $playableCardsIds = $args['playableCardsIds'];
-        if (!in_array($card_id, $playableCardsIds)) {
-            throw new \BgaUserException('Invalid card choice');
-        }
+		// For each breach card in the breaches column, add a water card for each water symbol (denoted by 'scale' in the material file)
+		foreach ($this->breaches->getCardsInLocation('breachesColumn') as $cardId => $details)
+		{
+			$water += $this->tokens['breaches'][$details['card_type']]['scale'];
+		}
 
-        // Add your game logic to play a card here.
-        $card_name = self::$CARD_TYPES[$card_id]['card_name'];
+		// Deal $water number of water cards from the deck to the waterColumn
+		$this->water->pickCardsForLocation($water, 'deck', 'waterColumn');
 
-        // Notify all players about the card played.
-        $this->notify->all("cardPlayed", clienttranslate('${player_name} plays ${card_name}'), [
-            "player_id" => $player_id,
-            "player_name" => $this->getActivePlayerName(), // remove this line if you uncomment notification decorator
-            "card_name" => $card_name, // remove this line if you uncomment notification decorator
-            "card_id" => $card_id,
-            "i18n" => ['card_name'], // remove this line if you uncomment notification decorator
-        ]);
+		$this->gamestate->nextState();
+	}
 
-        // at the end of the action, move to the next state
-        $this->gamestate->nextState("playCard");
-    }
+	public function stCheckWaterThreshold()
+	{
+		// Check the water threshold. If equal to or greater, then carry out sinking procedures.
+		$waterThreshold = $this->tokens['thresholdSheets'][`{$this->getPlayersNumber()} players`][`level ${$this->globals->get(THRESHOLD_LEVEL)}`]['threshold'];
+		if ($this->water->countCardInLocation('waterColumn') >= $waterThreshold)
+		{
+			// Sinking procedures here
+			// STEP 1: Remove the lowest section of the ship from the game and take out its two Chest Tokens (without revealing them)
+			// STEP 2: Place the Chest Tokens face-down in the bottom of the Breaches Column
+			// TODO Implement chests...
 
-    public function actPass(): void
-    {
-        // Retrieve the active player ID.
-        $player_id = (int)$this->getActivePlayerId();
+			// STEP 3: Move the Threshold Sheet to the next level
+			$this->globals->inc('THRESHOLD_LEVEL', 1);
 
-        // Notify all players about the choice to pass.
-        $this->notify->all("pass", clienttranslate('${player_name} passes'), [
-            "player_id" => $player_id,
-            "player_name" => $this->getActivePlayerName(), // remove this line if you uncomment notification decorator
-        ]);
+			// STEP 4: Shuffle all cards in the Water deck, disard pile, and water and treasure columns to create a new water deck
+			$this->water->moveAllCardsInLocation('discard', 'deck');
+			$this->water->moveAllCardsInLocation('waterColumn', 'deck');
+			$this->water->moveAllCardsInLocation('treasureColumn', 'deck');
+			$this->water->shuffle('deck');
 
-        // at the end of the action, move to the next state
-        $this->gamestate->nextState("pass");
-    }
+			// STEP 5: If there are any Breach cards in the Breaches column, discard all Breach cards and gain 1 Permanent Breach Token. Add the Permanent Breach Token to the top of the Breaches columm.
+			if ($this->breaches->countCardInLocation('breachesColumn') > 0)
+			{
+				foreach ($this->breaches->getCardsInLocation('breachesColumn') as $cardId)
+				{
+					$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
+				}
 
-    /**
-     * Game state arguments, example content.
-     *
-     * This method returns some additional information that is very specific to the `playerTurn` game state.
-     *
-     * @return array
-     * @see ./states.inc.php
-     */
-    public function argPlayerTurn(): array
-    {
-        // Get some values from the current game situation from the database.
+				$this->globals->inc('PERMANENT_BREACHES', 1);
+			}
 
-        return [
-            "playableCardsIds" => [1, 2],
-        ];
-    }
+			// STEP 6: Flip over the First Mate scroll and continue the round on Step 3 of the Duties Checklist.
+		}
+		
+		$this->gamestate->nextState();
+	}	
+	
+	public function stDealWaterAndTreasure()
+	{
+
+		$this->gamestate->nextState();
+	}
+
+	public function stRollEnemyDice()
+	{
+
+		$this->gamestate->nextState();
+	}
+
+	public function stResolveEnemyDice()
+	{
+
+		$this->gamestate->nextState();
+	}
 
     /**
      * Compute and return the current game progression.
@@ -148,25 +143,6 @@ class Game extends \Table
         // TODO: compute and return the game progression
 
         return 0;
-    }
-
-    /**
-     * Game state action, example content.
-     *
-     * The action method of state `nextPlayer` is called everytime the current game state is set to `nextPlayer`.
-     */
-    public function stNextPlayer(): void {
-        // Retrieve the active player ID.
-        $player_id = (int)$this->getActivePlayerId();
-
-        // Give some extra time to the active player when he completed an action
-        $this->giveExtraTime($player_id);
-        
-        $this->activeNextPlayer();
-
-        // Go to another gamestate
-        // Here, we would detect if the game is over, and in this case use "endGame" transition instead 
-        $this->gamestate->nextState("nextPlayer");
     }
 
     /**
@@ -311,12 +287,14 @@ class Game extends \Table
         // Dummy content.
         $this->setGameStateInitialValue("my_first_global_variable", 0);
 		
+		// Select this game's Enemy:		
 		$enemyNumber = $this->tableOptions->get(100);
 		if ($enemyNumber == 5)
 			$enemyNumber = \bga_rand(1,4);
 		$enemies = [1=>'Kraken', 2=>'Shark', 3=>'Sirens', 4=>'Skullsairs'];
 		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
-		
+
+		// Initialize globals	
 		$this->globals->set('ENEMY_HP', 6);
 		$this->globals->set('THRESHOLD_LEVEL', 1);
 		$this->globals->set('PERMANENT_BREACHES', 0);
