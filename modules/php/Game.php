@@ -76,7 +76,7 @@ class Game extends \Table
 	public function stCheckWaterThreshold()
 	{
 		// Check the water threshold. If equal to or greater, then carry out sinking procedures.
-		$waterThreshold = $this->tokens['thresholdSheets'][`{$this->getPlayersNumber()} players`][`level ${$this->globals->get(THRESHOLD_LEVEL)}`]['threshold'];
+		$waterThreshold = $this->tokens['thresholdSheets'][`{$this->getPlayersNumber()} players`][`level ${$this->globals->get("THRESHOLD_LEVEL")}`]['threshold'];
 		if ($this->water->countCardInLocation('waterColumn') >= $waterThreshold)
 		{
 			// Sinking procedures here
@@ -112,7 +112,34 @@ class Game extends \Table
 	
 	public function stDealWaterAndTreasure()
 	{
+		$thresholdPanelInfo = $this->tokens['thresholdSheets'][`{$this->getPlayersNumber()} players`][`level ${$this->globals->get("THRESHOLD_LEVEL")}`];
+		
+		// Pick the correct number of cards for the water column according to the threshold panel
+		$this->water->pickCardsForLocation($thresholdPanelInfo['water'], 'deck', 'waterColumn');
 
+		// Draw the correct number of cards for the treasure column. If you find a clear water, put it in the water column and keep drawing.
+		$drawnTreasures = 0;
+		$clearWater = [];
+		while ($drawnTreasures < $thresholdPanelInfo['treasure'])
+		{
+			$card = $this->water->getCardOnTop('deck');
+			if ($card['card_type'] == 'clearWater')
+			{
+				$this->water->pickCardForLocation('deck', 'waterColumn');
+				$clearWater[] = $card['card_id'];
+			}
+			else
+			{
+				$this->water->pickCardForLocation('deck', 'treasureColumn');
+				$drawnTreasures++;
+			}
+		}
+		if (count($clearWater) > 0)
+		{
+			$clearWaterIdString = implode('`,`', $clearWater);
+			$this->DbQuery("UPDATE `water` SET `card_face_up`=`TRUE` WHERE `card_id` IN (`$clearWaterIdString`)");
+		}
+		$this->checkTreasureColumn();
 		$this->gamestate->nextState();
 	}
 
@@ -126,6 +153,17 @@ class Game extends \Table
 	{
 
 		$this->gamestate->nextState();
+	}
+	
+	// Helper Functions!
+	public function checkTreasureColumn()
+	{
+		$treasureColumnLength = $this->water->countCardInLocation('treasureColumn');
+		while ($treasureColumnLength > 5)
+		{
+			
+			$treasureColumnLength--;
+		}
 	}
 
     /**
