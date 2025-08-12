@@ -161,7 +161,7 @@ class Game extends \Table
 		$treasureColumnLength = $this->water->countCardInLocation('treasureColumn');
 		while ($treasureColumnLength > 5)
 		{
-			
+				
 			$treasureColumnLength--;
 		}
 	}

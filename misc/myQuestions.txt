@@ -52,3 +52,6 @@ Average game duration?
 
 7/31
 Should I use the icons in the same way as the source material in the game? Should I put the symbol for the action in the card description field? In the notifications? I would think so?
+
+8/11
+For the shark's sumberged attack, do the single cannons still fire even though they are ineffective? Or do they simply not fire? (I understand that they don't deal damage, but what does it look like from the players' perspective?)

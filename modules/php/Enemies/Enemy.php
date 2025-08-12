@@ -4,130 +4,148 @@ Bga\Games\Weresinking;
 
 public abstract class Enemy 
 {
+	public MyGame $game;
+
 	// Constants: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Amount of HP the enemy has initially. Enemy is defeated after this many blows.
-	public static int $MAX_HP = 6;
+	const int $MAX_HP = 6;
 	
 	// Number of basic die needed for setup
-	public abstract static int $INITIAL_BASIC_DIE;
-
-	// Assigns each possible die outcome to a value. Used in the die mappings
-	public static int $WATER = 1;
-	public static int $BREACH = 2;
-	public static int $CANNON = 3;
-	public static int $SPECIAL_ATTACK_1 = 4;
-	public static int $SPECIAL_ATTACK_2 = 5;
+	public abstract int $INITIAL_BASIC_DIE;
 	
+	const int[] basicDieMapping = [1 => 'Water', 2 => 'Breach', 3 => null, 4 => null, 5 => null, 6 => 'Cannon'];
+	const int[] specialDieMapping = [1 => 'Water', 2 => 'SpecialAttack1', 3 => null, 4 => null, 5 => 'SpecialAttack2', 6 => 'Breach'];
+
+	// Assigns each possible die outcome to an outcome
+//	const int WATER = 1;
+//	const int BREACH = 2;
+//	const int CANNON = 6;
+//
+//	const int SPECIAL_WATER = 1;
+//	const int SPECIAL_BREACH = 6;
+//	const int SPECIAL_ATTACK_1 = 2;
+//	const int SPECIAL_ATTACK_2 = 5;
+
+	const abstract string $SPECIAL_ATTACK_1_NAME;
+	const abstract string $SPECIAL_ATTACK_2_NAME;
+	const abstract int[] $ADJUST_ACTIVE_DICE;
+		
 	// Getters: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	public static int getBasicDieNumber()
+	public int getBasicDieNumber()
 	{
 		return 2;
 	}
 	
-	public static int getHP()
+	public int getHP()
 	{
-		return self::MAX_HP;
+		return $this->game->globals->get('ENEMY_HP');
 	}
 
 	// Setters: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Attacks: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Generic die roll. Returns a random value 1 through 6.
-	public static int rollDie()
+	public int rollDie()
 	{
 		return \bga_rand(1, 6);
 	}
 
-	// Basic attack die mapping. Maps 1 through 6 to the basic die outcomes as follows:
-	// 1: Water. We're taking on water!
-	// 2: Breach. We've sprung a leak!
-	// 3: Cannon. Cannon down!
-	// 4 - 6: Blank
-	public static void basicDie(int $roll)
+	public void resolveBasicDie(int $roll)
 	{
-		switch ($roll)
-		{
-			case self::WATER:
-				print("We're taking on water!");
-				break;
-			
-			case self::BREACH:
-				print("We've sprung a leak!");
-				break;
-				
-			case self::CANNON:
-				print("Cannon down!");
-				break;
-
-			// Miss
-			default:
-				print("Miss!");
-				break;
-		}	
+		$result = Enemy::basicDieMapping[$roll];
+		if ($result != null)
+			$this->resolve{$result}();
 	}
 
-	// Special attack die mapping. Maps 1 through 6 to the special attack die outcomes as follows:
-	// 1: Water. We're taking on water!
-	// 2: Breach. We've sprung a leak!
-	// 4: Special attack 1
-	// 5: Special attack 2
-	// 3, 6: Blank
-	public static void specialDie(int $roll)
+	public void resolveSpecialDie(int $roll)
 	{
-		switch ($roll)
-		{
-			// The two basic attacks (Water and breach)
-			case self::WATER:
-			case self::BREACH:
-				self::basicDie($roll);
-				break;
+		$result = Enemy::specialDieMapping[$roll];
+		if ($result != null)
+			$this->resolve{$result}();
+	}
 
-			// First special attack
-			case self::SPECIAL_ATTACK_1:
-				self::specialAttack1();
-				break;
-			
-			// Second special attack	
-			case self::SPECIAL_ATTACK_2:
-				self::specialAttack2();
-				break;
+//	public void resolveBasicDie(int $roll)
+//	{
+//		switch ($roll)
+//		{
+//			case Enemy::WATER:
+//				$this->resolveWater();	
+//				break;
+//
+//			case Enemy::BREACH:
+//				$this->resolveBreach();
+//				break;
+//
+//			case Enemy::CANNON:
+//				$this->resolveCannon();
+//				break;
+//		}
+//	}
 
-			// Miss
-			default:
-				print("Miss!");
-				break;
-		}
+
+	private void resolveWater()
+	{
+		$this->game->water->pickCardForLocation('deck', 'waterColumn');		
+	}
+
+	private void resolveBreach()
+	{
+		$this->game->breaches->pickCardForLocation('deck', 'breachesColumn');
+	}
+
+	private void resolveCannon()
+	{
+
 	}
 
 	// The two special attacks. They are not dice. They are responsible for implementing the logic of specialized attacks.
 	// These methods are called when SPECIAL_ATTACK_1 and SPECIAL_ATTACK_2 are rolled by rollDie and interpreted by specialDie. 
-	public abstract static void specialAttack1();
-	public abstract static void specialAttack2();
+	public abstract void resolveSpecialAttack1();
+	public abstract void resolveSpecialAttack2();
 
 	// Taking damage! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// The enemy takes one damage! Handles any appropriate actions like adding/removing dice and any special events.
-	public abstract static void takeDamage();
+	public void takeDamage()
+	{
+		$this->decrementHP();
+		$HP = $this->getHP();
+
+		switch ($this->ADJUST_ACTIVE_DICE[$HP])
+		{
+			case 1:
+				$this->addBasicDie();
+				break;
+
+			case -1:
+				$this->removeBasicDie();
+				break;
+		}
+			
+		$this->reactToDamage($HP);
+	}
 
 	// Decrements the enemy's HP by one. 
 	// Only the simple SQL query. Exists to be called by takeDamage. 
 	// DOES NOT implement any other logic related to taking damage (that will be done in takeDamage).
-	public static void decrementHP()
+	private void decrementHP()
 	{
-
+		$this->game->globals->inc('ENEMY_HP', -1);
 	}
 
 	// Adds one basic die. 
 	// Only the simple SQL query. Exists to be called by takeDamage. 
-	public static void addBasicDie()
+	private void addBasicDie()
 	{
 
 	}
 	
 	// Removes one basic die.
 	// Only the simple SQL query. Exists to be called by takeDamage. 
-	public static void removeBasicDie()
+	private void removeBasicDie()
 	{
 
 	}
+
+	protected abstract reactToDamage(int $HP);
 }
 
