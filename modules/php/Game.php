@@ -64,19 +64,22 @@ class Game extends \Table
 		// For each breach card in the breaches column, add a water card for each water symbol (denoted by 'scale' in the material file)
 		foreach ($this->breaches->getCardsInLocation('breachesColumn') as $cardId => $details)
 		{
-			$water += $this->tokens['breaches'][$details['card_type']]['scale'];
+			$water += $this->tokens['breaches'][$details['type']]['scale'];
 		}
 
 		// Deal $water number of water cards from the deck to the waterColumn
-		$this->water->pickCardsForLocation($water, 'deck', 'waterColumn');
+		$this->pickCardsForWaterColumn($water);
 
-		$this->gamestate->nextState();
+		//$this->gamestate->nextState();
 	}
 
 	public function stCheckWaterThreshold()
 	{
 		// Check the water threshold. If equal to or greater, then carry out sinking procedures.
-		$waterThreshold = $this->tokens['thresholdSheets'][`{$this->getPlayersNumber()} players`][`level ${$this->globals->get("THRESHOLD_LEVEL")}`]['threshold'];
+		$numPlayers = $this->getPlayersNumber();
+		$thresholdLevel = $this->globals->get('THRESHOLD_LEVEL');
+		$waterThreshold = (int) $this->tokens['thresholdSheets']["$numPlayers players"]["level $thresholdLevel"]['threshold'];
+	
 		if ($this->water->countCardInLocation('waterColumn') >= $waterThreshold)
 		{
 			// Sinking procedures here
@@ -96,9 +99,9 @@ class Game extends \Table
 			// STEP 5: If there are any Breach cards in the Breaches column, discard all Breach cards and gain 1 Permanent Breach Token. Add the Permanent Breach Token to the top of the Breaches columm.
 			if ($this->breaches->countCardInLocation('breachesColumn') > 0)
 			{
-				foreach ($this->breaches->getCardsInLocation('breachesColumn') as $cardId)
+				foreach ($this->breaches->getCardsInLocation('breachesColumn') as $card)
 				{
-					$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
+					$this->breaches->insertCardOnExtremePosition($card['id'], 'deck', false);
 				}
 
 				$this->globals->inc('PERMANENT_BREACHES', 1);
@@ -107,40 +110,35 @@ class Game extends \Table
 			// STEP 6: Flip over the First Mate scroll and continue the round on Step 3 of the Duties Checklist.
 		}
 		
-		$this->gamestate->nextState();
+		//$this->gamestate->nextState();
 	}	
 	
 	public function stDealWaterAndTreasure()
 	{
-		$thresholdPanelInfo = $this->tokens['thresholdSheets'][`{$this->getPlayersNumber()} players`][`level ${$this->globals->get("THRESHOLD_LEVEL")}`];
+		$numPlayers = $this->getPlayersNumber();
+		$thresholdLevel = $this->globals->get('THRESHOLD_LEVEL');
+		$thresholdPanelInfo = $this->tokens['thresholdSheets']["$numPlayers players"]["level $thresholdLevel"];
 		
 		// Pick the correct number of cards for the water column according to the threshold panel
-		$this->water->pickCardsForLocation($thresholdPanelInfo['water'], 'deck', 'waterColumn');
+		$this->pickCardsForWaterColumn((int) $thresholdPanelInfo['water']);
 
 		// Draw the correct number of cards for the treasure column. If you find a clear water, put it in the water column and keep drawing.
-		$drawnTreasures = 0;
-		$clearWater = [];
-		while ($drawnTreasures < $thresholdPanelInfo['treasure'])
+		// (since the default value of card_face_up is true, the waters we find will have the proper card_face_up value by default)
+		$remainingTreasures = (int) $thresholdPanelInfo['treasure'];
+		while ($remainingTreasures > 0)
 		{
 			$card = $this->water->getCardOnTop('deck');
-			if ($card['card_type'] == 'clearWater')
-			{
-				$this->water->pickCardForLocation('deck', 'waterColumn');
-				$clearWater[] = $card['card_id'];
-			}
+			if ($card['type'] == 'clearWater')
+				$this->water->insertCardOnExtremePosition($card['id'], 'waterColumn', true);
 			else
 			{
-				$this->water->pickCardForLocation('deck', 'treasureColumn');
-				$drawnTreasures++;
+				$this->water->insertCardOnExtremePosition($card['id'], 'treasureColumn', true);
+				$remainingTreasures--;
 			}
 		}
-		if (count($clearWater) > 0)
-		{
-			$clearWaterIdString = implode('`,`', $clearWater);
-			$this->DbQuery("UPDATE `water` SET `card_face_up`=`TRUE` WHERE `card_id` IN (`$clearWaterIdString`)");
-		}
+		
 		$this->checkTreasureColumn();
-		$this->gamestate->nextState();
+		//$this->gamestate->nextState();
 	}
 
 	public function stRollEnemyDice()
@@ -154,8 +152,28 @@ class Game extends \Table
 
 		$this->gamestate->nextState();
 	}
+
+	public function stDummyState()
+	{
+
+	}
 	
-	// Helper Functions!
+	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
+	public function pickCardsForWaterColumn(int $number)
+	{
+		$cardIds = [];
+		while ($number > 0)
+		{
+			$cardId = $this->water->getCardOnTop('deck')['id'];
+			$this->water->insertCardOnExtremePosition($cardId, 'waterColumn', true);
+			$cardIds[] = $cardId;
+			$number--;
+		}
+		
+		$implodedCardIds = implode(',', $cardIds);	
+		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id` IN ($implodedCardIds)");
+	}
+
 	public function checkTreasureColumn()
 	{
 		$treasureColumnLength = $this->water->countCardInLocation('treasureColumn');

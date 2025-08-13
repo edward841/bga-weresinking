@@ -37,7 +37,7 @@
    _ action: name of the method to call when this game state become the current game state. Usually, the
              action method is prefixed by "st" (ex: "stMyGameStateName").
    _ possibleactions: array that specify possible player actions on this step. It allows you to use "checkAction"
-                      method on both client side (Javacript: this.checkAction) and server side (PHP: $this->checkAction).
+                      method on both client side (Javacript: this.checkAction) and server side (PHP: $this-checkAction).
    _ transitions: the transitions are the possible paths to go from a game state to another. You must name
                   transitions in order to use transition names in "nextState" PHP method, and use IDs to
                   specify the next game state for each transition.
@@ -48,6 +48,8 @@
 */
 
 //    !! It is not a good idea to modify this file when a game is running !!
+
+use Bga\GameFramework\StateType;
 
 // Constants for state ids:
 if (!defined('STATE_END_GAME'))
@@ -77,13 +79,13 @@ $machinestates = [
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => ["" => STATE_CHECK_FOR_BREACHES]
+        "transitions" => ["" => 90] //STATE_CHECK_FOR_BREACHES]
     ),
 
 	STATE_CHECK_FOR_BREACHES => array(
 		'name' => 'checkForBreaches',
 		'description' => '',
-		'type' => 'game',
+		'type' => StateType::GAME,
 		'action' => 'stCheckForBreaches',
 		'transitions' => ['' => STATE_CHECK_WATER_THRESHOLD]
 	),
@@ -91,7 +93,7 @@ $machinestates = [
 	STATE_CHECK_WATER_THRESHOLD => array (
 		'name' => 'checkWaterThreshold',
 		'description' => '',
-		'type' => 'game',
+		'type' => StateType::GAME,
 		'action' => 'stCheckWaterThreshold',
 		'transitions' => ['' => STATE_DEAL_WATER_AND_TREASURE]
 	),
@@ -99,7 +101,7 @@ $machinestates = [
 	STATE_DEAL_WATER_AND_TREASURE => array(
 		'name' => 'dealWaterAndTreasure',
 		'description' => '',
-		'type' => 'game',
+		'type' => StateType::GAME,
 		'action' => 'stDealWaterAndTreasure',
 		'transitions' => ['' => STATE_ROLL_ENEMY_DICE]
 	),
@@ -107,7 +109,7 @@ $machinestates = [
 	STATE_ROLL_ENEMY_DICE => array(
 		'name' => 'rollEnemyDice',
 		'description' => '',
-		'type' => 'game',
+		'type' => StateType::GAME,
 		'action' => 'stRollEnemyDice',
 		'transitions' => ['' => STATE_RESOLVE_ENEMY_DICE]
 	),
@@ -115,8 +117,16 @@ $machinestates = [
 	STATE_RESOLVE_ENEMY_DICE => array(
 		'name' => 'resolveEnemyDice',
 		'description' => '',
-		'type' => 'game',
+		'type' => StateType::GAME,
 		'action' => 'stResolveEnemyDice',
+		'transitions' => ['' => STATE_CHECK_FOR_BREACHES]
+	),
+
+	90 => array(
+		'name' => 'dummyState',
+		'description' => '',
+		'type' => StateType::GAME,
+		'action' => 'stDummyState',
 		'transitions' => ['' => STATE_END_GAME]
 	),
 
