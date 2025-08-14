@@ -19,10 +19,14 @@ declare(strict_types=1);
 namespace Bga\Games\weresinking;
 
 require_once(APP_GAMEMODULE_PATH . "module/table/table.game.php");
+require_once("Enemies/Enemy.php");
+//require_once("Enemies/Kraken.php");
+
 
 class Game extends \Table
 {
-    private static array $CARD_TYPES;
+	private static array $CARD_TYPES;
+	private Enemy $enemy;
 
     /**
      * Your global variables labels:
@@ -144,18 +148,25 @@ class Game extends \Table
 	public function stRollEnemyDice()
 	{
 
-		$this->gamestate->nextState();
+		//$this->gamestate->nextState();
 	}
 
 	public function stResolveEnemyDice()
 	{
+		$this->debug('Testing Enemy attack for a roll of 2...');
+		$this->enemy->resolveSpecialDie(2);
 
-		$this->gamestate->nextState();
+		//$this->gamestate->nextState();
 	}
-
+	
+	// This dummy state is designed to be a void of nothingness for the FSM to get stuck in.
+	// This might sound silly but it helps test functions in isolation without distractions and complications from the FSM.
 	public function stDummyState()
 	{
+		// Intentionally does nothing!
+		// Intentionally has no escape!
 
+		// Mawahahahaaa! You cannot escape me!!!
 	}
 	
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
@@ -349,21 +360,13 @@ class Game extends \Table
 			$enemyNumber = \bga_rand(1,4);
 		$enemies = [1=>'Kraken', 2=>'Shark', 3=>'Sirens', 4=>'Skullsairs'];
 		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
+		$enemy = new Kraken($this);
 
 		// Initialize globals	
 		$this->globals->set('ENEMY_HP', 6);
 		$this->globals->set('THRESHOLD_LEVEL', 1);
 		$this->globals->set('PERMANENT_BREACHES', 0);
-		
-        // Init game statistics.
-        //
-        // NOTE: statistics used in this file must be defined in your `stats.inc.php` file.
 
-        // Dummy content.
-        // $this->initStat("table", "table_teststat1", 0);
-        // $this->initStat("player", "player_teststat1", 0);
-
-		// TODO: Setup the initial game situation here.
 		$this->populateDatabase();
 
         // Activate first player once everything has been initialized and ready.

@@ -2,8 +2,6 @@
 
 namespace Bga\Games\weresinking;
 
-//'player_colors' => ['ff5165', 'f19c27', '00c398', '4ccaf2', 'af73b1', '646D74'],
-
 if (!defined('RED'))
 {
 	define('RED', 'ff5165');
@@ -86,6 +84,24 @@ $this->tokens = [
 			'job'=> clienttranslate('The Navigator'),
 			'item'=> 'spyGlass'
 			],
+	],
+
+	'enemySheets' => [
+		'kraken' => [
+			'name' => clienttranslate('The Kraken'),
+			'specialAttack1' => [
+				'name' => clienttranslate('Splash'),
+				'effect' => clienttranslate('Place the top card in the Treasure Column face-down into the Water Column.'),
+				],
+			'specialAttack2' => [
+				'name' => clienttranslate('Angered'),
+				'effect' => clienttranslate('When a card is added to the discard pile this round, immediately roll and resolve 1 Basic Attack Die (Place this die on the discard pile as a reminder.)'),
+				],
+			'complexity' => 1,	
+			'description' => clienttranslate('It hates when you discard your trash into the sea. Making it angry will only cause it to grow stronger.'),
+			'prologue' => clienttranslate('Some local folk are saying the Deep Sea King has awoken from its slumber. Sailors always tell tall tales, but the number of stories that keep emerging in the ports these days... Some say they\'ve seen bones of ships, smashed to splinters on calm waters. Only soothing melodies can calm this restless beast. Hopefully it won\'t come to... CRAAAACK... WE\'RE SINKING!!!'),
+			'setup' => clienttranslate('Shuffle the War Drum and Hurdy Gurdy into the Water Deck. Start with 4 active enemy dice: 2 Kraken dice and 2 Basic dice.'),
+		],
 	],
 
 	// Critical info needed for the breaches: Organized by type of breach:
