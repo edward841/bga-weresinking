@@ -15,19 +15,14 @@
  * In this PHP file, you are going to defines the rules of the game.
  */
 declare(strict_types=1);
-
 namespace Bga\Games\weresinking;
 
 require_once(APP_GAMEMODULE_PATH . "module/table/table.game.php");
 require_once("Enemies/Enemy.php");
-//require_once("Enemies/Kraken.php");
-
+require_once("Enemies/Kraken.php");
 
 class Game extends \Table
 {
-	private static array $CARD_TYPES;
-	private Enemy $enemy;
-
     /**
      * Your global variables labels:
      *
@@ -58,6 +53,11 @@ class Game extends \Table
 		
 		$this->cannons = $this->getNew('module.common.deck');
 		$this->cannons->init('cannon');
+	}
+
+	private function getEnemy(): Enemy
+	{
+		return new Kraken($this);
 	}
 
 	public function stCheckForBreaches()
@@ -151,10 +151,15 @@ class Game extends \Table
 		//$this->gamestate->nextState();
 	}
 
+	public function test()
+	{
+
+	}
+
 	public function stResolveEnemyDice()
 	{
 		$this->debug('Testing Enemy attack for a roll of 2...');
-		$this->enemy->resolveSpecialDie(2);
+		$this->getEnemy()->resolveSpecialDie(2);
 
 		//$this->gamestate->nextState();
 	}
@@ -360,7 +365,6 @@ class Game extends \Table
 			$enemyNumber = \bga_rand(1,4);
 		$enemies = [1=>'Kraken', 2=>'Shark', 3=>'Sirens', 4=>'Skullsairs'];
 		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
-		$enemy = new Kraken($this);
 
 		// Initialize globals	
 		$this->globals->set('ENEMY_HP', 6);
