@@ -146,7 +146,24 @@ class Game extends \Table
 
 	public function stResolveEnemyDice()
 	{
+		$diceMappings => [
+			'basic' => [1 => 'Water', 2 => 'Breach', 3 => null, 4 => null, 5 => null, 6 => 'Cannon'],
+			'special' => [1 => 'Water', 2 => '1', 3 => null, 4 => null, 5 => '2', 6 => 'Breach']
+		];
 
+		//foreach
+		$roll = 2; $type = 'basic';
+		{
+			$result = $diceMappings[$type][$roll];
+			if ($result == null)
+				continue;
+			else if (strlen($result) == 1)
+				$attack = "resolveBasic{$result}";
+			else
+				$attack = "resolve{$enemy}Attack{$result}";
+			
+			$this->$attack();
+		}
 		//$this->gamestate->nextState();
 	}
 	
@@ -160,32 +177,6 @@ class Game extends \Table
 		// Mawahahahaaa! You cannot escape me!!!
 	}
 	
-	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
-	public function pickCardsForWaterColumn(int $number)
-	{
-		$cardIds = [];
-		while ($number > 0)
-		{
-			$cardId = $this->water->getCardOnTop('deck')['id'];
-			$this->water->insertCardOnExtremePosition($cardId, 'waterColumn', true);
-			$cardIds[] = $cardId;
-			$number--;
-		}
-		
-		$implodedCardIds = implode(',', $cardIds);	
-		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id` IN ($implodedCardIds)");
-	}
-
-	// Just a widdle stub for now...
-	public function checkTreasureColumn()
-	{		
-//		$treasureColumnLength = $this->water->countCardInLocation('treasureColumn');
-//		while ($treasureColumnLength > 5)
-//		{
-//				
-//			$treasureColumnLength--;
-//		}
-	}
 
     /**
      * Compute and return the current game progression.
@@ -524,5 +515,64 @@ class Game extends \Table
         }
 
         throw new \feException("Zombie mode not supported at this game state: \"{$state_name}\".");
+	}		
+
+	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	public function pickCardsForWaterColumn(int $number)
+	{
+		$cardIds = [];
+		while ($number > 0)
+		{
+			$cardId = $this->water->getCardOnTop('deck')['id'];
+			$this->water->insertCardOnExtremePosition($cardId, 'waterColumn', true);
+			$cardIds[] = $cardId;
+			$number--;
+		}
+		
+		$implodedCardIds = implode(',', $cardIds);	
+		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id` IN ($implodedCardIds)");
 	}
+
+	// Just a widdle stub for now...
+	public function checkTreasureColumn()
+	{		
+//		$treasureColumnLength = $this->water->countCardInLocation('treasureColumn');
+//		while ($treasureColumnLength > 5)
+//		{
+//				
+//			$treasureColumnLength--;
+//		}
+	}
+
+	// Enemies!
+	// Basic Enemy Dice:
+	private function resolveBasicWater(): void
+	{
+		$this->pickCardsForWaterColumn(1);
+	}
+
+	private function resolveBasicBreach(): void
+	{
+		$this->breaches->pickCardForLocation('deck', 'breachesColumn');
+	}
+
+	private function resolveBasicCannon(): void
+	{
+		
+	}
+
+	// Special Enemy Dice:
+	// Kraken:	
+	private function resolveKrakenAttack1(): void
+	{
+		$this->debug("\nKraken's special attack #1!\n");
+	}
+
+	private function resolveKrakenAttack2(): void
+	{
+		$this->debug("\nKraken's special attack #2!\n");
+	}
+
+	private function theKrakenReactsToDamage(): void { return; }
+
 }

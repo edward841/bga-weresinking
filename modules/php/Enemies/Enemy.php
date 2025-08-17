@@ -25,7 +25,7 @@ abstract class Enemy
 	// Maps the possible die outcomes (1-6) to the corresponding outcome on a special die.
 	// Note: The mapping was specifically chosen to have the same topology of a regular D6 
 	// i.e. Water and Breach are on opposite sides of the physical die, so they correspond to 1 and 6 (values opposite each other on a D6)
-	public const SPECIAL_DIE_MAPPING = [1 => 'Water', 2 => 'SpecialAttack1', 3 => null, 4 => null, 5 => 'SpecialAttack2', 6 => 'Breach'];
+	public const SPECIAL_DIE_MAPPING = [1 => 'Water', 2 => '1', 3 => null, 4 => null, 5 => '2', 6 => 'Breach'];
 	
 	// Assigns each possible die outcome to an outcome
 //	const int WATER = 1;

@@ -104,6 +104,15 @@ $this->tokens = [
 		],
 	],
 
+	// 'adjustBasicDice' => [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0],
+	'enemyInfo' => [
+		'kraken' => [
+			'basicDice' => 2,
+			'adjustBasicDice' => [5 => 1, 4 => 0, 3 => 0, 2 => 1, 1 => 0],
+			'triggers' => []
+		],
+	],
+
 	// Critical info needed for the breaches: Organized by type of breach:
 	// 	name, scale, and player counts. The player counts element is designed
 	// 	for setting up a new game. An n player game would need the breaches from
