@@ -18,8 +18,6 @@ declare(strict_types=1);
 namespace Bga\Games\weresinking;
 
 require_once(APP_GAMEMODULE_PATH . "module/table/table.game.php");
-require_once("Enemies/Enemy.php");
-require_once("Enemies/Kraken.php");
 
 class Game extends \Table
 {
@@ -53,11 +51,6 @@ class Game extends \Table
 		
 		$this->cannons = $this->getNew('module.common.deck');
 		$this->cannons->init('cannon');
-	}
-
-	private function getEnemy(): Enemy
-	{
-		return new Kraken($this);
 	}
 
 	public function stCheckForBreaches()
@@ -151,15 +144,8 @@ class Game extends \Table
 		//$this->gamestate->nextState();
 	}
 
-	public function test()
-	{
-
-	}
-
 	public function stResolveEnemyDice()
 	{
-		$this->debug('Testing Enemy attack for a roll of 2...');
-		$this->getEnemy()->resolveSpecialDie(2);
 
 		//$this->gamestate->nextState();
 	}
@@ -190,14 +176,15 @@ class Game extends \Table
 		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id` IN ($implodedCardIds)");
 	}
 
+	// Just a widdle stub for now...
 	public function checkTreasureColumn()
-	{
-		$treasureColumnLength = $this->water->countCardInLocation('treasureColumn');
-		while ($treasureColumnLength > 5)
-		{
-				
-			$treasureColumnLength--;
-		}
+	{		
+//		$treasureColumnLength = $this->water->countCardInLocation('treasureColumn');
+//		while ($treasureColumnLength > 5)
+//		{
+//				
+//			$treasureColumnLength--;
+//		}
 	}
 
     /**
