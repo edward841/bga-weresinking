@@ -146,23 +146,36 @@ class Game extends \Table
 
 	public function stResolveEnemyDice()
 	{
-		$diceMappings => [
+		$this->debug('stResolveEnemyDice Called...');
+		// This game's enemy
+		$enemy = $this->globals->get('ENEMY');
+
+		// The dice have the same topology as a regular D6
+		// These mappings are designed to translate the physical dice directly
+		// e.g. on the basic die, water and cannon are on opposite sides. 
+		// Here they correspond to a 1 and 6, values on opposite sides of a regular D6.
+		// null represents the blank sides
+		$diceMappings = [
 			'basic' => [1 => 'Water', 2 => 'Breach', 3 => null, 4 => null, 5 => null, 6 => 'Cannon'],
 			'special' => [1 => 'Water', 2 => '1', 3 => null, 4 => null, 5 => '2', 6 => 'Breach']
 		];
 
 		//foreach
-		$roll = 2; $type = 'basic';
 		{
-			$result = $diceMappings[$type][$roll];
+			// Functional programming method for redirecting to the correct function to resolve the die roll
+			// The three basic types (Water, Breach, Cannon) get redirected to their resolveBasic{attack} functions
+			// The two special attacks get directed to the proper enemy's attack (e.g. resolveKrakenAttack1)
+			$type = 'basic'; $roll = 2;
+			$result = $diceMappings[$type][$roll]; $attack = '';
 			if ($result == null)
-				continue;
-			else if (strlen($result) == 1)
+				null; // TODO Probably a break or continue here
+			else if (strlen($result) > 1)
 				$attack = "resolveBasic{$result}";
 			else
 				$attack = "resolve{$enemy}Attack{$result}";
-			
-			$this->$attack();
+
+			if ($result != null)
+				$this->$attack();
 		}
 		//$this->gamestate->nextState();
 	}
@@ -546,33 +559,35 @@ class Game extends \Table
 
 	// Enemies!
 	// Basic Enemy Dice:
-	private function resolveBasicWater(): void
+	public function resolveBasicWater(): void
 	{
+		$this->debug('Resolving basic water...');
 		$this->pickCardsForWaterColumn(1);
 	}
 
-	private function resolveBasicBreach(): void
+	public function resolveBasicBreach(): void
 	{
+		$this->debug('Resolving basic breach...');
 		$this->breaches->pickCardForLocation('deck', 'breachesColumn');
 	}
 
-	private function resolveBasicCannon(): void
+	public function resolveBasicCannon(): void
 	{
-		
+		$this->debug('Resolving basic cannon...');
 	}
 
 	// Special Enemy Dice:
 	// Kraken:	
-	private function resolveKrakenAttack1(): void
+	public function resolveKrakenAttack1(): void
 	{
 		$this->debug("\nKraken's special attack #1!\n");
 	}
 
-	private function resolveKrakenAttack2(): void
+	public function resolveKrakenAttack2(): void
 	{
 		$this->debug("\nKraken's special attack #2!\n");
 	}
 
-	private function theKrakenReactsToDamage(): void { return; }
+	public function theKrakenReactsToDamage(): void { return; }
 
 }
