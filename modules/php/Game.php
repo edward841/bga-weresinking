@@ -140,7 +140,23 @@ class Game extends \Table
 
 	public function stRollEnemyDice()
 	{
-		$diceIds = $this->DbQuery("SELECT `die_id` FROM `dice` WHERE `type` IN ('basic', 'special')");
+		// Generate the correct number of random values 
+		// $$\forall x \in $rolls, x \in [1,6] $$
+		$diceIds = $this->getCollectionFromDB("SELECT `die_id` FROM `dice` WHERE `type` IN ('basic', 'special')");
+		$rolls = array();
+		for ($x = 0; $x < count($diceIds); $x++)
+		{
+			$rolls[] = \bga_rand(1,6);	
+		}
+
+		// Update the dice values in the database with the new values
+		$updateString = '';
+		foreach (array_keys($diceIds) as $id)
+		{
+			$updateString .= "WHEN $id THEN " . array_pop($rolls) . " ";
+		}
+		$spliced = implode(',', array_keys($diceIds));
+		$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE $id in ($spliced)");
 
 		//$this->gamestate->nextState();
 	}
