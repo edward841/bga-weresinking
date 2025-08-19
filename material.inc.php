@@ -113,6 +113,18 @@ $this->tokens = [
 		],
 	],
 
+	// The dice have the same topology as a regular D6
+	// These mappings are designed to translate the physical dice directly
+	// e.g. on the basic die, water and cannon are on opposite sides. 
+	// Here they correspond to a 1 and 6, values on opposite sides of a regular D6.
+	// null represents the blank sides
+	'diceMappings' => [
+		'basic' => [1 => 'Water', 2 => 'Breach', 3 => null, 4 => null, 5 => null, 6 => 'Cannon'],
+		'special' => [1 => 'Water', 2 => '1', 3 => null, 4 => null, 5 => '2', 6 => 'Breach']
+	],
+
+	'diceOrder' => ['1' => 0, '2' => 1, 'Water' => 2, 'Breach' => 3, 'Cannon' => 4, null => 5],
+
 	// Critical info needed for the breaches: Organized by type of breach:
 	// 	name, scale, and player counts. The player counts element is designed
 	// 	for setting up a new game. An n player game would need the breaches from

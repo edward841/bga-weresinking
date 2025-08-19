@@ -163,38 +163,49 @@ class Game extends \Table
 
 	public function stResolveEnemyDice()
 	{
-		$this->debug('stResolveEnemyDice Called...');
+		// Get the dice data from database
+		$diceIds = $this->getCollectionFromDB("SELECT `die_id`, `type`, `value` FROM `dice` WHERE `type` IN ('basic', 'special')");
+
+		// Convert this complex array to a simple array of just the values we need (one of 1, 2, Water, Breach, Cannon, null to indicate die results)
+		$dice = array();
+		foreach ($diceIds as $id => $details)
+		{
+			$dice[$id] = $this->tokens['diceMappings'][$details['type']][$details['value']];
+		}
+
+		// Sort the results by the order given in material.inc.php (special attack 1, special attack 2, Water, Breach, Cannon, null)
+		// (rulebook specifies results should be resolved in order of special attack 1, special attack 2, and then everything else in no particular order)
+		uasort($dice, function($a, $b) {
+			return $this->tokens['diceOrder'][$a] <=> $this->tokens['diceOrder'][$b];
+		});
+		$this->printDice($dice);
+
 		// This game's enemy
 		$enemy = $this->globals->get('ENEMY');
 
-		// The dice have the same topology as a regular D6
-		// These mappings are designed to translate the physical dice directly
-		// e.g. on the basic die, water and cannon are on opposite sides. 
-		// Here they correspond to a 1 and 6, values on opposite sides of a regular D6.
-		// null represents the blank sides
-		$diceMappings = [
-			'basic' => [1 => 'Water', 2 => 'Breach', 3 => null, 4 => null, 5 => null, 6 => 'Cannon'],
-			'special' => [1 => 'Water', 2 => '1', 3 => null, 4 => null, 5 => '2', 6 => 'Breach']
-		];
-
-		//foreach
+		// Resolve each result
+		foreach ($dice as $id => $result)
 		{
 			// Functional programming method for redirecting to the correct function to resolve the die roll
 			// The three basic types (Water, Breach, Cannon) get redirected to their resolveBasic{attack} functions
 			// The two special attacks get directed to the proper enemy's attack (e.g. resolveKrakenAttack1)
-			$type = 'basic'; $roll = 2;
-			$result = $diceMappings[$type][$roll]; $attack = '';
+			$attack = '';
 			if ($result == null)
-				null; // TODO Probably a break or continue here
+				break; 
 			else if (strlen($result) > 1)
 				$attack = "resolveBasic{$result}";
 			else
 				$attack = "resolve{$enemy}Attack{$result}";
 
-			if ($result != null)
-				$this->$attack();
+			$this->$attack();
 		}
-		//$this->gamestate->nextState();
+
+//		//$this->gamestate->nextState();
+	}
+
+	public function printDice($dice)
+	{
+		$this->debug('Dice roll: ' . implode(',', array_values($dice)));
 	}
 	
 	// This dummy state is designed to be a void of nothingness for the FSM to get stuck in.
@@ -602,31 +613,31 @@ class Game extends \Table
 	// Basic Enemy Dice:
 	public function resolveBasicWater(): void
 	{
-		$this->debug('Resolving basic water...');
+		$this->debug("\nResolving basic water...\n");
 		$this->pickCardsForWaterColumn(1);
 	}
 
 	public function resolveBasicBreach(): void
 	{
-		$this->debug('Resolving basic breach...');
+		$this->debug("\nResolving basic breach...\n");
 		$this->breaches->pickCardForLocation('deck', 'breachesColumn');
 	}
 
 	public function resolveBasicCannon(): void
 	{
-		$this->debug('Resolving basic cannon...');
+		$this->debug("\nResolving basic cannon...\n");
 	}
 
 	// Special Enemy Dice:
 	// Kraken:	
 	public function resolveKrakenAttack1(): void
 	{
-		$this->debug("\nKraken's special attack #1!\n");
+		$this->debug("\nResolving Kraken's special attack #1!\n");
 	}
 
 	public function resolveKrakenAttack2(): void
 	{
-		$this->debug("\nKraken's special attack #2!\n");
+		$this->debug("\nResolving Kraken's special attack #2!\n");
 	}
 
 	public function theKrakenReactsToDamage(): void { return; }
