@@ -514,7 +514,7 @@ class Game extends \Table
 		$doubleShots = $this->cannons->getCardsOFType(2);
 		$this->cannons->moveCard(array_pop($singleShots)['id'], 'breachesColumn');
 		$this->cannons->moveCard(array_pop($doubleShots)['id'], 'breachesColumn');
-		$this->cannons->moveCard(array_pop($singleShots)['id'], 'cannonsColumn');
+		$this->addOperationalCannon(array_pop($singleShots)['id']);
 
 		// Dice!!!! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		$sql = "INSERT INTO dice (type, value) VALUES ";
@@ -598,6 +598,18 @@ class Game extends \Table
 		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id` IN ($implodedCardIds)");
 	}
 
+	public function addOperationalCannon($cardId)
+	{
+
+		$this->cannons->insertCardOnExtremePosition($cardId, 'cannonsColumn', false);
+	}
+
+	public function removeOperationalCannon()
+	{
+		$topCannon = $this->cannons->getCardOnTop('cannonsColumn');
+		$this->cannons->moveCard($topCannon['id'], 'breachesColumn');
+	}
+
 	// Just a widdle stub for now...
 	public function checkTreasureColumn()
 	{		
@@ -626,6 +638,7 @@ class Game extends \Table
 	public function resolveBasicCannon(): void
 	{
 		$this->debug("\nResolving basic cannon...\n");
+		$this->removeOperationalCannon();
 	}
 
 	// Special Enemy Dice:
