@@ -65,9 +65,10 @@ CREATE TABLE IF NOT EXISTS `cannon` (
   PRIMARY KEY (`card_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
---CREATE TABLE IF NOT EXISTS `dice` (
---  `type` varchar(16) NOT NULL,
---  `location` tinyint NOT NULL,
---  `value` tinyint unsigned NOT NULL,
---  PRIMARY_KEY (`type`, `location`)
---) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+CREATE TABLE IF NOT EXISTS `dice` (
+  `die_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `type` varchar(16) NOT NULL,
+  `location` tinyint NOT NULL,
+  `value` tinyint NOT NULL,
+  PRIMARY KEY (`die_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;

@@ -87,7 +87,7 @@ $this->tokens = [
 	],
 
 	'enemySheets' => [
-		'kraken' => [
+		'Kraken' => [
 			'name' => clienttranslate('The Kraken'),
 			'specialAttack1' => [
 				'name' => clienttranslate('Splash'),
@@ -106,7 +106,7 @@ $this->tokens = [
 
 	// 'adjustBasicDice' => [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0],
 	'enemyInfo' => [
-		'kraken' => [
+		'Kraken' => [
 			'basicDice' => 2,
 			'adjustBasicDice' => [5 => 1, 4 => 0, 3 => 0, 2 => 1, 1 => 0],
 			'triggers' => []

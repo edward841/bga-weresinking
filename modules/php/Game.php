@@ -140,6 +140,7 @@ class Game extends \Table
 
 	public function stRollEnemyDice()
 	{
+		$diceIds = $this->DbQuery("SELECT `die_id` FROM `dice` WHERE `type` IN ('basic', 'special')");
 
 		//$this->gamestate->nextState();
 	}
@@ -487,6 +488,30 @@ class Game extends \Table
 		$this->cannons->moveCard(array_pop($singleShots)['id'], 'breachesColumn');
 		$this->cannons->moveCard(array_pop($doubleShots)['id'], 'breachesColumn');
 		$this->cannons->moveCard(array_pop($singleShots)['id'], 'cannonsColumn');
+
+		// Dice!!!! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		$sql = "INSERT INTO dice (type, value) VALUES ";
+		$dice = array();
+
+		// Create the basic attack die
+		$enemy = $this->globals->get('ENEMY');
+		for ($x = 0; $x < $this->tokens['enemyInfo'][$enemy]['basicDice']; $x++)
+		{
+			$value = \bga_rand(1, 6);
+			$dice[] = "('basic', '$value')";
+		}
+
+		// Create the special attack die
+		for ($x = 0; $x < 2; $x++)
+		{
+			$value = \bga_rand(1, 6);
+			$dice[] = "('special', '$value')";
+		}
+
+		// TODO: Create the cannon die
+
+		$sql .= implode(',', $dice);
+		$this->DbQuery($sql);
 	}
 
     /**
