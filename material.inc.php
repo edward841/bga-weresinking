@@ -10,6 +10,8 @@ if (!defined('RED'))
 	define('BLUE','4ccaf2');
 	define('PURPLE', 'af73b1');
 	define('GRAY', '646D74');
+	define('COLUMN_BOTTOM', true);
+	define('COLUMN_TOP', false);
 }
 
 $this->tokens = [
@@ -102,6 +104,23 @@ $this->tokens = [
 			'prologue' => clienttranslate('Some local folk are saying the Deep Sea King has awoken from its slumber. Sailors always tell tall tales, but the number of stories that keep emerging in the ports these days... Some say they\'ve seen bones of ships, smashed to splinters on calm waters. Only soothing melodies can calm this restless beast. Hopefully it won\'t come to... CRAAAACK... WE\'RE SINKING!!!'),
 			'setup' => clienttranslate('Shuffle the War Drum and Hurdy Gurdy into the Water Deck. Start with 4 active enemy dice: 2 Kraken dice and 2 Basic dice.'),
 		],
+
+		'Shark' => [
+			'name' => clienttranslate('The Shark'),
+			'specialAttack1' => [
+				'name' => clienttranslate('Chomp, Chomp!'),
+				'effect' => clienttranslate('All cards discarded this round go to the Shark\'s Belly face-down. (Place this die on the discard pile as a reminder.)'),
+				],
+			'specialAttack2' => [
+				'name' => clienttranslate('Submerged'),
+				'effect' => clienttranslate('When firing at the Shark this round, only Double-shot and Triple-shot cannons can deal damage. (Place this die at the top of the Cannons column as a reminder.)'),
+				],
+			'reactToDamage' => clienttranslate('When the Shark takes damage, move all cards in the Shark\'s Belly face-down to the Water column.'),
+			'complexity' => 2,
+			'description' => clienttranslate('It wants to eat all the things! Nom, Nom, Nom! When angered, it will hurl its food back up at you.'),
+			'prologue' => clienttranslate('The sailors are saying that the gigantic, ship-eating megalodon shark is back after vanishing for over twenty years. Barnacle Joe swears he saw it swallow a merchant vessel whole. He claims its teeth are as tall as a man and sharper than a silver blade. Rumor has it, it can stalk its preyfor miles with a single drop of blood. Captain, is that a splinter? WHOOSH-CRAASH... WE\'RE SINKING!!!'),
+			'setup' => clienttranslate('Place the Shark\'s Belly card next to this sheet. Shuffle the Fishy Bait and the Cheeky Chum into the Water Deck. Start with 4 active enemy dice: 2 Shark dice and 2 Basic dice.'),
+		],
 	],
 
 	// 'adjustBasicDice' => [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0],
@@ -109,7 +128,11 @@ $this->tokens = [
 		'Kraken' => [
 			'basicDice' => 2,
 			'adjustBasicDice' => [5 => 1, 4 => 0, 3 => 0, 2 => 1, 1 => 0],
-			'triggers' => []
+		],
+		'Shark' => [
+			'basicDice' => 2,
+			'adjustBasicDice' => [5 => 0, 4 => 1, 3 => 0, 2 => 1, 1 => 0],
+			'triggers' => [5, 3, 1]
 		],
 	],
 
