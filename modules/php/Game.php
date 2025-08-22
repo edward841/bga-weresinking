@@ -126,15 +126,14 @@ class Game extends \Table
 		{
 			$card = $this->water->getCardOnTop('deck');
 			if ($card['type'] == 'clearWater')
-				$this->water->insertCardOnExtremePosition($card['id'], 'waterColumn', true);
+				$this->water->insertCardOnExtremePosition($card['id'], 'waterColumn', COLUMN_BOTTOM);
 			else
 			{
-				$this->water->insertCardOnExtremePosition($card['id'], 'treasureColumn', true);
+				$this->addToTreasureColumn((int) $card['id']);
 				$remainingTreasures--;
 			}
 		}
 		
-		$this->checkTreasureColumn();
 		//$this->gamestate->nextState();
 	}
 
@@ -205,7 +204,7 @@ class Game extends \Table
 
 	public function printDice($dice)
 	{
-		$this->debug('Dice roll: ' . implode(',', array_values($dice)));
+		$this->debug('Dice roll: {' . implode(',', array_values($dice)) . '}');
 	}
 	
 	// This dummy state is designed to be a void of nothingness for the FSM to get stuck in.
@@ -393,7 +392,7 @@ class Game extends \Table
 		
 		// Lingering enemy effects are in effect iff their value is true
 		// Kraken's Angered (corresponds to resolveKrakenAttack2)
-		$this->globals->set('ANGERED', false);
+		$this->globals->set('KRAKEN_ANGERED', false);
 
 		$this->populateDatabase();
 
@@ -519,7 +518,7 @@ class Game extends \Table
 		$doubleShots = $this->cannons->getCardsOFType(2);
 		$this->cannons->moveCard(array_pop($singleShots)['id'], 'breachesColumn');
 		$this->cannons->moveCard(array_pop($doubleShots)['id'], 'breachesColumn');
-		$this->addToCannonsColumn(array_pop($singleShots)['id']);
+		$this->addToCannonsColumn((int) array_pop($singleShots)['id']);
 
 		// Dice!!!! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		$sql = "INSERT INTO dice (type, value) VALUES ";
@@ -607,12 +606,16 @@ class Game extends \Table
 	{
 		$this->water->insertCardOnExtremePosition($cardId, 'treasureColumn', COLUMN_BOTTOM);
 		if ($this->water->countCardInLocation('treasureColumn') > 5)
-			$this->discard($this->water->getExtremePosition(COLUMN_TOP, 'waterColumn')['id']);
+			$this->discard((int) $this->water->getCardOnTop('waterColumn')['id']);
 	}
 
 	public function discard(int $cardId): void
 	{
 		$this->water->playCard($cardId);
+		if ($this->globals->get('KRAKEN_ANGERED'))
+		{
+			$this->debug('KrakenAngered here...');
+		}
 	}
 
 	public function addToCannonsColumn(int $cardId)
@@ -622,9 +625,10 @@ class Game extends \Table
 
 	public function removeFromCannonsColumn(): int
 	{
-		$topCannon = $this->cannons->getExtremePosition(COLUMN_TOP, 'cannonsColumn');
-		$this->cannons->moveCard($topCannon['id'], 'breachesColumn');
-		return $topCannon['id'];
+		$topCannon = (int) $this->cannons->getCardOnTop('cannonsColumn')['id'];
+		$this->debug("Top cannon id: $topCannon;");
+		$this->cannons->moveCard($topCannon, 'breachesColumn');
+		return $topCannon;
 	}
 	
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -653,7 +657,7 @@ class Game extends \Table
 	public function resolveKrakenAttack1(): void
 	{
 		$this->debug("\nResolving Kraken's special attack #1!\n");
-		$treasureCard = $this->water->getExtremePosition(COLUMN_TOP, 'treasureColumn')['id'];
+		$treasureCard = $this->water->getCardOnTop('treasureColumn')['id'];
 		$this->water->insertCardOnExtremePosition($treasureCard, 'waterColumn', COLUMN_BOTTOM);
 		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id`=$treasureCard");
 	}
@@ -662,6 +666,7 @@ class Game extends \Table
 	public function resolveKrakenAttack2(): void
 	{
 		$this->debug("\nResolving Kraken's special attack #2!\n");
+		$this->globals->set('KRAKEN_ANGERED', true);
 	}
 
 	public function theKrakenReactsToDamage(): void { return; }

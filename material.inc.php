@@ -10,8 +10,8 @@ if (!defined('RED'))
 	define('BLUE','4ccaf2');
 	define('PURPLE', 'af73b1');
 	define('GRAY', '646D74');
-	define('COLUMN_BOTTOM', true);
-	define('COLUMN_TOP', false);
+	define('COLUMN_BOTTOM', false);
+	define('COLUMN_TOP', true);
 }
 
 $this->tokens = [
