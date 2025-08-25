@@ -358,7 +358,7 @@ class Game extends \Table
 				// My custom additions: custom_order, dial_value, and dial_location
 				$player_id,
 				'water',
-				'',	
+				'player',	
             ]);
         }
 
@@ -371,7 +371,9 @@ class Game extends \Table
                 "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, custom_order, dial_value, dial_location) VALUES %s",
                 implode(",", $query_values)
             )
-        );
+		);
+
+		static::DbQuery('UPDATE `player` SET custom_order=player_no');
 
         $this->reattributeColorsBasedOnPreferences($players, $gameinfos["player_colors"]);
         $this->reloadPlayersBasicInfos();

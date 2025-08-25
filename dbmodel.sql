@@ -31,7 +31,9 @@
 
 
 -- Example 2: add a custom field to the standard "player" table
--- ALTER TABLE `player` ADD `player_my_custom_field` INT UNSIGNED NOT NULL DEFAULT '0';
+ALTER TABLE `player` ADD `custom_order` SMALLINT UNSIGNED NOT NULL DEFAULT '0';
+ALTER TABLE `player` ADD `dial_value` varchar(10) NOT NULL DEFAULT 'water';
+ALTER TABLE `player` ADD `dial_location` varchar(12) NOT NULL DEFAULT 'player';
 
 -- Standard "card" table for the water deck cards
 -- AND card_face_up attribute to indicate the direction card is facing.
