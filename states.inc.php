@@ -55,14 +55,26 @@ use Bga\GameFramework\StateType;
 if (!defined('STATE_END_GAME'))
 {
 	define('STATE_START_GAME', 1);
-	define('STATE_CHECK_FOR_BREACHES', 10);
-	define('STATE_CHECK_WATER_THRESHOLD', 20);
-	define('STATE_DEAL_WATER_AND_TREASURE', 30);
-	define('STATE_ROLL_ENEMY_DICE', 40);
-	define('STATE_RESOLVE_ENEMY_DICE', 45);
-	define('STATE_DECLARE_ACTIONS', 50);
-	define('STATE_REVEAL_ACTIONS', 60);
-	define('STATE_RESOLVE_ACTIONS', 65);
+
+	define('STATE_CHECK_FOR_BREACHES', 11);
+	define('STATE_CHECK_WATER_THRESHOLD', 12);
+	define('STATE_DEAL_WATER_AND_TREASURE', 13);
+	define('STATE_ROLL_ENEMY_DICE', 14);
+	define('STATE_RESOLVE_ENEMY_DICE', 15);
+	define('STATE_DECLARE_DIAL_HELPER', 20);
+	define('STATE_DECLARE_DIAL', 22);
+	define('STATE_REVEAL_DIAL', 24);
+	define('STATE_RESOLVE_BUCKET_HELPER', 26);	
+	define('STATE_RESOLVE_BUCKET', 28);
+	define('STATE_RESOLVE_PLUNDER_HELPER', 30);
+	define('STATE_RESOLVE_PLUNDER', 32);
+	define('STATE_RESOLVE_PATCH_HELPER', 34);
+	define('STATE_RESOLVE_PATCH', 36);
+	define('STATE_RESOLVE_FIRE_HELPER', 38);
+	define('STATE_RESOLVE_FIRE', 40);
+	define('STATE_UPKEEP', 50);
+
+	define('STATE_END_GAME_SCORING', 98);
 	define('STATE_END_GAME', 99);
 }
 
@@ -122,6 +134,83 @@ $machinestates = [
 		'transitions' => ['' => STATE_CHECK_FOR_BREACHES]
 	),
 
+	STATE_DECLARE_DIAL_HELPER => array(
+		'name' => 'declareDialHelper',
+		'description' => '',
+		'type' => StateType::GAME,
+		'action' => 'stDeclareDialHelper',
+		'transitions' => ['declareDial' => STATE_DECLARE_DIAL, 'revealDial' => STATE_REVEAL_DIAL],
+	),
+
+	STATE_DECLARE_DIAL => array(
+		'name' => 'declareDial',
+		'description' => clienttranslate('${actPlayer} must declare their action'),
+		'descriptionmyturn' => clienttranslate('${you} must declare your action'),
+		'type' => StateType::ACTIVE_PLAYER,
+		'possibleActions' => ['actDeclareDial'],
+		'transitions' => ['next' => STATE_DECLARE_DIAL_HELPER],
+	), 
+
+	STATE_REVEAL_DIAL => array(
+		'name' => 'revealDial',
+		'description' => '',
+		'type' => StateType::GAME,
+		'action' => 'stRevealDial',
+		'transitions' => ['resolveBucketHelper' => STATE_RESOLVE_BUCKET_HELPER],
+	), 
+
+//	STATE_RESOLVE_BUCKET_HELPER => array(
+//		'name' => 'resolveBucketHelper',
+//		'description' => '',
+//		'type' => StateType::GAME,
+//		'action' => 'stResolveBucketHelper',
+//		'transitions' => ['resolveBucket' => STATE_RESOLVE_BUCKET, 'nextAction' => STATE_RESOLVE_PLUNDER_HELPER],
+//	), 
+//
+//	STATE_RESOLVE_BUCKET => array(
+//	), 
+//
+//	STATE_RESOLVE_PLUNDER_HELPER => array(
+//		'name' => 'resolvePlunderHelper',
+//		'description' => '',
+//		'type' => StateType::GAME,
+//		'action' => 'stResolvePlunderHelper',
+//		'transitions' => ['resolvePlunder' => STATE_RESOLVE_PLUNDER, 'nextAction' => STATE_RESOLVE_PATCH_HELPER],
+//	), 
+//
+//	STATE_RESOLVE_PLUNDER => array(
+//	), 
+//
+//	STATE_RESOLVE_PATCH_HELPER => array(
+//		'name' => 'resolvePatchHelper',
+//		'description' => '',
+//		'type' => StateType::GAME,
+//		'action' => 'stResolvePatchHelper',
+//		'transitions' => ['resolvePatch' => STATE_RESOLVE_PATCH, 'nextAction' => STATE_RESOLVE_FIRE_HELPER],
+//	), 
+//
+//	STATE_RESOLVE_PATCH => array(
+//	),
+//
+//	STATE_RESOLVE_FIRE_HELPER => array(
+//		'name' => 'resolveFireHelper',
+//		'description' => '',
+//		'type' => StateType::GAME,
+//		'action' => 'stResolveFireHelper',
+//		'transitions' => ['resolveFire' => STATE_RESOLVE_FIRE, 'next' => STATE_],
+//	),
+//
+//	STATE_RESOLVE_FIRE => array(
+//	),
+//
+//	STATE_UPKEEP => array(
+//		'name' => 'upkeep',
+//		'description' => '',
+//		'type' => StateType::GAME,
+//		'action' => 'stUpkeep',
+//		'transitions' => ['' => STATE_CHECK_FOR_BREACHES],
+//	),
+//
 	90 => array(
 		'name' => 'dummyState',
 		'description' => '',
@@ -129,6 +218,9 @@ $machinestates = [
 		'action' => 'stDummyState',
 		'transitions' => ['' => STATE_END_GAME]
 	),
+	
+//	STATE_END_GAME_SCORING => array(
+//	),
 
     // Final state.
     // Please do not modify (and do not overload action/args methods).

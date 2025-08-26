@@ -202,11 +202,15 @@ class Game extends \Table
 //		//$this->gamestate->nextState();
 	}
 
-	public function printDice($dice)
+	public function stDeclareDialHelper()
 	{
-		$this->debug('Dice roll: {' . implode(',', array_values($dice)) . '}');
+		
 	}
-	
+
+	public function stRevealDial()
+	{
+	}
+
 	// This dummy state is designed to be a void of nothingness for the FSM to get stuck in.
 	// This might sound silly but it helps test functions in isolation without distractions and complications from the FSM.
 	public function stDummyState()
@@ -216,7 +220,10 @@ class Game extends \Table
 
 		// Mawahahahaaa! You cannot escape me!!!
 	}
-	
+
+	public function actDeclareDial()
+	{
+	}
 
     /**
      * Compute and return the current game progression.
@@ -594,6 +601,11 @@ class Game extends \Table
 	}		
 
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	public function printDice($dice)
+	{
+		$this->debug('Dice roll: {' . implode(',', array_values($dice)) . '}');
+	}
+	
 	public function pickCardsForWaterColumn(int $number)
 	{
 		$cardIds = [];
