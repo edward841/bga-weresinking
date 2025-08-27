@@ -139,6 +139,7 @@ class Game extends \Table
 
 	public function stRollEnemyDice()
 	{
+		// Get the ids of all the attack die (both basic and special attack dice)
 		// Generate the correct number of random values 
 		// $$\forall x \in $rolls, x \in [1,6] $$
 		$diceIds = $this->getCollectionFromDB("SELECT `die_id` FROM `dice` WHERE `type` IN ('basic', 'special')");
@@ -155,8 +156,7 @@ class Game extends \Table
 			$updateString .= "WHEN $id THEN " . array_pop($rolls) . " ";
 		}
 		$spliced = implode(',', array_keys($diceIds));
-		$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE $id in ($spliced)");
-
+		$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` in ($spliced)");
 		//$this->gamestate->nextState();
 	}
 
@@ -204,11 +204,49 @@ class Game extends \Table
 
 	public function stDeclareDialHelper()
 	{
-		
+		$firstMate = $this->globals->get('FIRST_MATE');
+		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
+
+		// If the active player is first mate and he has not yet declared, then give him a turn
+		// Else determine the next person in turn order and give them a turn
+		if ($this->getActivePlayerId() == $firstMate && $playerInfo[$firstMate]['dial_location'] == 'player')
+		{
+			$this->gamestate->nextState('declareDial');
+		}
+		else
+		{
+			// If anyone still needs to declare their dial, give the next person a turn
+			// Else go to the next state
+			foreach ($playerInfo as $playerId => $details)
+			{
+				if ($details['dial_location'] == 'player')
+				{
+					$this->gamestate->changeActivePlayer($playerId);
+					$this->gamestate->nextState('declareDial');
+				}	
+			}
+			$this->gamestate->nextState('revealDial');
+		}
 	}
 
 	public function stRevealDial()
 	{
+		// Set the dial's location to match its value (honest pirates will already match, this corrects the location of the liars)
+		$this->DbQuery('UPDATE `player` SET `dial_location`=`dial_value`');
+
+		// Correct the turn order to align with the current turn order and dial locations
+		// Determine proper order
+		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `dial_location` FROM `player` ORDER BY `custom_order`', true);
+		$sorted = ['water' => [], 'plunder' => [], 'patch' => [], 'cannon' =>[]];	
+		foreach ($playerInfo as $playerId => $location)
+			$sorted[$location][] = $playerId;
+		$sorted = array_merge($sorted['water'], $sorted['plunder'], $sorted['patch'], $sorted['cannon']);
+
+		// Update the database to reflect new order
+		$updateString = '';
+		foreach ($sorted as $order => $playerId)
+			$sqlString .= "WHEN $playerId THEN {$order+1} ";
+		$this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_id` $updateString END");
 	}
 
 	// This dummy state is designed to be a void of nothingness for the FSM to get stuck in.
