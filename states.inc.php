@@ -91,7 +91,7 @@ $machinestates = [
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => ["" => 90] //STATE_CHECK_FOR_BREACHES]
+        "transitions" => ["" => STATE_CHECK_FOR_BREACHES]
     ),
 
 	STATE_CHECK_FOR_BREACHES => array(
@@ -131,7 +131,7 @@ $machinestates = [
 		'description' => '',
 		'type' => StateType::GAME,
 		'action' => 'stResolveEnemyDice',
-		'transitions' => ['' => STATE_CHECK_FOR_BREACHES]
+		'transitions' => ['' => STATE_DECLARE_DIAL_HELPER]
 	),
 
 	STATE_DECLARE_DIAL_HELPER => array(
@@ -139,7 +139,7 @@ $machinestates = [
 		'description' => '',
 		'type' => StateType::GAME,
 		'action' => 'stDeclareDialHelper',
-		'transitions' => ['declareDial' => STATE_DECLARE_DIAL, 'revealDial' => STATE_REVEAL_DIAL],
+		'transitions' => ['playerDeclareDial' => STATE_DECLARE_DIAL, 'revealDial' => STATE_REVEAL_DIAL],
 	),
 
 	STATE_DECLARE_DIAL => array(
@@ -148,6 +148,7 @@ $machinestates = [
 		'descriptionmyturn' => clienttranslate('${you} must declare your action'),
 		'type' => StateType::ACTIVE_PLAYER,
 		'possibleActions' => ['actDeclareDial'],
+		'args' => 'argDeclareDial',
 		'transitions' => ['next' => STATE_DECLARE_DIAL_HELPER],
 	), 
 
@@ -156,7 +157,7 @@ $machinestates = [
 		'description' => '',
 		'type' => StateType::GAME,
 		'action' => 'stRevealDial',
-		'transitions' => ['resolveBucketHelper' => STATE_RESOLVE_BUCKET_HELPER],
+		'transitions' => ['testtest' => 90],//, 'resolveBucketHelper' => STATE_RESOLVE_BUCKET_HELPER],
 	), 
 
 //	STATE_RESOLVE_BUCKET_HELPER => array(

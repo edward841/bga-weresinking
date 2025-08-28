@@ -67,7 +67,7 @@ class Game extends \Table
 		// Deal $water number of water cards from the deck to the waterColumn
 		$this->pickCardsForWaterColumn($water);
 
-		//$this->gamestate->nextState();
+		$this->gamestate->nextState();
 	}
 
 	public function stCheckWaterThreshold()
@@ -106,14 +106,14 @@ class Game extends \Table
 
 			// STEP 6: Flip over the First Mate scroll and continue the round on Step 3 of the Duties Checklist.
 		}
-		
-		//$this->gamestate->nextState();
+
+		$this->gamestate->nextState();
 	}	
 	
 	public function stDealWaterAndTreasure()
 	{
 		$numPlayers = $this->getPlayersNumber();
-		$thresholdLevel = $this->globals->get('THRESHOLD_LEVEL');
+		$thresholdLevel = (int) $this->globals->get('THRESHOLD_LEVEL');
 		$thresholdPanelInfo = $this->tokens['thresholdSheets']["$numPlayers players"]["level $thresholdLevel"];
 		
 		// Pick the correct number of cards for the water column according to the threshold panel
@@ -134,7 +134,7 @@ class Game extends \Table
 			}
 		}
 		
-		//$this->gamestate->nextState();
+		$this->gamestate->nextState();
 	}
 
 	public function stRollEnemyDice()
@@ -157,7 +157,7 @@ class Game extends \Table
 		}
 		$spliced = implode(',', array_keys($diceIds));
 		$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` in ($spliced)");
-		//$this->gamestate->nextState();
+		$this->gamestate->nextState();
 	}
 
 	public function stResolveEnemyDice()
@@ -199,34 +199,24 @@ class Game extends \Table
 			$this->$attack();
 		}
 
-//		//$this->gamestate->nextState();
+		$this->gamestate->nextState();
 	}
 
 	public function stDeclareDialHelper()
 	{
-		$firstMate = $this->globals->get('FIRST_MATE');
 		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
 
-		// If the active player is first mate and he has not yet declared, then give him a turn
-		// Else determine the next person in turn order and give them a turn
-		if ($this->getActivePlayerId() == $firstMate && $playerInfo[$firstMate]['dial_location'] == 'player')
+		// If anyone still needs to declare their dial, give the next person a turn
+		// Else go to the next state
+		foreach ($playerInfo as $playerId => $details)
 		{
-			$this->gamestate->nextState('declareDial');
-		}
-		else
-		{
-			// If anyone still needs to declare their dial, give the next person a turn
-			// Else go to the next state
-			foreach ($playerInfo as $playerId => $details)
+			if ($details['dial_location'] == 'player')
 			{
-				if ($details['dial_location'] == 'player')
-				{
-					$this->gamestate->changeActivePlayer($playerId);
-					$this->gamestate->nextState('declareDial');
-				}	
-			}
-			$this->gamestate->nextState('revealDial');
+				$this->gamestate->changeActivePlayer($playerId);
+				$this->gamestate->nextState('playerDeclareDial');
+			}	
 		}
+		$this->gamestate->nextState('revealDial');
 	}
 
 	public function stRevealDial()
@@ -237,16 +227,17 @@ class Game extends \Table
 		// Correct the turn order to align with the current turn order and dial locations
 		// Determine proper order
 		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `dial_location` FROM `player` ORDER BY `custom_order`', true);
-		$sorted = ['water' => [], 'plunder' => [], 'patch' => [], 'cannon' =>[]];	
+		$sorted = ['bucket' => [], 'plunder' => [], 'patch' => [], 'fire' =>[]];	
 		foreach ($playerInfo as $playerId => $location)
 			$sorted[$location][] = $playerId;
-		$sorted = array_merge($sorted['water'], $sorted['plunder'], $sorted['patch'], $sorted['cannon']);
+		$sorted = array_merge($sorted['bucket'], $sorted['plunder'], $sorted['patch'], $sorted['fire']);
 
 		// Update the database to reflect new order
 		$updateString = '';
 		foreach ($sorted as $order => $playerId)
-			$sqlString .= "WHEN $playerId THEN {$order+1} ";
+			$sqlString .= "WHEN $playerId THEN " . $order+1 . ' ';
 		$this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_id` $updateString END");
+		$this->gamestate->nextState('testtest');
 	}
 
 	// This dummy state is designed to be a void of nothingness for the FSM to get stuck in.
@@ -259,8 +250,22 @@ class Game extends \Table
 		// Mawahahahaaa! You cannot escape me!!!
 	}
 
-	public function actDeclareDial()
+	public function actDeclareDial(string $value, string $location)
 	{
+		$this->checkAction('actDeclareDial');
+		if (!in_array($value, ['bucket', 'plunder', 'patch', 'fire']) || !in_array($location, $this->argDeclareDial()))
+			throw new \BgaSystemException("actDeclareDial: value: '$value', location: '$location' not allowed");
+
+		$activePlayer = $this->getActivePlayerId();
+		$this->DbQuery("UPDATE `player` SET `dial_value`=$value, `dial_location`=$location WHERE `player_id`=$activePlayer");
+		$this->gamestate->nextState('next');
+	}
+
+	public function argDeclareDial()
+	{
+		$possibleMoves =  ['bucket', 'plunder', 'patch', 'fire'];
+		// TODO Remove any which are disallowed right now (i.e. the column is empty)
+		return ['possibleMoves' => $possibleMoves];
 	}
 
     /**
@@ -449,7 +454,7 @@ class Game extends \Table
 		$this->populateDatabase();
 
         // Activate first player once everything has been initialized and ready.
-        $this->activeNextPlayer();
+        //$this->activeNextPlayer();
 	}
 
 	/**
@@ -727,5 +732,19 @@ class Game extends \Table
 	}
 
 	public function theKrakenReactsToDamage(): void { return; }
+	
+	// The Shark!
+	public function resolveSharkAttack1(): void {}
+	public function resolveSharkAttack2(): void {}
+	public function theSharkReactsToDamage(): void { return; }
 
+	// The Sirens!
+	public function resolveSirensAttack1(): void {}
+	public function resolveSirensAttack2(): void {}
+	public function theSirensReactsToDamage(): void { return; }
+
+	// The Skullsairs!	
+	public function resolveSkullsairsAttack1(): void {}
+	public function resolveSkullsairsAttack2(): void {}
+	public function theSkullsairsReactsToDamage(): void { return; }
 }
