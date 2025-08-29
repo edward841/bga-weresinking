@@ -125,7 +125,7 @@ class Game extends \Table
 		while ($remainingTreasures > 0)
 		{
 			$card = $this->water->getCardOnTop('deck');
-			if ($card['type'] == 'clearWater')
+			if ($card['type'] === 'clearWater')
 				$this->water->insertCardOnExtremePosition($card['id'], 'waterColumn', COLUMN_BOTTOM);
 			else
 			{
@@ -189,7 +189,7 @@ class Game extends \Table
 			// The three basic types (Water, Breach, Cannon) get redirected to their resolveBasic{attack} functions
 			// The two special attacks get directed to the proper enemy's attack (e.g. resolveKrakenAttack1)
 			$attack = '';
-			if ($result == null)
+			if ($result === null)
 				break; 
 			else if (strlen($result) > 1)
 				$attack = "resolveBasic{$result}";
@@ -205,18 +205,24 @@ class Game extends \Table
 	public function stDeclareDialHelper()
 	{
 		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
-
+		
 		// If anyone still needs to declare their dial, give the next person a turn
 		// Else go to the next state
+		$readyToRevealDials = true;
 		foreach ($playerInfo as $playerId => $details)
 		{
-			if ($details['dial_location'] == 'player')
+			if ($details['dial_location'] === 'player')
 			{
 				$this->gamestate->changeActivePlayer($playerId);
-				$this->gamestate->nextState('playerDeclareDial');
+				$readyToRevealDials = false;
+				break;
 			}	
 		}
-		$this->gamestate->nextState('revealDial');
+
+		if ($readyToRevealDials)
+			$this->gamestate->nextState('revealDial');
+		else
+			$this->gamestate->nextState('declareDial');
 	}
 
 	public function stRevealDial()
@@ -235,7 +241,7 @@ class Game extends \Table
 		// Update the database to reflect new order
 		$updateString = '';
 		foreach ($sorted as $order => $playerId)
-			$sqlString .= "WHEN $playerId THEN " . $order+1 . ' ';
+			$updateString .= "WHEN $playerId THEN " . $order+1 . ' ';
 		$this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_id` $updateString END");
 		$this->gamestate->nextState('testtest');
 	}
@@ -252,13 +258,15 @@ class Game extends \Table
 
 	public function actDeclareDial(string $value, string $location)
 	{
-		$this->checkAction('actDeclareDial');
-		if (!in_array($value, ['bucket', 'plunder', 'patch', 'fire']) || !in_array($location, $this->argDeclareDial()))
-			throw new \BgaSystemException("actDeclareDial: value: '$value', location: '$location' not allowed");
+		$this->debug("actDeclareDial: value: $value, location $location");
 
-		$activePlayer = $this->getActivePlayerId();
-		$this->DbQuery("UPDATE `player` SET `dial_value`=$value, `dial_location`=$location WHERE `player_id`=$activePlayer");
-		$this->gamestate->nextState('next');
+//		$this->checkAction('actDeclareDial');
+//		if (!in_array($value, ['bucket', 'plunder', 'patch', 'fire']) || !in_array($location, $this->argDeclareDial()))
+//			throw new \BgaSystemException("actDeclareDial: value: '$value', location: '$location' not allowed");
+//
+//		$activePlayer = $this->getActivePlayerId();
+//		$this->DbQuery("UPDATE `player` SET `dial_value`=$value, `dial_location`=$location WHERE `player_id`=$activePlayer");
+//		$this->gamestate->nextState('next');
 	}
 
 	public function argDeclareDial()
@@ -350,7 +358,7 @@ class Game extends \Table
 		$cards = $this->getCollectionFromDB("SELECT `card_id`, `card_face_up`, `card_type_arg` FROM `water` WHERE `card_location`='waterColumn' ORDER BY `card_location_arg`");
 		foreach ($cards as $id => $details)
 		{
-			if ($details['card_face_up'] == "1")
+			if ($details['card_face_up'] === "1")
 				$waterColumn[$id] = ['id' => $id, 'type' => 'clearWater', 'type_arg' => $details['card_type_arg']];
 			else
 				$waterColumn[$id] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
@@ -435,7 +443,7 @@ class Game extends \Table
 		
 		// Select this game's Enemy:		
 		$enemyNumber = $this->tableOptions->get(100);
-		if ($enemyNumber == 5)
+		if ($enemyNumber === 5)
 			$enemyNumber = \bga_rand(1,4);
 		$enemies = [1=>'Kraken', 2=>'Shark', 3=>'Sirens', 4=>'Skullsairs'];
 		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
@@ -644,6 +652,12 @@ class Game extends \Table
 	}		
 
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	public function printGameState()
+	{
+		$state = $this->gamestate->state()['name'];
+		$this->debug("Current game state: $state");	
+	}
+
 	public function printDice($dice)
 	{
 		$this->debug('Dice roll: {' . implode(',', array_values($dice)) . '}');

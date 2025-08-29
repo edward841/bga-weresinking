@@ -91,7 +91,7 @@ $machinestates = [
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => ["" => STATE_CHECK_FOR_BREACHES]
+        "transitions" => ["" => STATE_DECLARE_DIAL_HELPER],
     ),
 
 	STATE_CHECK_FOR_BREACHES => array(
@@ -139,15 +139,15 @@ $machinestates = [
 		'description' => '',
 		'type' => StateType::GAME,
 		'action' => 'stDeclareDialHelper',
-		'transitions' => ['playerDeclareDial' => STATE_DECLARE_DIAL, 'revealDial' => STATE_REVEAL_DIAL],
+		'transitions' => ['declareDial' => STATE_DECLARE_DIAL, 'revealDial' => 90],
 	),
 
 	STATE_DECLARE_DIAL => array(
 		'name' => 'declareDial',
-		'description' => clienttranslate('${actPlayer} must declare their action'),
+		'description' => clienttranslate('${actplayer} must declare their action'),
 		'descriptionmyturn' => clienttranslate('${you} must declare your action'),
 		'type' => StateType::ACTIVE_PLAYER,
-		'possibleActions' => ['actDeclareDial'],
+		'possibleactions' => ['actDeclareDial'],
 		'args' => 'argDeclareDial',
 		'transitions' => ['next' => STATE_DECLARE_DIAL_HELPER],
 	), 
