@@ -97,7 +97,7 @@ $machinestates = [
 	STATE_CHECK_FOR_BREACHES => array(
 		'name' => 'checkForBreaches',
 		'description' => '',
-		'type' => StateType::GAME,
+		'type' => 'game',
 		'action' => 'stCheckForBreaches',
 		'transitions' => ['' => STATE_CHECK_WATER_THRESHOLD]
 	),
@@ -105,7 +105,7 @@ $machinestates = [
 	STATE_CHECK_WATER_THRESHOLD => array (
 		'name' => 'checkWaterThreshold',
 		'description' => '',
-		'type' => StateType::GAME,
+		'type' => 'game',
 		'action' => 'stCheckWaterThreshold',
 		'transitions' => ['' => STATE_DEAL_WATER_AND_TREASURE]
 	),
@@ -113,7 +113,7 @@ $machinestates = [
 	STATE_DEAL_WATER_AND_TREASURE => array(
 		'name' => 'dealWaterAndTreasure',
 		'description' => '',
-		'type' => StateType::GAME,
+		'type' => 'game',
 		'action' => 'stDealWaterAndTreasure',
 		'transitions' => ['' => STATE_ROLL_ENEMY_DICE]
 	),
@@ -121,7 +121,7 @@ $machinestates = [
 	STATE_ROLL_ENEMY_DICE => array(
 		'name' => 'rollEnemyDice',
 		'description' => '',
-		'type' => StateType::GAME,
+		'type' => 'game',
 		'action' => 'stRollEnemyDice',
 		'transitions' => ['' => STATE_RESOLVE_ENEMY_DICE]
 	),
@@ -129,7 +129,7 @@ $machinestates = [
 	STATE_RESOLVE_ENEMY_DICE => array(
 		'name' => 'resolveEnemyDice',
 		'description' => '',
-		'type' => StateType::GAME,
+		'type' => 'game',
 		'action' => 'stResolveEnemyDice',
 		'transitions' => ['' => STATE_DECLARE_DIAL_HELPER]
 	),
@@ -137,16 +137,16 @@ $machinestates = [
 	STATE_DECLARE_DIAL_HELPER => array(
 		'name' => 'declareDialHelper',
 		'description' => '',
-		'type' => StateType::GAME,
+		'type' => 'game',
 		'action' => 'stDeclareDialHelper',
-		'transitions' => ['declareDial' => STATE_DECLARE_DIAL, 'revealDial' => 90],
+		'transitions' => ['declareDial' => STATE_DECLARE_DIAL, 'revealDial' => STATE_REVEAL_DIAL],
 	),
 
 	STATE_DECLARE_DIAL => array(
 		'name' => 'declareDial',
 		'description' => clienttranslate('${actplayer} must declare their action'),
 		'descriptionmyturn' => clienttranslate('${you} must declare your action'),
-		'type' => StateType::ACTIVE_PLAYER,
+		'type' => 'activeplayer',
 		'possibleactions' => ['actDeclareDial'],
 		'args' => 'argDeclareDial',
 		'transitions' => ['next' => STATE_DECLARE_DIAL_HELPER],
@@ -155,26 +155,33 @@ $machinestates = [
 	STATE_REVEAL_DIAL => array(
 		'name' => 'revealDial',
 		'description' => '',
-		'type' => StateType::GAME,
+		'type' => 'game',
 		'action' => 'stRevealDial',
-		'transitions' => ['testtest' => 90],//, 'resolveBucketHelper' => STATE_RESOLVE_BUCKET_HELPER],
+		'transitions' => ['resolveBucketHelper' => STATE_RESOLVE_BUCKET_HELPER],
 	), 
 
-//	STATE_RESOLVE_BUCKET_HELPER => array(
-//		'name' => 'resolveBucketHelper',
-//		'description' => '',
-//		'type' => StateType::GAME,
-//		'action' => 'stResolveBucketHelper',
-//		'transitions' => ['resolveBucket' => STATE_RESOLVE_BUCKET, 'nextAction' => STATE_RESOLVE_PLUNDER_HELPER],
-//	), 
-//
-//	STATE_RESOLVE_BUCKET => array(
-//	), 
-//
+	STATE_RESOLVE_BUCKET_HELPER => array(
+		'name' => 'resolveBucketHelper',
+		'description' => '',
+		'type' => 'game',
+		'action' => 'stResolveBucketHelper',
+		'transitions' => ['resolveBucket' => STATE_RESOLVE_BUCKET, 'nextAction' => STATE_END_GAME],
+	), 
+
+	STATE_RESOLVE_BUCKET => array(
+		'name' => 'resolveBucket',
+		'description' => clienttranslate('{actplayer} must bucket {nbr} card(s)'),
+		'descriptionmyturn' => clienttranslate('$Bucket: {you} must draw {nbr} card(s) from the Water Column and then discard {nbr} card(s)'),
+		'type' => 'activeplayer',
+		'possibleactions' => ['actResolveBucket'],
+		'args' => 'argResolveBucket',
+		'transitions' => ['next' => STATE_RESOLVE_BUCKET_HELPER],
+	), 
+
 //	STATE_RESOLVE_PLUNDER_HELPER => array(
 //		'name' => 'resolvePlunderHelper',
 //		'description' => '',
-//		'type' => StateType::GAME,
+//		'type' => 'game',
 //		'action' => 'stResolvePlunderHelper',
 //		'transitions' => ['resolvePlunder' => STATE_RESOLVE_PLUNDER, 'nextAction' => STATE_RESOLVE_PATCH_HELPER],
 //	), 
@@ -185,7 +192,7 @@ $machinestates = [
 //	STATE_RESOLVE_PATCH_HELPER => array(
 //		'name' => 'resolvePatchHelper',
 //		'description' => '',
-//		'type' => StateType::GAME,
+//		'type' => 'game',
 //		'action' => 'stResolvePatchHelper',
 //		'transitions' => ['resolvePatch' => STATE_RESOLVE_PATCH, 'nextAction' => STATE_RESOLVE_FIRE_HELPER],
 //	), 
@@ -196,7 +203,7 @@ $machinestates = [
 //	STATE_RESOLVE_FIRE_HELPER => array(
 //		'name' => 'resolveFireHelper',
 //		'description' => '',
-//		'type' => StateType::GAME,
+//		'type' => 'game',
 //		'action' => 'stResolveFireHelper',
 //		'transitions' => ['resolveFire' => STATE_RESOLVE_FIRE, 'next' => STATE_],
 //	),
@@ -207,7 +214,7 @@ $machinestates = [
 //	STATE_UPKEEP => array(
 //		'name' => 'upkeep',
 //		'description' => '',
-//		'type' => StateType::GAME,
+//		'type' => 'game',
 //		'action' => 'stUpkeep',
 //		'transitions' => ['' => STATE_CHECK_FOR_BREACHES],
 //	),
@@ -215,7 +222,7 @@ $machinestates = [
 	90 => array(
 		'name' => 'dummyState',
 		'description' => '',
-		'type' => StateType::GAME,
+		'type' => 'game',
 		'action' => 'stDummyState',
 		'transitions' => ['' => STATE_END_GAME]
 	),

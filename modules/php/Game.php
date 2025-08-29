@@ -246,6 +246,11 @@ class Game extends \Table
 		$this->gamestate->nextState('testtest');
 	}
 
+	public function stResolveBucketHelper()
+	{
+
+	}
+
 	// This dummy state is designed to be a void of nothingness for the FSM to get stuck in.
 	// This might sound silly but it helps test functions in isolation without distractions and complications from the FSM.
 	public function stDummyState()
@@ -260,13 +265,19 @@ class Game extends \Table
 	{
 		$this->debug("actDeclareDial: value: $value, location $location");
 
-//		$this->checkAction('actDeclareDial');
-//		if (!in_array($value, ['bucket', 'plunder', 'patch', 'fire']) || !in_array($location, $this->argDeclareDial()))
-//			throw new \BgaSystemException("actDeclareDial: value: '$value', location: '$location' not allowed");
-//
-//		$activePlayer = $this->getActivePlayerId();
-//		$this->DbQuery("UPDATE `player` SET `dial_value`=$value, `dial_location`=$location WHERE `player_id`=$activePlayer");
-//		$this->gamestate->nextState('next');
+		$this->checkAction('actDeclareDial');
+		$currentActions = $this->argDeclareDial()['possibleMoves'];
+		if (!in_array($location, $currentActions, true))
+			throw new \BgaSystemException("actDeclareDial: value: '$value', location: '$location' not allowed");
+
+		$activePlayer = $this->getActivePlayerId();
+		$this->DbQuery("UPDATE `player` SET `dial_value`='$value', `dial_location`='$location' WHERE `player_id`=$activePlayer");
+		$this->gamestate->nextState('next');
+	}
+
+	public function actResolveBucket()
+	{
+
 	}
 
 	public function argDeclareDial()
@@ -274,6 +285,11 @@ class Game extends \Table
 		$possibleMoves =  ['bucket', 'plunder', 'patch', 'fire'];
 		// TODO Remove any which are disallowed right now (i.e. the column is empty)
 		return ['possibleMoves' => $possibleMoves];
+	}
+
+	public function argResolveBucket()
+	{
+
 	}
 
     /**
