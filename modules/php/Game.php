@@ -227,6 +227,7 @@ class Game extends \Table
 
 	public function stRevealDial()
 	{
+		$this->debug('\n\nTESTTEST\n');
 		// Set the dial's location to match its value (honest pirates will already match, this corrects the location of the liars)
 		$this->DbQuery('UPDATE `player` SET `dial_location`=`dial_value`');
 
@@ -243,10 +244,25 @@ class Game extends \Table
 		foreach ($sorted as $order => $playerId)
 			$updateString .= "WHEN $playerId THEN " . $order+1 . ' ';
 		$this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_id` $updateString END");
-		$this->gamestate->nextState('testtest');
+		$this->gamestate->nextState('resolveBucketHelper');
 	}
 
 	public function stResolveBucketHelper()
+	{
+
+	}
+
+	public function stResolvePlunderHelper()
+	{
+
+	}
+
+	public function stResolvePatchHelper()
+	{
+
+	}
+
+	public function stResolveFireHelper()
 	{
 
 	}
@@ -277,7 +293,50 @@ class Game extends \Table
 
 	public function actResolveBucket()
 	{
+		$activePlayer = $this->getActivePlayerId();
+		$this->debug("Resolving bucket action by $activePlayer...");
+		$this->checkAction('actResolveBucket');
 
+		// Verify input
+		// Do stuff here
+
+		$this->gamestate->nextState('next');
+	}
+
+	public function actResolvePlunder()
+	{
+		$activePlayer = $this->getActivePlayerId();
+		$this->debug("Resolving plunder action by $activePlayer...");
+		$this->checkAction('actResolvePlunder');
+
+		// Verify input
+		// Do stuff here
+
+		$this->gamestate->nextState('next');
+	}
+
+	public function actResolvePatch()
+	{
+		$activePlayer = $this->getActivePlayerId();
+		$this->debug("Resolving patch action by $activePlayer...");
+		$this->checkAction('actResolvePatch');
+
+		// Verify input
+		// Do stuff here
+
+		$this->gamestate->nextState('next');
+	}
+	
+	public function actResolveFire()
+	{
+		$activePlayer = $this->getActivePlayerId();
+		$this->debug("Resolving fire action by $activePlayer...");
+		$this->checkAction('actResolveFire');
+
+		// Verify input
+		// Do stuff here
+
+		$this->gamestate->nextState('next');
 	}
 
 	public function argDeclareDial()
@@ -289,7 +348,24 @@ class Game extends \Table
 
 	public function argResolveBucket()
 	{
+		return [
+			'nbr' => 1,
+		];
+	}
 
+	public function argResolvePlunder()
+	{
+		return [];
+	}
+
+	public function argResolvePatch()
+	{
+		return [];
+	}
+
+	public function argResolveFire()
+	{
+		return [];
 	}
 
     /**

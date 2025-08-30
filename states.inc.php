@@ -99,7 +99,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stCheckForBreaches',
-		'transitions' => ['' => STATE_CHECK_WATER_THRESHOLD]
+		'transitions' => ['' => STATE_CHECK_WATER_THRESHOLD],
 	),
 
 	STATE_CHECK_WATER_THRESHOLD => array (
@@ -107,7 +107,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stCheckWaterThreshold',
-		'transitions' => ['' => STATE_DEAL_WATER_AND_TREASURE]
+		'transitions' => ['' => STATE_DEAL_WATER_AND_TREASURE],
 	),
 
 	STATE_DEAL_WATER_AND_TREASURE => array(
@@ -115,7 +115,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stDealWaterAndTreasure',
-		'transitions' => ['' => STATE_ROLL_ENEMY_DICE]
+		'transitions' => ['' => STATE_ROLL_ENEMY_DICE],
 	),
 
 	STATE_ROLL_ENEMY_DICE => array(
@@ -123,7 +123,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stRollEnemyDice',
-		'transitions' => ['' => STATE_RESOLVE_ENEMY_DICE]
+		'transitions' => ['' => STATE_RESOLVE_ENEMY_DICE],
 	),
 
 	STATE_RESOLVE_ENEMY_DICE => array(
@@ -131,7 +131,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stResolveEnemyDice',
-		'transitions' => ['' => STATE_DECLARE_DIAL_HELPER]
+		'transitions' => ['' => STATE_DECLARE_DIAL_HELPER],
 	),
 
 	STATE_DECLARE_DIAL_HELPER => array(
@@ -165,12 +165,12 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stResolveBucketHelper',
-		'transitions' => ['resolveBucket' => STATE_RESOLVE_BUCKET, 'nextAction' => STATE_END_GAME],
+		'transitions' => ['resolveBucket' => STATE_RESOLVE_BUCKET, 'nextAction' => STATE_RESOLVE_PLUNDER_HELPER],
 	), 
 
 	STATE_RESOLVE_BUCKET => array(
 		'name' => 'resolveBucket',
-		'description' => clienttranslate('{actplayer} must bucket {nbr} card(s)'),
+		'description' => clienttranslate('{actplayer} must Bucket {nbr} card(s)'),
 		'descriptionmyturn' => clienttranslate('$Bucket: {you} must draw {nbr} card(s) from the Water Column and then discard {nbr} card(s)'),
 		'type' => 'activeplayer',
 		'possibleactions' => ['actResolveBucket'],
@@ -178,47 +178,68 @@ $machinestates = [
 		'transitions' => ['next' => STATE_RESOLVE_BUCKET_HELPER],
 	), 
 
-//	STATE_RESOLVE_PLUNDER_HELPER => array(
-//		'name' => 'resolvePlunderHelper',
-//		'description' => '',
-//		'type' => 'game',
-//		'action' => 'stResolvePlunderHelper',
-//		'transitions' => ['resolvePlunder' => STATE_RESOLVE_PLUNDER, 'nextAction' => STATE_RESOLVE_PATCH_HELPER],
-//	), 
-//
-//	STATE_RESOLVE_PLUNDER => array(
-//	), 
-//
-//	STATE_RESOLVE_PATCH_HELPER => array(
-//		'name' => 'resolvePatchHelper',
-//		'description' => '',
-//		'type' => 'game',
-//		'action' => 'stResolvePatchHelper',
-//		'transitions' => ['resolvePatch' => STATE_RESOLVE_PATCH, 'nextAction' => STATE_RESOLVE_FIRE_HELPER],
-//	), 
-//
-//	STATE_RESOLVE_PATCH => array(
-//	),
-//
-//	STATE_RESOLVE_FIRE_HELPER => array(
-//		'name' => 'resolveFireHelper',
-//		'description' => '',
-//		'type' => 'game',
-//		'action' => 'stResolveFireHelper',
-//		'transitions' => ['resolveFire' => STATE_RESOLVE_FIRE, 'next' => STATE_],
-//	),
-//
-//	STATE_RESOLVE_FIRE => array(
-//	),
-//
-//	STATE_UPKEEP => array(
-//		'name' => 'upkeep',
-//		'description' => '',
-//		'type' => 'game',
-//		'action' => 'stUpkeep',
-//		'transitions' => ['' => STATE_CHECK_FOR_BREACHES],
-//	),
-//
+	STATE_RESOLVE_PLUNDER_HELPER => array(
+		'name' => 'resolvePlunderHelper',
+		'description' => '',
+		'type' => 'game',
+		'action' => 'stResolvePlunderHelper',
+		'transitions' => ['resolvePlunder' => STATE_RESOLVE_PLUNDER, 'nextAction' => STATE_RESOLVE_PATCH_HELPER],
+	), 
+
+	STATE_RESOLVE_PLUNDER => array(
+		'name' => 'resolvePlunder',
+		'description' => clienttranslate('{actplayer} must Plunder'),
+		'descriptionmyturn' => clienttranslate('{you} must Plunder'),
+		'type' => 'activeplayer',
+		'possibleactions' => ['actResolvePlunder'],
+		'args' => 'argResolvePlunder',
+		'transitions' => ['next' => STATE_RESOLVE_PLUNDER_HELPER],
+	), 
+
+	STATE_RESOLVE_PATCH_HELPER => array(
+		'name' => 'resolvePatchHelper',
+		'description' => '',
+		'type' => 'game',
+		'action' => 'stResolvePatchHelper',
+		'transitions' => ['resolvePatch' => STATE_RESOLVE_PATCH, 'nextAction' => STATE_RESOLVE_FIRE_HELPER],
+	), 
+
+	STATE_RESOLVE_PATCH => array(
+		'name' => 'resolvePatch',
+		'description' => clienttranslate('{actplayer} must Patch'),
+		'descriptionmyturn' => clienttranslate('{you} must Patch'),
+		'type' => 'activeplayer',
+		'possibleactions' => ['actResolvePatch'],
+		'args' => 'argResolvePatch',
+		'transitions' => ['next' => STATE_RESOLVE_PATCH_HELPER],
+	),
+
+	STATE_RESOLVE_FIRE_HELPER => array(
+		'name' => 'resolveFireHelper',
+		'description' => '',
+		'type' => 'game',
+		'action' => 'stResolveFireHelper',
+		'transitions' => ['resolveFire' => STATE_RESOLVE_FIRE, 'next' => STATE_UPKEEP],
+	),
+
+	STATE_RESOLVE_FIRE => array(
+		'name' => 'resolveFire',
+		'description' => clienttranslate('{actplayer} must Fire'),
+		'descriptionmyturn' => clienttranslate('{you} must Fire'),
+		'type' => 'activeplayer',
+		'possibleactions' => ['actResolveFire'],
+		'args' => 'argResolveFire',
+		'transitions' => ['next' => STATE_RESOLVE_FIRE_HELPER],
+	),
+
+	STATE_UPKEEP => array(
+		'name' => 'upkeep',
+		'description' => '',
+		'type' => 'game',
+		'action' => 'stUpkeep',
+		'transitions' => ['' => STATE_CHECK_FOR_BREACHES],
+	),
+
 	90 => array(
 		'name' => 'dummyState',
 		'description' => '',
