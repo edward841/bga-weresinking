@@ -165,7 +165,14 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stResolveBucketHelper',
-		'transitions' => ['resolveBucket' => STATE_RESOLVE_BUCKET, 'nextAction' => STATE_RESOLVE_PLUNDER_HELPER],
+		'transitions' => [	
+			'bucket' => STATE_RESOLVE_BUCKET, 
+			'plunder' => STATE_RESOLVE_PLUNDER_HELPER,
+			'patch' => STATE_RESOLVE_PATCH_HELPER,
+			'fire' => STATE_RESOLVE_FIRE_HELPER, 
+			'upkeep' => STATE_UPKEEP,
+		],
+		//'transitions' => ['resolveAction' => STATE_RESOLVE_BUCKET, 'nextAction' => STATE_RESOLVE_PLUNDER_HELPER],
 	), 
 
 	STATE_RESOLVE_BUCKET => array(
@@ -183,7 +190,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stResolvePlunderHelper',
-		'transitions' => ['resolvePlunder' => STATE_RESOLVE_PLUNDER, 'nextAction' => STATE_RESOLVE_PATCH_HELPER],
+		'transitions' => ['resolveAction' => STATE_RESOLVE_PLUNDER, 'nextAction' => STATE_RESOLVE_PATCH_HELPER],
 	), 
 
 	STATE_RESOLVE_PLUNDER => array(
@@ -201,7 +208,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stResolvePatchHelper',
-		'transitions' => ['resolvePatch' => STATE_RESOLVE_PATCH, 'nextAction' => STATE_RESOLVE_FIRE_HELPER],
+		'transitions' => ['resolveAction' => STATE_RESOLVE_PATCH, 'nextAction' => STATE_RESOLVE_FIRE_HELPER],
 	), 
 
 	STATE_RESOLVE_PATCH => array(
@@ -219,7 +226,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stResolveFireHelper',
-		'transitions' => ['resolveFire' => STATE_RESOLVE_FIRE, 'next' => STATE_UPKEEP],
+		'transitions' => ['resolveAction' => STATE_RESOLVE_FIRE, 'next' => STATE_UPKEEP],
 	),
 
 	STATE_RESOLVE_FIRE => array(

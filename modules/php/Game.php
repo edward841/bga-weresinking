@@ -249,34 +249,46 @@ class Game extends \Table
 
 	public function stResolveBucketHelper()
 	{
-		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
+		$nextPlayer = $this->getNextPlayer();
+		$nextAction = 'upkeep';
 		
-		// If anyone still needs to declare their dial, give the next person a turn
-		// Else go to the next state
-		$readyForNextStep = true;
-		$previousPlayer = $this->globals->get('PREVIOUS_PLAYER');
-		$nextPlayer = $previousPlayer === 'none' ? 1 : (int) $playerInfo[(int) $previousPlayer]['custom_order'] + 1;
-		
-
-		if ($readyForNextStep)
-			$this->gamestate->nextState('resolveBucket');
-		else
-			$this->gamestate->nextState('nextAction');
+		if ($nextPlayer > 0)
+		{
+			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
+			if ($nextAction === 'bucket')
+				$this->gamestate->changeActivePlayer($nextPlayer);
+		}	
+		$this->gamestate->nextState($nextAction);
 	}
 
 	public function stResolvePlunderHelper()
 	{
+		$readyForNextStep = false;		
 
+		if ($readyForNextStep)
+			$this->gamestate->nextState('resolveAction');
+		else
+			$this->gamestate->nextState('nextAction');
 	}
 
 	public function stResolvePatchHelper()
 	{
+		$readyForNextStep = false;		
 
+		if ($readyForNextStep)
+			$this->gamestate->nextState('resolveAction');
+		else
+			$this->gamestate->nextState('nextAction');
 	}
 
 	public function stResolveFireHelper()
 	{
+		$readyForNextStep = false;		
 
+		if ($readyForNextStep)
+			$this->gamestate->nextState('resolveAction');
+		else
+			$this->gamestate->nextState('nextAction');
 	}
 
 	// This dummy state is designed to be a void of nothingness for the FSM to get stuck in.
