@@ -208,18 +208,18 @@ class Game extends \Table
 		
 		// If anyone still needs to declare their dial, give the next person a turn
 		// Else go to the next state
-		$readyToRevealDials = true;
+		$readyForNextStep = true;
 		foreach ($playerInfo as $playerId => $details)
 		{
 			if ($details['dial_location'] === 'player')
 			{
 				$this->gamestate->changeActivePlayer($playerId);
-				$readyToRevealDials = false;
+				$readyForNextStep = false;
 				break;
 			}	
 		}
 
-		if ($readyToRevealDials)
+		if ($readyForNextStep)
 			$this->gamestate->nextState('revealDial');
 		else
 			$this->gamestate->nextState('declareDial');
@@ -227,7 +227,6 @@ class Game extends \Table
 
 	public function stRevealDial()
 	{
-		$this->debug('\n\nTESTTEST\n');
 		// Set the dial's location to match its value (honest pirates will already match, this corrects the location of the liars)
 		$this->DbQuery('UPDATE `player` SET `dial_location`=`dial_value`');
 
@@ -244,12 +243,25 @@ class Game extends \Table
 		foreach ($sorted as $order => $playerId)
 			$updateString .= "WHEN $playerId THEN " . $order+1 . ' ';
 		$this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_id` $updateString END");
+		$this->globals->set('PREVIOUS_PLAYER', 'none');
 		$this->gamestate->nextState('resolveBucketHelper');
 	}
 
 	public function stResolveBucketHelper()
 	{
+		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
+		
+		// If anyone still needs to declare their dial, give the next person a turn
+		// Else go to the next state
+		$readyForNextStep = true;
+		$previousPlayer = $this->globals->get('PREVIOUS_PLAYER');
+		$nextPlayer = $previousPlayer === 'none' ? 1 : (int) $playerInfo[(int) $previousPlayer]['custom_order'] + 1;
+		
 
+		if ($readyForNextStep)
+			$this->gamestate->nextState('resolveBucket');
+		else
+			$this->gamestate->nextState('nextAction');
 	}
 
 	public function stResolvePlunderHelper()
@@ -291,6 +303,16 @@ class Game extends \Table
 		$this->gamestate->nextState('next');
 	}
 
+	public function actDrawFromColumn(int $cardId, bool $waterColumn)
+	{
+
+	}
+
+	public function actDiscardFromHand(int $cardId, int $playerId)
+	{
+
+	}
+	
 	public function actResolveBucket()
 	{
 		$activePlayer = $this->getActivePlayerId();
@@ -546,6 +568,7 @@ class Game extends \Table
 		$this->globals->set('THRESHOLD_LEVEL', 1);
 		$this->globals->set('PERMANENT_BREACHES', 0);
 		$this->globals->set('FIRST_MATE', (int) array_keys($players)[0]);
+		$this->globals->set('PREVIOUS_PLAYER', 'none');
 		
 		// Lingering enemy effects are currently in effect iff their value is true
 		// Kraken's Angered (corresponds to resolveKrakenAttack2)
@@ -744,6 +767,31 @@ class Game extends \Table
 	}		
 
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	public function getNextPlayer(): int
+	{
+		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, dial_location` FROM `player` ORDER BY `custom_order`');
+		$previousPlayer = $this->globals->get('PREVIOUS_PLAYER');
+		$nextPlayer = '';
+		
+		// If previousPlayer is none, then the next player is the first player
+		if ($previousPlayer === 'none')
+			$nextPlayer = array_key_first($playerInfo);
+		
+		// If previousPlayer is the last person in turn order, then return -1 as a flag
+		else if ($previousPlayer === array_key_last($playerInfo))
+			$nextPlayer = -1;
+
+		// Nontrivial case: who is next??
+		else
+		{
+			$targetOrder = (int) $playerInfo[$previousPlayer]['custom_order'];
+			$nextPlayer = array_keys($playerInfo)[$targetOrder];
+			
+			// TODO Special case for Plunder action to loop if necessary
+		}
+		return (int) $nextPlayer;
+	}
+
 	public function printGameState()
 	{
 		$state = $this->gamestate->state()['name'];
