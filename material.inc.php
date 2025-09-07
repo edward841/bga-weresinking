@@ -124,6 +124,10 @@ $this->tokens = [
 	],
 
 	// 'adjustBasicDice' => [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0],
+	// 'basicDice': number of basic die it starts the game with
+	// 'adjustBasicDice': indicates exactly when to add/remove basic dice. 
+	// 		Think of it as 'when the enemy is damaged and now has x HP, add y basic dice' for the entry x => y
+	// 	'triggers': at what HP levels does the enemy react with some secondary effect (the * at the bottom of the sheet)
 	'enemyInfo' => [
 		'Kraken' => [
 			'basicDice' => 2,
@@ -132,7 +136,16 @@ $this->tokens = [
 		'Shark' => [
 			'basicDice' => 2,
 			'adjustBasicDice' => [5 => 0, 4 => 1, 3 => 0, 2 => 1, 1 => 0],
-			'triggers' => [5, 3, 1]
+			'triggers' => [5, 3, 1],
+		],
+		'Sirens' => [
+			'basicDice' => 4,
+			'adjustBasicDice' => [5 => 0, 4 => -1, 3 => 0, 2 => -1, 1 => 0],
+		],
+		'Skullsairs' => [
+			'basicDice' => 4,
+			'adjustBasicDice' => [5 => 0, 4 => 0, 3 => -1, 2 => 0, 1 => -1],
+			'triggers' => [5,4,3,3,2,1],
 		],
 	],
 
@@ -146,6 +159,8 @@ $this->tokens = [
 		'special' => [1 => 'Water', 2 => '1', 3 => null, 4 => null, 5 => '2', 6 => 'Breach']
 	],
 
+	// Dice are evaluated by a specific order (The rules requires special attacks 1, then special attacks 2, then everything else)
+	// This implementation strictly enforces this order: special 1, special 2, Water, Breach, Cannon, Blank
 	'diceOrder' => ['1' => 0, '2' => 1, 'Water' => 2, 'Breach' => 3, 'Cannon' => 4, null => 5],
 
 	// Critical info needed for the breaches: Organized by type of breach:

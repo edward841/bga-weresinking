@@ -172,8 +172,9 @@ class Game extends \Table
 			$dice[$id] = $this->tokens['diceMappings'][$details['type']][$details['value']];
 		}
 
-		// Sort the results by the order given in material.inc.php (special attack 1, special attack 2, Water, Breach, Cannon, null)
+		// Sort the results by the order given in material.inc.php (special attack 1, special attack 2, Water, Breach, Cannon, blank)
 		// (rulebook specifies results should be resolved in order of special attack 1, special attack 2, and then everything else in no particular order)
+		// Default sorting algorithm should be fine for such a small list (6 values at longest)
 		uasort($dice, function($a, $b) {
 			return $this->tokens['diceOrder'][$a] <=> $this->tokens['diceOrder'][$b];
 		});
@@ -186,10 +187,12 @@ class Game extends \Table
 		foreach ($dice as $id => $result)
 		{
 			// Functional programming method for redirecting to the correct function to resolve the die roll
+			// null indicates blank roll, basic attack types are denoted plainly ('water', 'breach', or 'cannon'), and special attack are indicated by either '1' or '2'
 			// The three basic types (Water, Breach, Cannon) get redirected to their resolveBasic{attack} functions
 			// The two special attacks get directed to the proper enemy's attack (e.g. resolveKrakenAttack1)
 			$attack = '';
 			if ($result === null)
+				// We can break because all the null (blank dice) are sorted to the end of the results list
 				break; 
 			else if (strlen($result) > 1)
 				$attack = "resolveBasic{$result}";
@@ -781,7 +784,7 @@ class Game extends \Table
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public function getNextPlayer(): int
 	{
-		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, dial_location` FROM `player` ORDER BY `custom_order`');
+		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
 		$previousPlayer = $this->globals->get('PREVIOUS_PLAYER');
 		$nextPlayer = '';
 		
@@ -791,7 +794,7 @@ class Game extends \Table
 		
 		// If previousPlayer is the last person in turn order, then return -1 as a flag
 		else if ($previousPlayer === array_key_last($playerInfo))
-			$nextPlayer = -1;
+			$nextPlayer = null;
 
 		// Nontrivial case: who is next??
 		else

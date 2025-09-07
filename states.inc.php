@@ -177,8 +177,8 @@ $machinestates = [
 
 	STATE_RESOLVE_BUCKET => array(
 		'name' => 'resolveBucket',
-		'description' => clienttranslate('{actplayer} must Bucket {nbr} card(s)'),
-		'descriptionmyturn' => clienttranslate('$Bucket: {you} must draw {nbr} card(s) from the Water Column and then discard {nbr} card(s)'),
+		'description' => clienttranslate('${actplayer} must Bucket ${nbr} card(s)'),
+		'descriptionmyturn' => clienttranslate('Bucket: ${you} must draw ${nbr} card(s) from the Water Column and then discard ${nbr} card(s)'),
 		'type' => 'activeplayer',
 		'possibleactions' => ['actResolveBucket'],
 		'args' => 'argResolveBucket',
