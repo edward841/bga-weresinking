@@ -318,63 +318,123 @@ class Game extends \Table
 		$this->gamestate->nextState('next');
 	}
 
-	public function actDrawFromColumn(int $cardId, bool $waterColumn)
+	// This is yet untested, but I'm considering a different architecture as a possible solution to the question:
+	// In the player states with multiple things, should I separate each thing into its own action? 
+	// (e.g. 'draw water from column, then discard from hand' or 'either draw 1 or discard 1. Then perform patch')
+	// I'm pretty sure its either that or clientside states, and I'd prefer splitting the actions over messing with clientside states...
+	// Pros: Possible actions would be clearer, the backend implementation would be much cleaner, you could enforce the order by arg functions, should be straightforward to display the currently allowed actions in frontend using the same arg function for input
+	// Cons: more functions to implement, could be more confusing, not sure how arg function would know what is currently allowed (maybe a global flag?)
+	
+
+	public function actDraw(int $cardId, string $location)
 	{
+		// Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
+		$currentState = $this->gamestate->state()['name'];
+		$argFunction = 'arg' . ucfirst($currentState);
+		$args = $this->$argFunction();
+
+		// Fail the draw if: Draw is not in the arg's possibleActions, the given location is wrong, or the given cardId is wrong
+		// It might seem silly to check if actDraw is in possibleActions array since we already verified it is allowed by the state. 
+		// This lets us to control at what point the player can do each subaction (managing the order of operations for multistep actions like bucket)
+		if (!in_array('Draw', $args['possibleActions'], true) || $location !== $args['location'] || !in_array($cardId, $args['possibleIds'], true))
+			throw new \BgaSystemException("actDraw: cardId: '$cardId', location: '$location' not allowed in state {$this->gamestate->state()['name']}.");
+
+		// Proceed now that all input has been verified: Move the indicated card to the active player's hand
+		$activePlayer = $this->getActivePlayerId();
+		$this->moveCard($cardId, 'hand', $activePlayer);
+
+		// If COUNTER decremented is 0, then move on to whatever comes next
+		if ($this->globals->inc('COUNTER', -1) == 0)
+		{
+			// Set FLAG to false to indicate it is time for the next part of the player's action
+			$this->globals->set('FLAG', false);
+			
+			if ($currentState === 'resolveBucket')
+			{
+				// Determine how many cards need to be discarded (lastPersonToBucket ? 2 : 1)
+				$scale = 2;
+				$nextPlayer = $this->getNextPlayer();
+				if ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket')
+					$scale = 1;
+				$this->globals->set('COUNTER', $scale);
+			}
+		}
 
 	}
 
-	public function actDiscardFromHand(int $cardId, int $playerId)
+	public function actDiscard(int $cardId, int $playerId)
 	{
+		// Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
+		$currentState = $this->gamestate->state()['name'];
+		$argFunction = 'arg' . ucfirst($currentState);
+		$args = $this->$argFunction();
 
+		// Fail the draw if: Discard is not in the arg's possibleActions, the given location is wrong, or the given cardId is wrong
+		// It might seem silly to check if actDraw is in possibleActions array since we already verified it is allowed by the state. 
+		// This lets us to control at what point the player can do each subaction (managing the order of operations for multistep actions like bucket)
+		if (!in_array('Discard', $args['possibleActions'], true) || !in_array($cardId, $args['possibleIds'], true))
+			throw new \BgaSystemException("actDiscard: cardId: '$cardId' not allowed in state {$this->gamestate->state()['name']}.");
+
+		// Proceed now that all input has been verified: Move the indicated card to the discard pile
+		$this->moveCard($cardId, 'discard', $activePlayer);
+
+	}
+
+	public function actPatch()
+	{
+	}
+
+	public function actFire()
+	{
 	}
 	
-	public function actResolveBucket()
-	{
-		$activePlayer = $this->getActivePlayerId();
-		$this->debug("Resolving bucket action by $activePlayer...");
-		$this->checkAction('actResolveBucket');
-
-		// Verify input
-		// Do stuff here
-
-		$this->gamestate->nextState('next');
-	}
-
-	public function actResolvePlunder()
-	{
-		$activePlayer = $this->getActivePlayerId();
-		$this->debug("Resolving plunder action by $activePlayer...");
-		$this->checkAction('actResolvePlunder');
-
-		// Verify input
-		// Do stuff here
-
-		$this->gamestate->nextState('next');
-	}
-
-	public function actResolvePatch()
-	{
-		$activePlayer = $this->getActivePlayerId();
-		$this->debug("Resolving patch action by $activePlayer...");
-		$this->checkAction('actResolvePatch');
-
-		// Verify input
-		// Do stuff here
-
-		$this->gamestate->nextState('next');
-	}
-	
-	public function actResolveFire()
-	{
-		$activePlayer = $this->getActivePlayerId();
-		$this->debug("Resolving fire action by $activePlayer...");
-		$this->checkAction('actResolveFire');
-
-		// Verify input
-		// Do stuff here
-
-		$this->gamestate->nextState('next');
-	}
+//	public function actResolveBucket()
+//	{
+//		$activePlayer = $this->getActivePlayerId();
+//		$this->debug("Resolving bucket action by $activePlayer...");
+//		$this->checkAction('actResolveBucket');
+//
+//		// Verify input
+//		// Do stuff here
+//
+//		$this->gamestate->nextState('next');
+//	}
+//
+//	public function actResolvePlunder()
+//	{
+//		$activePlayer = $this->getActivePlayerId();
+//		$this->debug("Resolving plunder action by $activePlayer...");
+//		$this->checkAction('actResolvePlunder');
+//
+//		// Verify input
+//		// Do stuff here
+//
+//		$this->gamestate->nextState('next');
+//	}
+//
+//	public function actResolvePatch()
+//	{
+//		$activePlayer = $this->getActivePlayerId();
+//		$this->debug("Resolving patch action by $activePlayer...");
+//		$this->checkAction('actResolvePatch');
+//
+//		// Verify input
+//		// Do stuff here
+//
+//		$this->gamestate->nextState('next');
+//	}
+//	
+//	public function actResolveFire()
+//	{
+//		$activePlayer = $this->getActivePlayerId();
+//		$this->debug("Resolving fire action by $activePlayer...");
+//		$this->checkAction('actResolveFire');
+//
+//		// Verify input
+//		// Do stuff here
+//
+//		$this->gamestate->nextState('next');
+//	}
 
 	public function argDeclareDial()
 	{
@@ -385,9 +445,16 @@ class Game extends \Table
 
 	public function argResolveBucket()
 	{
-		return [
-			'nbr' => 1,
-		];
+		$flag = $this->globals->get('FLAG'); // True for draw, false for discard
+
+		$args = ['location' => 'waterColumn'];
+		$args['possibleActions'] = [$flag ? 'Draw' : 'Discard'];
+
+		// We only really need the card ids, all the other info is not necessary
+		$arg['possibleIds'] = $flag ? $this->water->getCardsInLocation('waterColumn') : $this->water->getCardsInLocation('hand', $this->getActivePlayerId());
+		$arg['possibleIds'] = array_keys($args['possibleIds']);
+
+		return $args;
 	}
 
 	public function argResolvePlunder()
@@ -583,11 +650,15 @@ class Game extends \Table
 		$this->globals->set('THRESHOLD_LEVEL', 1);
 		$this->globals->set('PERMANENT_BREACHES', 0);
 		$this->globals->set('FIRST_MATE', (int) array_keys($players)[0]);
+
+		// Less obvious behind the scenes stuff	
 		$this->globals->set('PREVIOUS_PLAYER', 'none');
+		$this->globals->set('COUNTER', 0);
+		$this->globals->set('FLAG', true);
 		
 		// Lingering enemy effects are currently in effect iff their value is true
 		// Kraken's Angered (corresponds to resolveKrakenAttack2)
-		$this->globals->set('KRAKEN_ANGERED', false);
+		$this->globals->set('KRAKEN_ANGERED', 0);
 
 		$this->populateDatabase();
 
@@ -897,7 +968,7 @@ class Game extends \Table
 	public function resolveKrakenAttack2(): void
 	{
 		$this->debug("\nResolving Kraken's special attack #2!\n");
-		$this->globals->set('KRAKEN_ANGERED', true);
+		$this->globals->inc('KRAKEN_ANGERED', 1);
 	}
 
 	public function theKrakenReactsToDamage(): void { return; }

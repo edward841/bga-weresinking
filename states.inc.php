@@ -180,7 +180,7 @@ $machinestates = [
 		'description' => clienttranslate('${actplayer} must Bucket ${nbr} card(s)'),
 		'descriptionmyturn' => clienttranslate('Bucket: ${you} must draw ${nbr} card(s) from the Water Column and then discard ${nbr} card(s)'),
 		'type' => 'activeplayer',
-		'possibleactions' => ['actResolveBucket'],
+		'possibleactions' => ['actDraw', 'actDiscard'],
 		'args' => 'argResolveBucket',
 		'transitions' => ['next' => STATE_RESOLVE_BUCKET_HELPER],
 	), 
@@ -195,10 +195,10 @@ $machinestates = [
 
 	STATE_RESOLVE_PLUNDER => array(
 		'name' => 'resolvePlunder',
-		'description' => clienttranslate('{actplayer} must Plunder'),
-		'descriptionmyturn' => clienttranslate('{you} must Plunder'),
+		'description' => clienttranslate('${actplayer} must Plunder'),
+		'descriptionmyturn' => clienttranslate('${you} must Plunder'),
 		'type' => 'activeplayer',
-		'possibleactions' => ['actResolvePlunder'],
+		'possibleactions' => ['actDraw'],
 		'args' => 'argResolvePlunder',
 		'transitions' => ['next' => STATE_RESOLVE_PLUNDER_HELPER],
 	), 
@@ -213,10 +213,10 @@ $machinestates = [
 
 	STATE_RESOLVE_PATCH => array(
 		'name' => 'resolvePatch',
-		'description' => clienttranslate('{actplayer} must Patch'),
-		'descriptionmyturn' => clienttranslate('{you} must Patch'),
+		'description' => clienttranslate('${actplayer} must Patch'),
+		'descriptionmyturn' => clienttranslate('${you} must Patch'),
 		'type' => 'activeplayer',
-		'possibleactions' => ['actResolvePatch'],
+		'possibleactions' => ['actDraw', 'actDiscard', 'actPatch'],
 		'args' => 'argResolvePatch',
 		'transitions' => ['next' => STATE_RESOLVE_PATCH_HELPER],
 	),
@@ -231,10 +231,10 @@ $machinestates = [
 
 	STATE_RESOLVE_FIRE => array(
 		'name' => 'resolveFire',
-		'description' => clienttranslate('{actplayer} must Fire'),
-		'descriptionmyturn' => clienttranslate('{you} must Fire'),
+		'description' => clienttranslate('${actplayer} must Fire'),
+		'descriptionmyturn' => clienttranslate('${you} must Fire'),
 		'type' => 'activeplayer',
-		'possibleactions' => ['actResolveFire'],
+		'possibleactions' => ['actFire'],
 		'args' => 'argResolveFire',
 		'transitions' => ['next' => STATE_RESOLVE_FIRE_HELPER],
 	),

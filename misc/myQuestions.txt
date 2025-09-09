@@ -1,57 +1,67 @@
-3/_/25
-How should we handle the social elements well? Would the built in chat work or does it need something else?
+UNRESOLVED
+The remaining big questions. Approximately in order of priority.. 
 
-How would we enforce the siren's ability to shut down communication?
+-I saw in a discord rules channel that Angered can be doubled??? Are there any other special attacks that can be doubled up? (Looking at you tempting tune and cursed search...)
+-How should we handle the social elements well? Would the built in chat work or does it need something else?
+-How would we enforce the siren's ability to shut down communication?
+-How do we want to handle people that speak different languages? Should we use language dependency to force a game to agree on a common language?
 
+-What is the precise meaning of the rule that prevents playing several cards with the same trigger event?  "A player can use multiple items in a round as long as they do not share the same condition. i.e. Declare, Reveal, Resolve, etc." -pg 8. Can you play two items in the same round with two different resolves? or two different declare? Or must they have different verbs?
+-For the shark's sumberged attack, do the single cannons still fire even though they are ineffective? Or do they simply not fire? (I understand that they don't deal damage, but what does it look like from the players' perspective?)
+-Complexity, Luck, Strategy, Diplomacy rating (1-5?) Tags? Average game duration?
+-Any ideas for statistics?
 
-7/4/25
-How exactly does the shoot ye treasure work? Who can shoot treasure? How many treasures can be shot (per person/cannon)? Does everyone have a chance to discard a treasure and fire a missed cannon or just the person who chose that action? If they fire the treasure and the reroll misses, can they keep trying?
-
-How do we want to handle people that speak different languages? Should we use language dependency to force a game to agree on a common language?
-
-7/9/25
-Do we decide who went on a swim most recently for first player or do we randomly choose it online?
-
-When exactly do all of the triggers occur? 
-
-When should the game stop and prompt players to play treasure cards actions? For every possible moment? or every moment someone has a card for?
-
-7/11/25
-I identified 10 distinct triggers:
-	declare dial, reveal dial, reveal plunder, reveal patch, reveal fire, resolve dial, resolve water, resolve patch, resolve fire, enemy dice rolled
-
-What is the precise meaning of the rule that prevents playing several cards with the same trigger event?  "A player can use multiple items in a round as long as they do not share the same condition. i.e. Declare, Reveal, Resolve, etc." -pg 8. Can you play two items in the same round with two different resolves? or two different declare? Or must they have different verbs?
-
-7/23/25
-Questions about the art files:
-	Do you have an ETA for the remainder of the art assets (like the kraken's war drums?)
-	Games metadata images? (Box, Icon, Banner, Publisher images, display images, title images)
-	Do you have any specific ideas for any of the metadata images? Should I try to make these or do you have a different plan?
-
-	Complexity, Luck, Strategy, Diplomacy rating (1-5?)
-	Tags?
-
-
-Call notes
-Tabletopia version for reference
-Tabletop simulator
-Does the first mate token need the bleed? The brown border needed for printing
-
-
-7/28
-Is the discard pile face up or face down?
-
-7/30
-How do we want to style the cards? What about the other elementents (the dice, the panels, etc)?
+-How do we want to style the cards? What about the other elementents (the dice, the panels, etc)?
 Should they have a border or no? If so what color/thickness?
 What is the look of the selected card vs the not selected cards? Or should we disable selection altogether and make everything pure reactions?
 
-Any ideas for statistics?
-Complexity/Strategy/Luck/Interaction scores? (0-5)
-Average game duration?
 
-7/31
+MIGHT BE RESOLVED??
+Those questions which have been asked and require pondering... What is the meaning of life?
+
+When exactly do all of the triggers occur? 
+Answer: I think I figured this out but it wouldn't hurt to double check with Joseph... 
+I identified 10 distinct triggers:
+	declare dial, reveal dial, reveal plunder, reveal patch, reveal fire, resolve dial, resolve water, resolve patch, resolve fire, enemy dice rolled
+in order & condensed, they should be
+1. after enemy dice rolled but before they're resolved (some can modify the results)
+2. after a dial is declared (react to dial declared)
+3. after dials are revealed (react to Plunder revealed)
+4. after resolving any action (flint pistol)
+5. after a Bucket action
+6. after a Patch action
+7. after a Fire action
+
+When should the game stop and prompt players to play treasure cards actions? For every possible moment? or every moment someone has a card for?
+Answer: Probably every opportunity someone could actually play a card. If its possible, dont make it super obvious who it is but thats probably not viable....
+
+RESOLVED: 
+Everything that has been resolved or clarified. Either by an improved understanding of the rules, a discussion with Joseph, the discord, etc.
+
+How exactly does the shoot ye treasure work? Who can shoot treasure? How many treasures can be shot (per person/cannon)? Does everyone have a chance to discard a treasure and fire a missed cannon or just the person who chose that action? If they fire the treasure and the reroll misses, can they keep trying?
+Answer: Only the person that is resolving the fire action may shoot their treasure. For each cannon they desire, they may discard one treasure and reroll it. They may only reroll a cannon once. They can choose which cannon tho
+
+Do we decide who went on a swim most recently for first player or do we randomly choose it online?
+Answer: Randomly decide like most BGA games.
+
+Is the discard pile face up or face down?
+Answer: Definitely face down. Specified in the rules under DISCARD at the bottom of page 8
+
 Should I use the icons in the same way as the source material in the game? Should I put the symbol for the action in the card description field? In the notifications? I would think so?
+Answer: Sure why not! Lets try to use the same iconography in the notifications and such
 
-8/11
-For the shark's sumberged attack, do the single cannons still fire even though they are ineffective? Or do they simply not fire? (I understand that they don't deal damage, but what does it look like from the players' perspective?)
+Do you have any specific ideas for any of the metadata images? Should I try to make these or do you have a different plan?
+Answer: He is going to provide the metadata images, give him some time to get those done
+
+How strict is the rule about not placing dials in empty columns? Can you set the value to an empty column and location to a nonempty one? Can you go in cannons if none are operational and a teammate says they will patch up cannons this round?
+Answer: It is very strict. Neither location nor value can correspond to an empty location. You must go in a column where you can do something with the current problems. Try to keep a cannon operational because you cannot go in empty cannons column and be ready for someone to fix one...
+
+Is there an enforced maximum number of players that can take any given action? (say there are only 2 water in water column, could three people select bucket on their dial?
+Answer: No enforced maximum. It is a risk you take if you place your dial in a column where there may not be enough work to go around. In some columns like the Bucket and Patch, this may result in a less than exciting turn. In the Plunder column, it is by design because treasure is lost if too many players go for it at once! In the Fire column, any number of people can fire cannons as long as there is at least one operational cannon (see previous question). There may be times when it is unavoidable or likely to overselect a certain action (like during the siren's screech attack...)
+
+CALLS NOTES:
+Tabletopia version for reference
+Tabletop simulator
+Does the first mate token need the bleed? The brown border needed for printing. What do other games on BGA do?
+
+
