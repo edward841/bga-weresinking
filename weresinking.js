@@ -319,6 +319,10 @@ function (dojo, declare) {
 						this.statusBar.addActionButton(_('Patch'), () => this.bgaPerformAction("actDeclareDial", {value: 'patch', location: 'patch'}));
 						this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actDeclareDial", {value: 'fire', location: 'fire'}));
 						break;
+
+//					case 'resolveBucket':
+//						const currentAction = args.possibleActions[0];
+//						this.statusBar.addActionButton(_(currentAction), () => this.bgaPerformAction("act" + currentAction, {cardId: }));
                 }
             }
         },        

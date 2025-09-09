@@ -177,8 +177,8 @@ $machinestates = [
 
 	STATE_RESOLVE_BUCKET => array(
 		'name' => 'resolveBucket',
-		'description' => clienttranslate('${actplayer} must Bucket ${nbr} card(s)'),
-		'descriptionmyturn' => clienttranslate('Bucket: ${you} must draw ${nbr} card(s) from the Water Column and then discard ${nbr} card(s)'),
+		'description' => clienttranslate('${actplayer} must Bucket'),
+		'descriptionmyturn' => clienttranslate('${you} must ${verb} ${nbr} card(s)${ending}'),
 		'type' => 'activeplayer',
 		'possibleactions' => ['actDraw', 'actDiscard'],
 		'args' => 'argResolveBucket',
@@ -190,7 +190,12 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stResolvePlunderHelper',
-		'transitions' => ['resolveAction' => STATE_RESOLVE_PLUNDER, 'nextAction' => STATE_RESOLVE_PATCH_HELPER],
+		'transitions' => [	
+			'plunder' => STATE_RESOLVE_PLUNDER_HELPER,
+			'patch' => STATE_RESOLVE_PATCH_HELPER,
+			'fire' => STATE_RESOLVE_FIRE_HELPER, 
+			'upkeep' => STATE_UPKEEP,
+		],
 	), 
 
 	STATE_RESOLVE_PLUNDER => array(
@@ -208,7 +213,11 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stResolvePatchHelper',
-		'transitions' => ['resolveAction' => STATE_RESOLVE_PATCH, 'nextAction' => STATE_RESOLVE_FIRE_HELPER],
+		'transitions' => [	
+			'patch' => STATE_RESOLVE_PATCH_HELPER,
+			'fire' => STATE_RESOLVE_FIRE_HELPER, 
+			'upkeep' => STATE_UPKEEP,
+		],
 	), 
 
 	STATE_RESOLVE_PATCH => array(
@@ -218,7 +227,10 @@ $machinestates = [
 		'type' => 'activeplayer',
 		'possibleactions' => ['actDraw', 'actDiscard', 'actPatch'],
 		'args' => 'argResolvePatch',
-		'transitions' => ['next' => STATE_RESOLVE_PATCH_HELPER],
+		'transitions' => [	
+			'fire' => STATE_RESOLVE_FIRE_HELPER, 
+			'upkeep' => STATE_UPKEEP,
+		],
 	),
 
 	STATE_RESOLVE_FIRE_HELPER => array(

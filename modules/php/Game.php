@@ -178,7 +178,7 @@ class Game extends \Table
 		uasort($dice, function($a, $b) {
 			return $this->tokens['diceOrder'][$a] <=> $this->tokens['diceOrder'][$b];
 		});
-		$this->printDice($dice);
+		$this->debug('Dice roll: {' . implode(',', array_values($dice)) . '}');
 
 		// This game's enemy
 		$enemy = $this->globals->get('ENEMY');
@@ -259,39 +259,44 @@ class Game extends \Table
 		{
 			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
 			if ($nextAction === 'bucket')
+			{
+				// Update active player
 				$this->gamestate->changeActivePlayer($nextPlayer);
+				$this->globals->set('PREVIOUS_PLAYER', $this->getActivePlayerId());
+
+				// Set FLAG to true (indicates that the player needs to draw now)
+				$this->globals->set('FLAG', true);
+
+				// Set COUNTER to indicate how many draws are needed
+				// (and remember $nextPlayer needs updated since we changed active player)
+				$nextPlayer = $this->getNextPlayer();
+				$scale = ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket') ? 1 : 2;
+				$this->globals->set('COUNTER', $scale);
+			}
 		}	
+
+		// Commence state change
+		// If the next player is doing a Bucket action, the prepwork is done and this moves to STATE_RESOLVE_BUCKET
+		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
+		// If there is not another player, goes to STATE_UPKEEP
 		$this->gamestate->nextState($nextAction);
 	}
 
 	public function stResolvePlunderHelper()
 	{
-		$readyForNextStep = false;		
-
-		if ($readyForNextStep)
-			$this->gamestate->nextState('resolveAction');
-		else
-			$this->gamestate->nextState('nextAction');
 	}
 
 	public function stResolvePatchHelper()
 	{
-		$readyForNextStep = false;		
-
-		if ($readyForNextStep)
-			$this->gamestate->nextState('resolveAction');
-		else
-			$this->gamestate->nextState('nextAction');
 	}
 
 	public function stResolveFireHelper()
 	{
-		$readyForNextStep = false;		
+	}
 
-		if ($readyForNextStep)
-			$this->gamestate->nextState('resolveAction');
-		else
-			$this->gamestate->nextState('nextAction');
+	public function stUpkeep()
+	{
+
 	}
 
 	// This dummy state is designed to be a void of nothingness for the FSM to get stuck in.
@@ -326,22 +331,35 @@ class Game extends \Table
 	// Cons: more functions to implement, could be more confusing, not sure how arg function would know what is currently allowed (maybe a global flag?)
 	
 
-	public function actDraw(int $cardId, string $location)
+	public function actDraw(string $cardId, string $location)
 	{
 		// Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
-		$currentState = $this->gamestate->state()['name'];
+		$currentState = $this->getStateName();
 		$argFunction = 'arg' . ucfirst($currentState);
 		$args = $this->$argFunction();
 
 		// Fail the draw if: Draw is not in the arg's possibleActions, the given location is wrong, or the given cardId is wrong
 		// It might seem silly to check if actDraw is in possibleActions array since we already verified it is allowed by the state. 
 		// This lets us to control at what point the player can do each subaction (managing the order of operations for multistep actions like bucket)
-		if (!in_array('Draw', $args['possibleActions'], true) || $location !== $args['location'] || !in_array($cardId, $args['possibleIds'], true))
-			throw new \BgaSystemException("actDraw: cardId: '$cardId', location: '$location' not allowed in state {$this->gamestate->state()['name']}.");
+		$message = '';
+		if (!in_array('Draw', $args['possibleActions'], true)) 
+		{
+			$possibleActions = implode(',', $args['possibleActions']);
+			$message = "Draw not in possibleActions: <$possibleActions>";
+		}
+		else if ($location !== $args['location'])
+			$message = "Location given: $location, expected <{$args['location']}>";
+		else if (!in_array((int) $cardId, $args['possibleIds'], true))
+		{
+			$possibleIds = implode(',', $args['possibleIds']);
+			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
+		}
+		
+		if ($message !== '')
+			throw new \BgaSystemException("actDraw: cardId: '$cardId', location: '$location' not allowed in state {$this->getStateName()}\n($message)");
 
 		// Proceed now that all input has been verified: Move the indicated card to the active player's hand
-		$activePlayer = $this->getActivePlayerId();
-		$this->moveCard($cardId, 'hand', $activePlayer);
+		$this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
 		if ($this->globals->inc('COUNTER', -1) == 0)
@@ -352,31 +370,51 @@ class Game extends \Table
 			if ($currentState === 'resolveBucket')
 			{
 				// Determine how many cards need to be discarded (lastPersonToBucket ? 2 : 1)
-				$scale = 2;
 				$nextPlayer = $this->getNextPlayer();
-				if ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket')
-					$scale = 1;
+				$scale = ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket') ? 1 : 2;
 				$this->globals->set('COUNTER', $scale);
 			}
 		}
 
 	}
 
-	public function actDiscard(int $cardId, int $playerId)
+	public function actDiscard(int $cardId)
 	{
 		// Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
-		$currentState = $this->gamestate->state()['name'];
+		$currentState = $this->getStateName(); 
 		$argFunction = 'arg' . ucfirst($currentState);
 		$args = $this->$argFunction();
 
-		// Fail the draw if: Discard is not in the arg's possibleActions, the given location is wrong, or the given cardId is wrong
+		// Fail the draw if: Discard is not in the arg's possibleActions or the given cardId is wrong
 		// It might seem silly to check if actDraw is in possibleActions array since we already verified it is allowed by the state. 
 		// This lets us to control at what point the player can do each subaction (managing the order of operations for multistep actions like bucket)
-		if (!in_array('Discard', $args['possibleActions'], true) || !in_array($cardId, $args['possibleIds'], true))
-			throw new \BgaSystemException("actDiscard: cardId: '$cardId' not allowed in state {$this->gamestate->state()['name']}.");
+		$message = '';
+		if (!in_array('Discard', $args['possibleActions'], true)) 
+		{
+			$possibleActions = implode(',', $args['possibleActions']);
+			$message = "Discard not in possibleActions: <$possibleActions>";
+		}
+		else if (!in_array((int) $cardId, $args['possibleIds'], true))
+		{
+			$possibleIds = implode(',', $args['possibleIds']);
+			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
+		}
 
+		if ($message !== '')
+			throw new \BgaSystemException("actDiscard: cardId: '$cardId' not allowed in state {$this->getStateName()}\n($message)");
+		
 		// Proceed now that all input has been verified: Move the indicated card to the discard pile
-		$this->moveCard($cardId, 'discard', $activePlayer);
+		$this->discard($cardId);
+
+		// Handles specific states
+		if ($this->getStateName() === 'resolveBucket')
+		{
+			if($this->globals->inc('COUNTER', -1) == 0)
+			{
+				// Done with this player's turn!
+				$this->gamestate->nextState('next');
+			}
+		}
 
 	}
 
@@ -388,54 +426,6 @@ class Game extends \Table
 	{
 	}
 	
-//	public function actResolveBucket()
-//	{
-//		$activePlayer = $this->getActivePlayerId();
-//		$this->debug("Resolving bucket action by $activePlayer...");
-//		$this->checkAction('actResolveBucket');
-//
-//		// Verify input
-//		// Do stuff here
-//
-//		$this->gamestate->nextState('next');
-//	}
-//
-//	public function actResolvePlunder()
-//	{
-//		$activePlayer = $this->getActivePlayerId();
-//		$this->debug("Resolving plunder action by $activePlayer...");
-//		$this->checkAction('actResolvePlunder');
-//
-//		// Verify input
-//		// Do stuff here
-//
-//		$this->gamestate->nextState('next');
-//	}
-//
-//	public function actResolvePatch()
-//	{
-//		$activePlayer = $this->getActivePlayerId();
-//		$this->debug("Resolving patch action by $activePlayer...");
-//		$this->checkAction('actResolvePatch');
-//
-//		// Verify input
-//		// Do stuff here
-//
-//		$this->gamestate->nextState('next');
-//	}
-//	
-//	public function actResolveFire()
-//	{
-//		$activePlayer = $this->getActivePlayerId();
-//		$this->debug("Resolving fire action by $activePlayer...");
-//		$this->checkAction('actResolveFire');
-//
-//		// Verify input
-//		// Do stuff here
-//
-//		$this->gamestate->nextState('next');
-//	}
-
 	public function argDeclareDial()
 	{
 		$possibleMoves =  ['bucket', 'plunder', 'patch', 'fire'];
@@ -445,15 +435,24 @@ class Game extends \Table
 
 	public function argResolveBucket()
 	{
-		$flag = $this->globals->get('FLAG'); // True for draw, false for discard
+		// Indicates which action the player needs to do right now (True for draw, false for discard)
+		$flag = $this->globals->get('FLAG'); 
 
+		// location is for fact checking move validity
+		// possibleIds is for fact checking move validity (front and backend)
+		// possible actions is another layer to control what order actions occur in
 		$args = ['location' => 'waterColumn'];
-		$args['possibleActions'] = [$flag ? 'Draw' : 'Discard'];
 
 		// We only really need the card ids, all the other info is not necessary
-		$arg['possibleIds'] = $flag ? $this->water->getCardsInLocation('waterColumn') : $this->water->getCardsInLocation('hand', $this->getActivePlayerId());
-		$arg['possibleIds'] = array_keys($args['possibleIds']);
+		$args['possibleIds'] = $flag ? array_keys($this->water->getCardsInLocation('waterColumn')) : array_keys($this->water->getCardsInLocation('hand', $this->getActivePlayerId()));
+		$args['possibleActions'] = [$flag ? 'Draw' : 'Discard'];
 
+		// Were creating the perfect balance of simplicity and informative descriptionmyturn
+		// descriptionmyturn = '${you} must ${verb} ${nbr} card(s)${ending}'
+		$args['verb'] = $flag ? 'draw' : 'discard';
+		$args['nbr'] = $this->globals->get('COUNTER');
+		$args['ending'] = $flag ? ' from the Water Column' : '';
+		
 		return $args;
 	}
 
@@ -852,7 +851,24 @@ class Game extends \Table
         throw new \feException("Zombie mode not supported at this game state: \"{$state_name}\".");
 	}		
 
+	// Developer functions! TODO Probably remove or comment these in the final build
+	public function giveCurrentPlayerCards($nbr)
+	{
+		$this->water->pickCardsForLocation($nbr, 'deck', 'hand', $this->getActivePlayerId());
+	}
+
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	public function getStateName()
+	{
+		return $this->gamestate->state()['name'];
+	}
+
+	public function printStateName()
+	{
+		$state = $this->getStateName();
+		$this->debug("Current game state: $state");	
+	}
+
 	public function getNextPlayer(): int
 	{
 		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
@@ -876,17 +892,6 @@ class Game extends \Table
 			// TODO Special case for Plunder action to loop if necessary
 		}
 		return (int) $nextPlayer;
-	}
-
-	public function printGameState()
-	{
-		$state = $this->gamestate->state()['name'];
-		$this->debug("Current game state: $state");	
-	}
-
-	public function printDice($dice)
-	{
-		$this->debug('Dice roll: {' . implode(',', array_values($dice)) . '}');
 	}
 	
 	public function pickCardsForWaterColumn(int $number)
