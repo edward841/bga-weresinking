@@ -1,6 +1,9 @@
 UNRESOLVED
 The remaining big questions. Approximately in order of priority.. 
 
+-How exactly does the patching work with multiple people? Specifically what does the round structure look like for multiple people to team up on a big breach? What does it look like when people attempt and fail to repair a big breach (maybe someone lied about what action they were doing or maybe they said they would help with that monster breach and actually went for a chest)? 
+I'm thinking it goes in turn order, each person doing the secondary action (draw or discard) and then indicate where they would like to apply their hammer. After all patching players have done both, successfully patch everything that got enough hammers. The big mystery is if someone dipped and theres a massive breach with 2 hammers. Do those two people get another chance to reposition their hammers? Is it a multiactive or activeplayer state? Or is their hammer simply wasted?
+
 -I saw in a discord rules channel that Angered can be doubled??? Are there any other special attacks that can be doubled up? (Looking at you tempting tune and cursed search...)
 -How should we handle the social elements well? Would the built in chat work or does it need something else?
 -How would we enforce the siren's ability to shut down communication?

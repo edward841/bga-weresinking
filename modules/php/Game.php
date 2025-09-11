@@ -284,6 +284,19 @@ class Game extends \Table
 
 	public function stResolvePlunderHelper()
 	{
+		$nextPlayer = $this->getNextPlayer();
+		$nextAction = 'upkeep';
+		
+		if ($nextPlayer > 0)
+		{
+			$nextAction = $this->getUnique
+		}
+
+
+		if ($this->globals->get('FLAG'))
+		{
+			
+		}
 	}
 
 	public function stResolvePatchHelper()
@@ -315,7 +328,7 @@ class Game extends \Table
 
 		$this->checkAction('actDeclareDial');
 		$currentActions = $this->argDeclareDial()['possibleMoves'];
-		if (!in_array($location, $currentActions, true))
+		if (!in_array($value, $currentActions, true) || !in_array($location, $currentActions, true))
 			throw new \BgaSystemException("actDeclareDial: value: '$value', location: '$location' not allowed");
 
 		$activePlayer = $this->getActivePlayerId();
@@ -458,7 +471,11 @@ class Game extends \Table
 
 	public function argResolvePlunder()
 	{
-		return [];
+		$args = [];
+		$args['location'] = 'treasureColumn';
+		$args['possibleIds'] = array_keys($this->water->getCardsInLocation('treasureColumn'));
+			
+		return $args;
 	}
 
 	public function argResolvePatch()
@@ -878,19 +895,26 @@ class Game extends \Table
 		// If previousPlayer is none, then the next player is the first player
 		if ($previousPlayer === 'none')
 			$nextPlayer = array_key_first($playerInfo);
-		
+
 		// If previousPlayer is the last person in turn order, then return -1 as a flag
 		else if ($previousPlayer === array_key_last($playerInfo))
-			$nextPlayer = null;
+			$nextPlayer = -1;
 
-		// Nontrivial case: who is next??
+		// Nontrivial general case: who is next??
 		else
 		{
 			$targetOrder = (int) $playerInfo[$previousPlayer]['custom_order'];
 			$nextPlayer = array_keys($playerInfo)[$targetOrder];
-			
-			// TODO Special case for Plunder action to loop if necessary
 		}
+		
+		// Special case: previous player plundered (Does it need to wrap around for more plundering?)
+		if ($playerInfo[$previousPlayer]['dial_location'] === 'plunder')
+		{
+			// If the next player is plundering, then it couldn't possibly wrap
+			$nobodyPlundersNext = $nextPlayer <= 0 || $playerInfo[$nextPlayer]['dial_location'] !== 'plunder';
+			//if ($nobodyPlundersNext && 	
+		}
+
 		return (int) $nextPlayer;
 	}
 	
