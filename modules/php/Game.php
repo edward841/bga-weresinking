@@ -289,14 +289,68 @@ class Game extends \Table
 		
 		if ($nextPlayer > 0)
 		{
-			$nextAction = $this->getUnique
+			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
+			if ($nextAction === 'plunder')
+			{
+				// If FLAG is true, then this is the first time here this round and we need to decide what happens:
+				// 1. If there is only 1 person plundering, they get all the treasure
+				// 2. Treasure nbr >= plundering players nbr, let the players select their treasure
+				// 3. Treasure nbr < plundering players nbr, discard all treasure and move on to the next action
+				if ($this->globals->get('FLAG'))
+				{
+					$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
+					$dialValues = array_column(array_values($playerInfo), 'dial_location'); 
+					$plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
+					$treasureNbr = $this->water->countCardsInLocation('treasureColumn');
+					$moveOnToNextAction = false;
+
+					// 1. Only 1 plunderer! Give them all that precious treasure ARGH!!	
+					//    (no need for player states, just move on to the next helper state
+					if ($plunderingPlayersNbr == 1)
+					{
+						$this->water->moveAllCardsInLocation('treasureColumn', 'hand', null, $nextPlayer);
+						$moveOnToNextAction = true;
+					}
+					// 2. Several plunderers with enough to go around
+					else if ($treasureNbr >= $plunderingPlayersNbr)
+					{
+						// Setting FLAG to false indicates treasure is getting divided (Makes future stResolvePlunderHelper visits much simpler)
+						$this->globals->set('FLAG', false);	
+						$this->gamestate->changeActivePlayer($nextPlayer);
+					}
+					// 3. Too many plunderers, not enough treasure! 
+					//    (no need for player states, just move on to the next helper state
+					else 
+					{
+						$this->water->moveAllCardsInLocation('treasureColumn', 'discard');	
+						$moveOnToNextAction = true;
+					}
+
+					// This action was resolved entirely in the game state (either 1 player or too many players plundered)
+					if ($moveOnToNextAction)
+					{
+						$nextAction = 'patch';
+						$lastPlunderer = array_keys($playerInfo)[count($dialValues) - 1 - array_search('plunder', array_reverse($dialValues))];
+						$this->globals->set('PREVIOUS_PLAYER', $lastPlunderer);
+						// No need to update FLAG since it should still be true
+					}
+
+				}
+				// If FLAG is false: we're dividing treasure among several players. Give the next player a turn	
+				// This looks simple because the logic for determining whether it should loop around or not is all in the getNextPlayer
+				else
+				{
+					$this->gamestate->changeActivePlayer($nextPlayer);
+					$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+				}
+			}
 		}
 
-
-		if ($this->globals->get('FLAG'))
-		{
-			
-		}
+		// Commence state change
+		// If the next player is doing a plunder action, the prepwork is done and this moves to STATE_RESOLVE_PLUNDER
+		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
+		// If there is not another player, goes to STATE_UPKEEP
+		$this->gamestate->nextState($nextAction);
 	}
 
 	public function stResolvePatchHelper()
@@ -375,11 +429,12 @@ class Game extends \Table
 		$this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
-		if ($this->globals->inc('COUNTER', -1) == 0)
+		if ($this->globals->inc('COUNTER', -1) <= 0)
 		{
-			// Set FLAG to false to indicate it is time for the next part of the player's action
-			$this->globals->set('FLAG', false);
-			
+			// These two states have two steps to their actions so we need to update FLAG to indicate the first part is done (e.g. draw or discard, then patch)
+			if ($currentState === 'resolveBucket' || $currentState === 'patch')
+				$this->globals->set('FLAG', false);
+
 			if ($currentState === 'resolveBucket')
 			{
 				// Determine how many cards need to be discarded (lastPersonToBucket ? 2 : 1)
@@ -425,6 +480,8 @@ class Game extends \Table
 			if($this->globals->inc('COUNTER', -1) == 0)
 			{
 				// Done with this player's turn!
+				// Update FLAG to get it ready for the next helper state
+				$this->globals->set('FLAG', true);
 				$this->gamestate->nextState('next');
 			}
 		}
@@ -472,6 +529,7 @@ class Game extends \Table
 	public function argResolvePlunder()
 	{
 		$args = [];
+		$args['possibleActions'] = ['Draw'];
 		$args['location'] = 'treasureColumn';
 		$args['possibleIds'] = array_keys($this->water->getCardsInLocation('treasureColumn'));
 			
@@ -908,11 +966,20 @@ class Game extends \Table
 		}
 		
 		// Special case: previous player plundered (Does it need to wrap around for more plundering?)
-		if ($playerInfo[$previousPlayer]['dial_location'] === 'plunder')
+		if ($previousPlayer !== 'none' && $playerInfo[$previousPlayer]['dial_location'] === 'plunder')
 		{
 			// If the next player is plundering, then it couldn't possibly wrap
 			$nobodyPlundersNext = $nextPlayer <= 0 || $playerInfo[$nextPlayer]['dial_location'] !== 'plunder';
-			//if ($nobodyPlundersNext && 	
+
+			// Dial values of each player in order (e.g. ['bucket', 'plunder', 'plunder', 'patch', 'fire'])
+			$dialValues = array_column(array_values($playerInfo), 'dial_location'); 
+			$plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
+			$theresStillEnoughTreasure = $this->water->countCardsInLocation('treasureColumn') >= $plunderingPlayersNbr;
+				
+			if ($nobodyPlundersNext && $theresStillEnoughTreasure)
+			{
+				$nextPlayer = array_keys($playerInfo)[array_search('plunder', $dialValues)];
+			}
 		}
 
 		return (int) $nextPlayer;
