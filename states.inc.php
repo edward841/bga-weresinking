@@ -91,7 +91,7 @@ $machinestates = [
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => ["" => STATE_DECLARE_DIAL_HELPER],
+        "transitions" => ["" => STATE_CHECK_FOR_BREACHES],
     ),
 
 	STATE_CHECK_FOR_BREACHES => array(
@@ -214,7 +214,7 @@ $machinestates = [
 		'type' => 'game',
 		'action' => 'stResolvePatchHelper',
 		'transitions' => [	
-			'patch' => STATE_RESOLVE_PATCH_HELPER,
+			'patch' => STATE_RESOLVE_PATCH,
 			'fire' => STATE_RESOLVE_FIRE_HELPER, 
 			'upkeep' => STATE_UPKEEP,
 		],
@@ -223,14 +223,11 @@ $machinestates = [
 	STATE_RESOLVE_PATCH => array(
 		'name' => 'resolvePatch',
 		'description' => clienttranslate('${actplayer} must Patch'),
-		'descriptionmyturn' => clienttranslate('${you} must Patch'),
+		'descriptionmyturn' => clienttranslate('${you} must ${actiondescription}'),
 		'type' => 'activeplayer',
 		'possibleactions' => ['actDraw', 'actDiscard', 'actPatch'],
 		'args' => 'argResolvePatch',
-		'transitions' => [	
-			'fire' => STATE_RESOLVE_FIRE_HELPER, 
-			'upkeep' => STATE_UPKEEP,
-		],
+		'transitions' => ['next' => STATE_RESOLVE_PATCH_HELPER],
 	),
 
 	STATE_RESOLVE_FIRE_HELPER => array(
@@ -238,7 +235,10 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stResolveFireHelper',
-		'transitions' => ['resolveAction' => STATE_RESOLVE_FIRE, 'next' => STATE_UPKEEP],
+		'transitions' => [
+			'fire' => STATE_RESOLVE_FIRE,
+			'upkeep' => STATE_UPKEEP,
+		],
 	),
 
 	STATE_RESOLVE_FIRE => array(
@@ -259,14 +259,6 @@ $machinestates = [
 		'transitions' => ['' => STATE_CHECK_FOR_BREACHES],
 	),
 
-	90 => array(
-		'name' => 'dummyState',
-		'description' => '',
-		'type' => 'game',
-		'action' => 'stDummyState',
-		'transitions' => ['' => STATE_END_GAME]
-	),
-	
 //	STATE_END_GAME_SCORING => array(
 //	),
 

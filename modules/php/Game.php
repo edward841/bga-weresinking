@@ -262,7 +262,7 @@ class Game extends \Table
 			{
 				// Update active player
 				$this->gamestate->changeActivePlayer($nextPlayer);
-				$this->globals->set('PREVIOUS_PLAYER', $this->getActivePlayerId());
+				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
 
 				// Set FLAG to true (indicates that the player needs to draw now)
 				$this->globals->set('FLAG', true);
@@ -316,6 +316,7 @@ class Game extends \Table
 					{
 						// Setting FLAG to false indicates treasure is getting divided (Makes future stResolvePlunderHelper visits much simpler)
 						$this->globals->set('FLAG', false);	
+						$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
 						$this->gamestate->changeActivePlayer($nextPlayer);
 					}
 					// 3. Too many plunderers, not enough treasure! 
@@ -355,6 +356,29 @@ class Game extends \Table
 
 	public function stResolvePatchHelper()
 	{
+		$nextPlayer = $this->getNextPlayer();
+		$nextAction = 'upkeep';
+		//var_dump('nextPlayer', $nextPlayer);
+		
+		if ($nextPlayer > 0)
+		{
+			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
+			if ($nextAction === 'patch')
+			{
+				// Update active player
+				$this->gamestate->changeActivePlayer($nextPlayer);
+				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
+
+				// Set FLAG to true (indicates that the player needs to draw now)
+				$this->globals->set('FLAG', true);
+			}
+		}	
+
+		// Commence state change
+		// If the next player is doing a Patch action, the prepwork is done and this moves to STATE_RESOLVE_PATCH
+		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
+		// If there is not another player, goes to STATE_UPKEEP
+		$this->gamestate->nextState($nextAction);
 	}
 
 	public function stResolveFireHelper()
@@ -363,19 +387,22 @@ class Game extends \Table
 
 	public function stUpkeep()
 	{
+		// Check hand size
+		// Pass First Mate to the left
 
+		// Fix turn order 
+		$playerInfo = $this->DbQuery("SELECT `player_id` FROM player ORDER BY `player_no`");
+		$oldFirstMate = $this->globals->get('FIRST_MATE');
+		$plusOne = function($index) {($index + 1) % count($playerInfo)}; 
+
+		//for ($i = 0; $i < 
+		
+		// Reset globals for a new round
+		$this->globals->set('PREVIOUS_PLAYER', 'none');
+		$this->globals->set('FLAG', true);
+		$this->globals->set('COUNTER', 0);
 	}
-
-	// This dummy state is designed to be a void of nothingness for the FSM to get stuck in.
-	// This might sound silly but it helps test functions in isolation without distractions and complications from the FSM.
-	public function stDummyState()
-	{
-		// Intentionally does nothing!
-		// Intentionally has no escape!
-
-		// Mawahahahaaa! You cannot escape me!!!
-	}
-
+	
 	public function actDeclareDial(string $value, string $location)
 	{
 		$this->debug("actDeclareDial: value: $value, location $location");
@@ -432,7 +459,7 @@ class Game extends \Table
 		if ($this->globals->inc('COUNTER', -1) <= 0)
 		{
 			// These two states have two steps to their actions so we need to update FLAG to indicate the first part is done (e.g. draw or discard, then patch)
-			if ($currentState === 'resolveBucket' || $currentState === 'patch')
+			if ($currentState === 'resolveBucket' || $currentState === 'resolvePatch')
 				$this->globals->set('FLAG', false);
 
 			if ($currentState === 'resolveBucket')
@@ -441,6 +468,13 @@ class Game extends \Table
 				$nextPlayer = $this->getNextPlayer();
 				$scale = ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket') ? 1 : 2;
 				$this->globals->set('COUNTER', $scale);
+			}
+			else if ($currentState === 'resolvePatch')
+			{
+				// TODO Temp fix. THIS CLAUSE WILL NEED DELETED WHEN PATCH IS FULLY IMPLEMENTED.
+				// Moves on to the next player after the draw. Will have to remove it and implement the patching action later
+				$this->gamestate->nextState('next');
+				$this->globals->set('FLAG', true);
 			}
 		}
 
@@ -484,6 +518,13 @@ class Game extends \Table
 				$this->globals->set('FLAG', true);
 				$this->gamestate->nextState('next');
 			}
+		}
+		else if ($this->getStateName() === 'resolvePatch')
+		{
+			// TODO This should actually be false just a temp fix for now
+			//$this->globals->set('FLAG', false);
+			$this->globals->set('FLAG', true);
+			$this->globals->nextState('next');
 		}
 
 	}
@@ -538,7 +579,15 @@ class Game extends \Table
 
 	public function argResolvePatch()
 	{
-		return [];
+		// Indicates which action the player needs to do right now (True for draw/discard 1, false for patch)
+		$flag = $this->globals->get('FLAG'); 
+
+		$args = [];
+		$args['possibleActions'] = $flag ? ['Draw', 'Discard'] : ['Patch'];
+		$args['location'] = $flag ? 'deck' : 'breachesColumn';
+		$args['possibleIds'] = $flag ? [0] : [];
+		$args['actiondescription'] = $flag ? clienttranslate('draw a card from the Water Deck or Discard a card from your hand') : clienttranslate('use your hammer to Patch');
+		return $args;
 	}
 
 	public function argResolveFire()
