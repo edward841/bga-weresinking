@@ -387,20 +387,31 @@ class Game extends \Table
 
 	public function stUpkeep()
 	{
-		// Check hand size
+		// TODO Check hand size here
+
+
 		// Pass First Mate to the left
-
-		// Fix turn order 
-		$playerInfo = $this->DbQuery("SELECT `player_id` FROM player ORDER BY `player_no`");
+		$playerInfo = $this->getCollectionFromDB("SELECT `player_id`, `player_no` FROM player ORDER BY `player_no`", true);
 		$oldFirstMate = $this->globals->get('FIRST_MATE');
-		$plusOne = function($index) {($index + 1) % count($playerInfo)}; 
+		$newFirstMateIndex = $playerInfo[$oldFirstMate] % count($playerInfo); // Going from 1 indexed to 0 indexed, so we don't need the + 1 you'd expect here
+		$newFirstMate = array_keys($playerInfo)[$newFirstMateIndex];
+		$this->globals->set('FIRST_MATE', $newFirstMate);
 
-		//for ($i = 0; $i < 
-		
+		// Update the custom_order field to reflect the new First mate and get ready for next round
+		$updateString = '';
+		$newFirstMateIndex++; // Adjust for player_no and custom_order being 1 indexed instead of 0 indexed
+		for ($i = 1; $i <= count($playerInfo); $i++)
+			$updateString .= "WHEN $i THEN " . ($i - $newFirstMateIndex + 60) % count($playerInfo) + 1 . ' '; 
+		//  The + 60 is to avoid the negative domain of %, LCM({3,4,5,6}) = 60. Really it could have been any multiple of current player count
+		$this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_no` $updateString END");
+
 		// Reset globals for a new round
 		$this->globals->set('PREVIOUS_PLAYER', 'none');
 		$this->globals->set('FLAG', true);
 		$this->globals->set('COUNTER', 0);
+		$this->DbQuery("UPDATE `player` SET `dial_location` = 'player'");
+
+		$this->gamestate->nextState();
 	}
 	
 	public function actDeclareDial(string $value, string $location)
@@ -443,9 +454,9 @@ class Game extends \Table
 		}
 		else if ($location !== $args['location'])
 			$message = "Location given: $location, expected <{$args['location']}>";
-		else if (!in_array((int) $cardId, $args['possibleIds'], true))
+		else if (!in_array((int) $cardId, $args['possibleIdsDraw'], true))
 		{
-			$possibleIds = implode(',', $args['possibleIds']);
+			$possibleIds = implode(',', $args['possibleIdsDraw']);
 			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
 		}
 		
@@ -453,7 +464,10 @@ class Game extends \Table
 			throw new \BgaSystemException("actDraw: cardId: '$cardId', location: '$location' not allowed in state {$this->getStateName()}\n($message)");
 
 		// Proceed now that all input has been verified: Move the indicated card to the active player's hand
-		$this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
+		if ($location === 'deck')
+			$this->water->pickCard('deck', $this->getActivePlayerId());
+		else
+			$this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
 		if ($this->globals->inc('COUNTER', -1) <= 0)
@@ -468,6 +482,10 @@ class Game extends \Table
 				$nextPlayer = $this->getNextPlayer();
 				$scale = ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket') ? 1 : 2;
 				$this->globals->set('COUNTER', $scale);
+			}
+			else if ($currentState === 'resolvePlunder')
+			{
+				$this->gamestate->nextState('next');
 			}
 			else if ($currentState === 'resolvePatch')
 			{
@@ -496,9 +514,9 @@ class Game extends \Table
 			$possibleActions = implode(',', $args['possibleActions']);
 			$message = "Discard not in possibleActions: <$possibleActions>";
 		}
-		else if (!in_array((int) $cardId, $args['possibleIds'], true))
+		else if (!in_array((int) $cardId, $args['possibleIdsDiscard'], true))
 		{
-			$possibleIds = implode(',', $args['possibleIds']);
+			$possibleIds = implode(',', $args['possibleIdsDiscard']);
 			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
 		}
 
@@ -524,7 +542,7 @@ class Game extends \Table
 			// TODO This should actually be false just a temp fix for now
 			//$this->globals->set('FLAG', false);
 			$this->globals->set('FLAG', true);
-			$this->globals->nextState('next');
+			$this->gamestate->nextState('next');
 		}
 
 	}
@@ -555,10 +573,14 @@ class Game extends \Table
 		$args = ['location' => 'waterColumn'];
 
 		// We only really need the card ids, all the other info is not necessary
-		$args['possibleIds'] = $flag ? array_keys($this->water->getCardsInLocation('waterColumn')) : array_keys($this->water->getCardsInLocation('hand', $this->getActivePlayerId()));
+		if ($flag)
+			$args['possibleIdsDraw'] = array_keys($this->water->getCardsInLocation('waterColumn'));
+		else
+			$args['possibleIdsDiscard'] = array_keys($this->water->getCardsInLocation('hand', $this->getActivePlayerId()));
+
 		$args['possibleActions'] = [$flag ? 'Draw' : 'Discard'];
 
-		// Were creating the perfect balance of simplicity and informative descriptionmyturn
+		// We're creating the perfect balance of simplicity and informative descriptionmyturn
 		// descriptionmyturn = '${you} must ${verb} ${nbr} card(s)${ending}'
 		$args['verb'] = $flag ? 'draw' : 'discard';
 		$args['nbr'] = $this->globals->get('COUNTER');
@@ -572,7 +594,7 @@ class Game extends \Table
 		$args = [];
 		$args['possibleActions'] = ['Draw'];
 		$args['location'] = 'treasureColumn';
-		$args['possibleIds'] = array_keys($this->water->getCardsInLocation('treasureColumn'));
+		$args['possibleIdsDraw'] = array_keys($this->water->getCardsInLocation('treasureColumn'));
 			
 		return $args;
 	}
@@ -585,7 +607,15 @@ class Game extends \Table
 		$args = [];
 		$args['possibleActions'] = $flag ? ['Draw', 'Discard'] : ['Patch'];
 		$args['location'] = $flag ? 'deck' : 'breachesColumn';
-		$args['possibleIds'] = $flag ? [0] : [];
+		
+		if ($flag)
+		{
+			$args['possibleIdsDraw'] = [0];
+			$args['possibleIdsDiscard'] = array_keys($this->water->getCardsInLocation('hand', $this->getActivePlayerId()));
+		}
+		else
+			$args['possibleIdsPatch'] = [];
+
 		$args['actiondescription'] = $flag ? clienttranslate('draw a card from the Water Deck or Discard a card from your hand') : clienttranslate('use your hammer to Patch');
 		return $args;
 	}
