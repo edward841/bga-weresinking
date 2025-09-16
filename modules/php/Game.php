@@ -387,8 +387,21 @@ class Game extends \Table
 
 	public function stUpkeep()
 	{
-		// TODO Check hand size here
+		// Check hand size
+		$playerCardNbr = $this->water->countCardsByLocationArgs('hand');
+		foreach ($playerCardNbr as $playerId => $nbr)
+		{
+			// If you are below 2 cards, you must draw cards from the Water Deck until you have 2 cards
+			if ($nbr < 2)
+				$this->water->pickCards(2 - $nbr, 'deck', $playerId);
 
+			// If you have over 10 cards, you must randomly discard cards until you have 10 cards
+			else if ($nbr > 10)
+			{
+				while ($nbr-- > 10)
+					$this->discard($this->getRandomCardFrom($playerId));
+			}
+		}
 
 		// Pass First Mate to the left
 		$playerInfo = $this->getCollectionFromDB("SELECT `player_id`, `player_no` FROM player ORDER BY `player_no`", true);
@@ -397,7 +410,7 @@ class Game extends \Table
 		$newFirstMate = array_keys($playerInfo)[$newFirstMateIndex];
 		$this->globals->set('FIRST_MATE', $newFirstMate);
 
-		// Update the custom_order field to reflect the new First mate and get ready for next round
+		// Update the custom_order field to reflect the new First mate
 		$updateString = '';
 		$newFirstMateIndex++; // Adjust for player_no and custom_order being 1 indexed instead of 0 indexed
 		for ($i = 1; $i <= count($playerInfo); $i++)
@@ -406,10 +419,10 @@ class Game extends \Table
 		$this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_no` $updateString END");
 
 		// Reset globals for a new round
+		$this->DbQuery("UPDATE `player` SET `dial_location` = 'player'");
 		$this->globals->set('PREVIOUS_PLAYER', 'none');
 		$this->globals->set('FLAG', true);
 		$this->globals->set('COUNTER', 0);
-		$this->DbQuery("UPDATE `player` SET `dial_location` = 'player'");
 
 		$this->gamestate->nextState();
 	}
@@ -576,7 +589,7 @@ class Game extends \Table
 		if ($flag)
 			$args['possibleIdsDraw'] = array_keys($this->water->getCardsInLocation('waterColumn'));
 		else
-			$args['possibleIdsDiscard'] = array_keys($this->water->getCardsInLocation('hand', $this->getActivePlayerId()));
+			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->getActivePlayerId()));
 
 		$args['possibleActions'] = [$flag ? 'Draw' : 'Discard'];
 
@@ -611,7 +624,7 @@ class Game extends \Table
 		if ($flag)
 		{
 			$args['possibleIdsDraw'] = [0];
-			$args['possibleIdsDiscard'] = array_keys($this->water->getCardsInLocation('hand', $this->getActivePlayerId()));
+			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->getActivePlayerId()));
 		}
 		else
 			$args['possibleIdsPatch'] = [];
@@ -728,7 +741,7 @@ class Game extends \Table
 		$result['operationalCannons'] = $this->cannons->getCardsInLocation('cannonsColumn');
 		
 		// This player's hand
-		$result['hand'] = $this->water->getCardsInLocation('hand', $current_player_id);
+		$result['hand'] = $this->water->getPlayerHand($current_player_id);
 
         return $result;
     }
@@ -1106,6 +1119,12 @@ class Game extends \Table
 		$this->debug("Top cannon id: $topCannon;");
 		$this->cannons->moveCard($topCannon, 'breachesColumn');
 		return $topCannon;
+	}
+
+	public function getRandomCardFrom(int $playerId)
+	{
+		$hand = $this->water->getPlayerHand($playerId);
+		return array_keys($hand)[\bga_rand(0, count($hand) - 1)];
 	}
 	
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
