@@ -243,10 +243,10 @@ $machinestates = [
 
 	STATE_RESOLVE_FIRE => array(
 		'name' => 'resolveFire',
-		'description' => clienttranslate('${actplayer} must Fire'),
-		'descriptionmyturn' => clienttranslate('${you} must Fire'),
+		'description' => clienttranslate('${actplayer} ${verb} Fire'),
+		'descriptionmyturn' => clienttranslate('${you} ${instruction}'),
 		'type' => 'activeplayer',
-		'possibleactions' => ['actFire'],
+		'possibleactions' => ['actFire', 'actShootYeTreasure', 'actPass'],
 		'args' => 'argResolveFire',
 		'transitions' => ['next' => STATE_RESOLVE_FIRE_HELPER],
 	),

@@ -519,8 +519,6 @@ class Game extends \Table
 		$args = $this->$argFunction();
 
 		// Fail the draw if: Discard is not in the arg's possibleActions or the given cardId is wrong
-		// It might seem silly to check if actDraw is in possibleActions array since we already verified it is allowed by the state. 
-		// This lets us to control at what point the player can do each subaction (managing the order of operations for multistep actions like bucket)
 		$message = '';
 		if (!in_array('Discard', $args['possibleActions'], true)) 
 		{
@@ -566,6 +564,19 @@ class Game extends \Table
 
 	public function actFire()
 	{
+		$args = $this->argResolveFire();
+
+		$message = '';
+		if (!in_array('Fire', $args['possibleMoves']))
+			$message = 'Fire is not in the possibleMoves';
+		else if (count($args['operableCannons']) == 0)
+			$message = 'There are no operable cannons';
+
+		if ($message !== '')
+			throw new \BgaSystemException("Fire not allowed in state {$this->getStateName()}\n($message)");
+
+		$this->fireCannons($args['operableCannons']);
+		$this->globals->set('FLAG', false);		
 	}
 	
 	public function argDeclareDial()
@@ -635,7 +646,21 @@ class Game extends \Table
 
 	public function argResolveFire()
 	{
-		return [];
+		$flag = $this->globals->get('FLAG');
+
+		$args = [];
+		$args['verb'] = $flag ? clientranslate('must') : clienttranslate('may');
+		$nbr = 1;
+		$args['instruction'] = $flag ? clienttranslate('must fire') : clienttranslate("may shoot ye treasure up to $nbr times");
+
+		if ($flag)
+			$args['possibleMoves'] = ['actFire'];
+		else
+			$args['possibleMoves'] = [];
+
+		$args['operableCannons'] = $this->DbQuery("SELECT `die_id` FROM `dice` WHERE `location`='cannonsColumn'");
+
+		return $args;
 	}
 
     /**
@@ -953,6 +978,8 @@ class Game extends \Table
 		$this->addToCannonsColumn((int) array_pop($singleShots)['id']);
 
 		// Dice!!!! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// All dice are initialized with a random value. 
+		// This will have no actual effect on the game outcome, its just to match the look of a physical game where the dice would all begin with random values
 		$sql = "INSERT INTO dice (type, value) VALUES ";
 		$dice = array();
 
@@ -971,7 +998,16 @@ class Game extends \Table
 			$dice[] = "('special', '$value')";
 		}
 
-		// TODO: Create the cannon die
+		// Create the cannon die: 3 of each type
+		$cannonTypes = ['single', 'double', 'triple'];
+		foreach ($cannonTypes as $type)
+		{
+			for ($x = 0; $x < 3; $x++)
+			{
+				$value = \bga_rand(1,6);
+				$dice[] = "('$type', '$value')";
+			}
+		}
 
 		$sql .= implode(',', $dice);
 		$this->DbQuery($sql);
@@ -1125,6 +1161,17 @@ class Game extends \Table
 	{
 		$hand = $this->water->getPlayerHand($playerId);
 		return array_keys($hand)[\bga_rand(0, count($hand) - 1)];
+	}
+
+	public function fireCannons(array $cannonIds)
+	{
+		// Roll each given cannon and update the database with the new values
+		$sqlData = '';
+		for ($i = 0; $i < count($cannonIds); $i++)
+			$sqlData .= "WHEN {$cannonIds[$i]} THEN " . \bga_rand(1,6) . ' ';
+		$this->DbQuery("UPDATE `dice` SET `value` = CASE $sqlData END WHEN `die_id` IN (". implode(',',$cannonIds).')');
+	
+		// Determine how many hits we got and deal damage to the enemy!
 	}
 	
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

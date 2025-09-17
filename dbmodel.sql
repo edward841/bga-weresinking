@@ -70,7 +70,8 @@ CREATE TABLE IF NOT EXISTS `cannon` (
 CREATE TABLE IF NOT EXISTS `dice` (
   `die_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `type` varchar(16) NOT NULL,
-  `location` tinyint NOT NULL,
+  `location` varchar(16) NOT NULL,
+  `location_arg` tinyint NOT NULL,
   `value` tinyint NOT NULL,
   PRIMARY KEY (`die_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
