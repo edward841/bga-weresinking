@@ -383,6 +383,27 @@ class Game extends \Table
 
 	public function stResolveFireHelper()
 	{
+		$nextPlayer = $this->getNextPlayer();
+		$nextAction = 'upkeep';
+		
+		if ($nextPlayer > 0)
+		{
+			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
+			if ($nextAction === 'fire')
+			{
+				// Update active player
+				$this->gamestate->changeActivePlayer($nextPlayer);
+				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
+
+				// Set FLAG to true (indicates that the player needs to draw now)
+				$this->globals->set('FLAG', true);
+			}
+		}	
+
+		// Commence state change
+		// If the next player is doing a Fire action, the prepwork is done and this moves to STATE_RESOLVE_FIRE
+		// If there is not another player, goes to STATE_UPKEEP
+		$this->gamestate->nextState($nextAction);
 	}
 
 	public function stUpkeep()
@@ -432,7 +453,7 @@ class Game extends \Table
 		$this->debug("actDeclareDial: value: $value, location $location");
 
 		$this->checkAction('actDeclareDial');
-		$currentActions = $this->argDeclareDial()['possibleMoves'];
+		$currentActions = $this->argDeclareDial()['possibleActions'];
 		if (!in_array($value, $currentActions, true) || !in_array($location, $currentActions, true))
 			throw new \BgaSystemException("actDeclareDial: value: '$value', location: '$location' not allowed");
 
@@ -567,8 +588,8 @@ class Game extends \Table
 		$args = $this->argResolveFire();
 
 		$message = '';
-		if (!in_array('Fire', $args['possibleMoves']))
-			$message = 'Fire is not in the possibleMoves';
+		if (!in_array('Fire', $args['possibleActions']))
+			$message = 'Fire is not in the possible actions';
 		else if (count($args['operableCannons']) == 0)
 			$message = 'There are no operable cannons';
 
@@ -578,12 +599,58 @@ class Game extends \Table
 		$this->fireCannons($args['operableCannons']);
 		$this->globals->set('FLAG', false);		
 	}
+
+	public function actShootYeTreasure(int $cardId, int $cannonId)
+	{
+		$args = $this->argResolveFire();
+
+		// Fail if: ShootYeTreasure is not in the arg's possibleActions, the given cardId is invalid, or the given cannonId is invalid
+		// No need to check if the given card is a treasure because 'possibleIdsDiscard' from args will only be viable treasure cards
+		$message = '';
+		if (!in_array('ShootYeTreasure', $args['possibleActions'], true)) 
+		{
+			$possibleActions = implode(',', $args['possibleActions']);
+			$message = "ShootYeTreasure not in possibleActions: <$possibleActions>";
+		}
+		else if (!in_array((int) $cardId, $args['possibleIdsDiscard'], true))
+		{
+			$possibleIds = implode(',', $args['possibleIdsDiscard']);
+			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
+		}
+		else if (!in_array($cannonId, $args['operableCannons']))
+			$message = "You must choose a cannon in the Cannons Column";
+		else if (in_array($cannonId, $this->globals->get('LIST')))
+			$message = "You have already activated this cannon. Please choose one you have not activated yet";
+
+		if ($message !== '')
+			throw new \BgaSystemException("ShootYeTreasure: cardId: '$cardId' not allowed in state {$this->getStateName()}\n($message)");
+
+		$this->discard($cardId);
+		if (!$this->fireCannons([$cannonId]))
+			// If it was a miss, mark that the cannon was activated (if successful, it was marked as activated by fireCannons)
+			$this->addToActivatedCannons($cannonId);
+	}
+
+	public function actPass()
+	{
+		$this->globals->set('FLAG', true);
+		$this->globals->set('COUNTER', 0);
+		$this->globals->set('LIST', []);
+		$this->gamestate->nextState('next');
+	}
 	
 	public function argDeclareDial()
 	{
-		$possibleMoves =  ['bucket', 'plunder', 'patch', 'fire'];
-		// TODO Remove any which are disallowed right now (i.e. the column is empty)
-		return ['possibleMoves' => $possibleMoves];
+		$possibleActions =  ['bucket', 'plunder'];
+	
+		// TODO incorporate chests here
+		if ($this->breaches->countCardInLocation('breachesColumn') > 0 || $this->cannons->countCardInLocation('breachesColumn') > 0)
+			array_push($possibleActions, 'patch');
+		
+		if ($this->cannons->countCardInLocation('cannonsColumn') > 0)
+			array_push($possibleActions, 'fire');
+
+		return ['possibleActions' => $possibleActions];
 	}
 
 	public function argResolveBucket()
@@ -646,19 +713,35 @@ class Game extends \Table
 
 	public function argResolveFire()
 	{
-		$flag = $this->globals->get('FLAG');
-
 		$args = [];
-		$args['verb'] = $flag ? clienttranslate('must') : clienttranslate('may');
-		$nbr = 1;
-		$args['instruction'] = $flag ? clienttranslate('must fire') : clienttranslate("may shoot ye treasure up to $nbr times");
+		$flag = $this->globals->get('FLAG');
+		
+		$args['operableCannons'] = array_keys($this->getNonEmptyCollectionFromDB("SELECT dice.die_id FROM `dice` INNER JOIN `cannon` ON dice.die_id = cannon.card_id WHERE cannon.card_location = 'cannonsColumn'"));
 
 		if ($flag)
-			$args['possibleMoves'] = ['actFire'];
+		{
+			$args['possibleActions'] = ['Fire'];
+			$args['instruction'] = clienttranslate('must fire');
+		}
 		else
-			$args['possibleMoves'] = [];
+		{
+			$ivePlayer = $this->getActivePlayerId();
+			$treasure = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `water` WHERE `card_location`='hand' AND `card_location_arg`='$ivePlayer' AND `card_type` != 'clearWater'"));
+			$alreadyActivated = (array) $this->globals->get('LIST');
+			
+			// nbr indicates how many more times the player can shoot their treasure
+			// This is either the number of treasure cards they have or the number of ive cannons they haven't re-rolled yet, whichever is less
+			$treasureNbr = count($treasure);
+			$operableCannonsNbr = count($args['operableCannons']);
+			
+			$alreadyActivatedNbr = count($alreadyActivated);
 
-		$args['operableCannons'] = array_keys($this->getNonEmptyCollectionFromDB("SELECT dice.die_id FROM `dice` INNER JOIN `cannon` ON dice.die_id = cannon.card_id WHERE cannon.card_location = 'cannonsColumn'"));
+			$nbr = min(count($treasure), count($args['operableCannons']) - count($alreadyActivated));
+
+			$args['possibleActions'] = $nbr > 0 ? ['ShootYeTreasure', 'Pass'] : ['Pass'];
+			$args['possibleIdsDiscard'] = $treasure;
+			$args['instruction'] = $nbr > 0 ? clienttranslate("may shoot ye treasure up to $nbr times") : clienttranslate('must pass');
+		}
 
 		return $args;
 	}
@@ -792,7 +875,8 @@ class Game extends \Table
         $gameinfos = $this->getGameinfos();
         $default_colors = $gameinfos['player_colors'];
 
-        foreach ($players as $player_id => $player) {
+		foreach ($players as $player_id => $player) 
+		{
             // Now you can access both $player_id and $player array
             $query_values[] = vsprintf("('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')", [
                 $player_id,
@@ -846,6 +930,7 @@ class Game extends \Table
 		$this->globals->set('PREVIOUS_PLAYER', 'none');
 		$this->globals->set('COUNTER', 0);
 		$this->globals->set('FLAG', true);
+		$this->globals->set('LIST', []); 
 		
 		// Lingering enemy effects are currently in effect iff their value is true
 		// Kraken's Angered (corresponds to resolveKrakenAttack2)
@@ -1038,8 +1123,10 @@ class Game extends \Table
     {
         $state_name = $state["name"];
 
-        if ($state["type"] === "activeplayer") {
-            switch ($state_name) {
+		if ($state["type"] === "activeplayer") 
+		{
+			switch ($state_name)
+		   	{
                 default:
                 {
                     $this->gamestate->nextState("zombiePass");
@@ -1051,7 +1138,8 @@ class Game extends \Table
         }
 
         // Make sure player is in a non-blocking status for role turn.
-        if ($state["type"] === "multipleactiveplayer") {
+		if ($state["type"] === "multipleactiveplayer")
+	   	{
             $this->gamestate->setPlayerNonMultiactive($active_player, '');
             return;
         }
@@ -1164,10 +1252,14 @@ class Game extends \Table
 
 	public function removeFromCannonsColumn(): int
 	{
-		$topCannon = (int) $this->cannons->getCardOnTop('cannonsColumn')['id'];
-		$this->debug("Top cannon id: $topCannon;");
-		$this->cannons->moveCard($topCannon, 'breachesColumn');
-		return $topCannon;
+		$topCannon = $this->cannons->getCardOnTop('cannonsColumn');
+		if ($topCannon == null)
+			return 0;
+
+		$topCannonId = (int) $topCannon['id'];
+		$this->debug("Top cannon id: $topCannonId;");
+		$this->cannons->moveCard($topCannonId, 'breachesColumn');
+		return $topCannonId;
 	}
 
 	public function getRandomCardFrom(int $playerId)
@@ -1176,7 +1268,7 @@ class Game extends \Table
 		return array_keys($hand)[\bga_rand(0, count($hand) - 1)];
 	}
 
-	public function fireCannons(array $cannonIds)
+	public function fireCannons(array $cannonIds) : bool 
 	{
 		// Roll each given cannon and update the database with the new values
 		if ($cannonIds == null)
@@ -1195,13 +1287,20 @@ class Game extends \Table
 	
 		// Deal a damage to the enemy for each successful hit!
 		$rolls = $this->getNonEmptyCollectionFromDB("SELECT `die_id`, `type`, `value` FROM `dice` WHERE `die_id` in ('" . implode("','", $cannonIds) . "')"); 
-		foreach ($rolls as $id => $details) {
+		$success = false;
+		foreach ($rolls as $id => $details) 
+		{
 			// A single shot cannon succeeds when the value is 1, A double shot
 			// cannon succeeds when the value is a 1 or 2, A triple shot cannon
 			// succeeds when the value is a 1, 2, or 3
 			if ((int) $details['value'] <= (int) $details['type'])
+			{
+				$success = true;
 				$this->damageEnemy();
+				$this->addToActivatedCannons($id);
+			}
 		}
+		return $success;
 	}
 	
 	public function damageEnemy()
@@ -1239,6 +1338,13 @@ class Game extends \Table
 			$reaction = "the{$enemy}ReactsToDamage";
 			$this->$reaction();
 		}
+	}
+
+	public function addToActivatedCannons(int $cannonId)
+	{
+		$activatedCannons = (array) $this->globals->get('LIST');
+		array_push($activatedCannons, $cannonId);
+		$this->globals->set('LIST', $activatedCannons);
 	}
 
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
