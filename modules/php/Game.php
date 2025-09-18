@@ -649,7 +649,7 @@ class Game extends \Table
 		$flag = $this->globals->get('FLAG');
 
 		$args = [];
-		$args['verb'] = $flag ? clientranslate('must') : clienttranslate('may');
+		$args['verb'] = $flag ? clienttranslate('must') : clienttranslate('may');
 		$nbr = 1;
 		$args['instruction'] = $flag ? clienttranslate('must fire') : clienttranslate("may shoot ye treasure up to $nbr times");
 
@@ -658,7 +658,7 @@ class Game extends \Table
 		else
 			$args['possibleMoves'] = [];
 
-		$args['operableCannons'] = $this->DbQuery("SELECT `die_id` FROM `dice` WHERE `location`='cannonsColumn'");
+		$args['operableCannons'] = array_keys($this->getNonEmptyCollectionFromDB("SELECT dice.die_id FROM `dice` INNER JOIN `cannon` ON dice.die_id = cannon.card_id WHERE cannon.card_location = 'cannonsColumn'"));
 
 		return $args;
 	}
@@ -966,7 +966,7 @@ class Game extends \Table
 		// Assemble Cannons! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// STEP N, O: Setup cannons, both busted and operational
 		$cannons = [];
-		for ($strength = 1; $strength < 4; $strength++)
+		for ($strength = 1; $strength <= 3; $strength++)
 		{
 			$cannons[] = ['type' => $strength, 'type_arg' => 0, 'nbr' => 3];	
 		}	
@@ -980,32 +980,37 @@ class Game extends \Table
 		// Dice!!!! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// All dice are initialized with a random value. 
 		// This will have no actual effect on the game outcome, its just to match the look of a physical game where the dice would all begin with random values
-		$sql = "INSERT INTO dice (type, value) VALUES ";
+		$sql = "INSERT INTO dice (`die_id`, `type`, `value`) VALUES ";
 		$dice = array();
+		
+		// Assign the ids of the attack die to be greater than all the cannon ids
+		$cannonInfo = $this->getCollectionFromDB("SELECT `card_id` FROM `cannon`");
+		$cannonInfo = array_map('intval', array_keys($cannonInfo));
+		$die_id = max($cannonInfo) + 1;
 
 		// Create the basic attack die
 		$enemy = $this->globals->get('ENEMY');
-		for ($x = 0; $x < $this->tokens['enemyInfo'][$enemy]['basicDice']; $x++)
+		for ($x = 0; $x < $this->tokens['enemyInfo'][$enemy]['basicDice']; $x++, $die_id++)
 		{
 			$value = \bga_rand(1, 6);
-			$dice[] = "('basic', '$value')";
+			$dice[] = "('$die_id', 'basic', '$value')";
 		}
 
 		// Create the special attack die
-		for ($x = 0; $x < 2; $x++)
+		for ($x = 0; $x < 2; $x++, $die_id++)
 		{
 			$value = \bga_rand(1, 6);
-			$dice[] = "('special', '$value')";
+			$dice[] = "('$die_id', 'special', '$value')";
 		}
 
 		// Create the cannon die: 3 of each type
-		$cannonTypes = ['single', 'double', 'triple'];
-		foreach ($cannonTypes as $type)
+		for ($strength = 1; $strength <= 3; $strength++)
 		{
+			$cannons = $this->cannons->getCardsOfType($strength);
 			for ($x = 0; $x < 3; $x++)
 			{
 				$value = \bga_rand(1,6);
-				$dice[] = "('$type', '$value')";
+				$dice[] = "('" . array_pop($cannons)['id'] . "', '$strength', '$value')";
 			}
 		}
 
@@ -1058,6 +1063,14 @@ class Game extends \Table
 	public function giveCurrentPlayerCards($nbr)
 	{
 		$this->water->pickCardsForLocation($nbr, 'deck', 'hand', $this->getActivePlayerId());
+	}
+
+	public function testFire()
+	{
+		//$operableCannons = $this->getNonEmptyCollectionFromDB("SELECT dice.die_id FROM `cannon` INNER JOIN `dice` ON cannon.card_id = dice.die_id WHERE cannon.card_location = 'cannonsColumn'");
+		
+		$operableCannons = $this->argResolveFire()['operableCannons'];
+		$this->fireCannons($operableCannons);
 	}
 
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1166,10 +1179,19 @@ class Game extends \Table
 	public function fireCannons(array $cannonIds)
 	{
 		// Roll each given cannon and update the database with the new values
-		$sqlData = '';
-		for ($i = 0; $i < count($cannonIds); $i++)
-			$sqlData .= "WHEN {$cannonIds[$i]} THEN " . \bga_rand(1,6) . ' ';
-		$this->DbQuery("UPDATE `dice` SET `value` = CASE $sqlData END WHEN `die_id` IN (". implode(',',$cannonIds).')');
+		if ($cannonIds == null)
+		{
+			throw new \BgaSystemException('Null cannonIds');
+		}
+		else if (count($cannonIds) == 1)
+			$this->DbQuery("UPDATE `dice` SET `value` = " . \bga_rand(1,6) . " WHERE `die_id` = '{$cannonIds[0]}'");
+		else
+		{
+			$updateString = '';
+			for ($i = 0; $i < count($cannonIds); $i++)
+				$updateString .= "WHEN {$cannonIds[$i]} THEN " . \bga_rand(1,6) . ' ';
+			$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` IN ('". implode("','", $cannonIds)."')");
+		}
 	
 		// Determine how many hits we got and deal damage to the enemy!
 	}
