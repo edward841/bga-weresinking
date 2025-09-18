@@ -988,19 +988,19 @@ class Game extends \Table
 		$cannonInfo = array_map('intval', array_keys($cannonInfo));
 		$die_id = max($cannonInfo) + 1;
 
+		// Create the special attack die
+		for ($x = 0; $x < 2; $x++, $die_id++)
+		{
+			$value = \bga_rand(1, 6);
+			$dice[] = "('$die_id', 'special', '$value')";
+		}
+
 		// Create the basic attack die
 		$enemy = $this->globals->get('ENEMY');
 		for ($x = 0; $x < $this->tokens['enemyInfo'][$enemy]['basicDice']; $x++, $die_id++)
 		{
 			$value = \bga_rand(1, 6);
 			$dice[] = "('$die_id', 'basic', '$value')";
-		}
-
-		// Create the special attack die
-		for ($x = 0; $x < 2; $x++, $die_id++)
-		{
-			$value = \bga_rand(1, 6);
-			$dice[] = "('$die_id', 'special', '$value')";
 		}
 
 		// Create the cannon die: 3 of each type
@@ -1193,9 +1193,54 @@ class Game extends \Table
 			$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` IN ('". implode("','", $cannonIds)."')");
 		}
 	
-		// Determine how many hits we got and deal damage to the enemy!
+		// Deal a damage to the enemy for each successful hit!
+		$rolls = $this->getNonEmptyCollectionFromDB("SELECT `die_id`, `type`, `value` FROM `dice` WHERE `die_id` in ('" . implode("','", $cannonIds) . "')"); 
+		foreach ($rolls as $id => $details) {
+			// A single shot cannon succeeds when the value is 1, A double shot
+			// cannon succeeds when the value is a 1 or 2, A triple shot cannon
+			// succeeds when the value is a 1, 2, or 3
+			if ((int) $details['value'] <= (int) $details['type'])
+				$this->damageEnemy();
+		}
 	}
 	
+	public function damageEnemy()
+	{
+		if ($this->globals->get('ENEMY_HP') > 0)
+		{
+			$hp = $this->globals->inc('ENEMY_HP', -1);
+			$enemy = $this->globals->get('ENEMY');
+			$enemyInfo = $this->tokens['enemyInfo'][$enemy];
+
+			// Add/Remove a basic die if necessary
+			if (array_key_exists($hp, $enemyInfo['adjustBasicDice']))
+			{
+				$dieIds = array_keys($this->getCollectionFromDB("SELECT `die_id` FROM `dice`"));
+				$dieIds = array_map('intval', $dieIds);
+				$maxDieId = max($dieIds);
+
+				switch($enemyInfo['adjustBasicDice'][$hp])
+				{
+					case 1:
+						$maxDieId++;
+						$this->DbQuery("INSERT INTO `dice` VALUES ('$maxDieId', 'basic', '" . \bga_rand(1,6) . "')");
+						break;
+
+					case -1:
+						$this->DbQuery("DELETE FROM `dice` WHERE `die_id` = '$maxDieId'");
+						break;
+
+					default:
+						var_dump($enemyInfo['adjustBasicDice'][$hp]);
+				}
+			}
+
+			// Enemy reaction
+			$reaction = "the{$enemy}ReactsToDamage";
+			$this->$reaction();
+		}
+	}
+
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Basic Enemy Dice:
 	public function resolveBasicWater(): void
