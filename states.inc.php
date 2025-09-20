@@ -91,7 +91,7 @@ $machinestates = [
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => ["" => STATE_CHECK_FOR_BREACHES],
+        "transitions" => ["" => STATE_DECLARE_DIAL_HELPER],//STATE_CHECK_FOR_BREACHES],
     ),
 
 	STATE_CHECK_FOR_BREACHES => array(
