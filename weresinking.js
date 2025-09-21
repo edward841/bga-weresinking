@@ -105,21 +105,63 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			// create the card manager
 			this.cardsManager = new BgaCards.Manager({
 				animationManager: this.animationManager,
-				type: 'mygame-card',
+				type: 'weresinking-cannons-card',
 				getId: (card) => card.id,
+//				div.style.backgroundPositionX = ``,
+//				div.style.backgroundPositionY = ``,
 				setupFrontDiv: (card, div) => {
 					div.style.background = 'blue';
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
+				cardWidth: this.cardWidth,
+				cardHeight: this.cardHeight,
+				cardBorderRadius: '5px',
 			});
 
-			//this.setupStocks(gamedatas);
+			this.setupCards();
 			//dojo.style('gameCenter', 'marginBottom', `${this.columnsHeight() + 10}px`)
 
             this.setupNotifications();
 
             console.log( "Ending game setup" );
         },
+
+		setupCards: function(gamedatas)
+		{
+			this.playerHand = null;
+			this.waterColumn = this.setupColumnStock('waterColumn'); 
+			this.treasureColumn = null;
+			this.breaches = null;
+			this.operationalCannons = null;
+			this.bustedCannons = null;
+		},
+
+//		manualPositionStockUpdateDisplay function(element, cards, lastCard, stock)
+//		{
+//			const gap = 20;
+//			cards.forEach((card, index) => {
+//				const cardDiv = stock.getCardElement(card);
+//				cardDiv.style.left = `${index*gap}px`;
+//			});
+//		},
+//
+		setupColumnStock: function(divId)
+		{
+			const stock = new BgaCards.LineStock(this.cardsManager, document.getElementById(divId), {
+				direction: 'column',
+			});
+			//const stock = new BgaCards.ManualPositionStock(this.cardsManager, document.getElementById(divId), undefined, manualPositionStockUpdateDisplay);
+			stock.setSelectionMode('none');
+
+			stock.addCards([
+				{id: 1, type: 'ruby', type_arg: 0, location: 'waterColumn', location_arg: 0},
+				{id: 2, type: 'fishingRod', type_arg: 0, location: 'waterColumn', location_arg: 0},
+				{id: 3, type: 'clearWater', type_arg: 2, location: 'waterColumn', location_arg: 0},
+			]);
+
+			return stock;
+		},
+
 
 //		setupStocks: function(gamedatas)
 //		{
@@ -204,6 +246,17 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 //			return stock;
 //		},
 //
+//		populateStock: function(stockVariable, stockCards)
+//		{
+//			console.log(`Populating ${stockVariable.control_name}:`);
+//			for (var i in stockCards) 
+//			{
+//				var card = stockCards[i];
+//				this.printCard(card);
+//				stockVariable.addToStockWithId(this.getCardUniqueId(card.type, card.type_arg), card.id);
+//			}
+//		},
+		
 		getCardUniqueId: function(type, type_arg)
 		{
 			if (type == 'clearWater')
@@ -221,17 +274,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				console.log(`getCardUniqueId: type <${type}> not recognized.`);
 		},
 
-//		populateStock: function(stockVariable, stockCards)
-//		{
-//			console.log(`Populating ${stockVariable.control_name}:`);
-//			for (var i in stockCards) 
-//			{
-//				var card = stockCards[i];
-//				this.printCard(card);
-//				stockVariable.addToStockWithId(this.getCardUniqueId(card.type, card.type_arg), card.id);
-//			}
-//		},
-		
 		printCard: function(card)
 		{
 				console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}, jsId: ${this.getCardUniqueId(card.type, card.type_arg)}`);
