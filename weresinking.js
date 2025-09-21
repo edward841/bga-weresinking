@@ -119,7 +119,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			});
 
 			this.setupCards();
-			//dojo.style('gameCenter', 'marginBottom', `${this.columnsHeight() + 10}px`)
+			dojo.style('gameCenter', 'marginBottom', `400px`)
 
             this.setupNotifications();
 
@@ -130,34 +130,31 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 		{
 			this.playerHand = null;
 			this.waterColumn = this.setupColumnStock('waterColumn'); 
-			this.treasureColumn = null;
+			this.treasureColumn = this.setupColumnStock('treasureColumn');
 			this.breaches = null;
 			this.operationalCannons = null;
 			this.bustedCannons = null;
-		},
-
-//		manualPositionStockUpdateDisplay function(element, cards, lastCard, stock)
-//		{
-//			const gap = 20;
-//			cards.forEach((card, index) => {
-//				const cardDiv = stock.getCardElement(card);
-//				cardDiv.style.left = `${index*gap}px`;
-//			});
-//		},
-//
-		setupColumnStock: function(divId)
-		{
-			const stock = new BgaCards.LineStock(this.cardsManager, document.getElementById(divId), {
-				direction: 'column',
-			});
-			//const stock = new BgaCards.ManualPositionStock(this.cardsManager, document.getElementById(divId), undefined, manualPositionStockUpdateDisplay);
-			stock.setSelectionMode('none');
-
-			stock.addCards([
+			
+			this.waterColumn.addCards([
 				{id: 1, type: 'ruby', type_arg: 0, location: 'waterColumn', location_arg: 0},
 				{id: 2, type: 'fishingRod', type_arg: 0, location: 'waterColumn', location_arg: 0},
 				{id: 3, type: 'clearWater', type_arg: 2, location: 'waterColumn', location_arg: 0},
 			]);
+		},
+		
+		setupColumnStock: function(divId)
+		{
+			// Function for manually positioning cards
+			this.cardGap = 25 / 100. * this.cardHeight;
+			const manualPositionStockUpdateDisplay = (element, cards, lastCard, stock) => {
+				cards.forEach((card, index) => {
+					const cardDiv = stock.getCardElement(card);
+					cardDiv.style.top = `${index*this.cardGap}px`;
+				});
+			};
+
+			const stock = new BgaCards.ManualPositionStock(this.cardsManager, document.getElementById(divId), undefined, manualPositionStockUpdateDisplay);
+			stock.setSelectionMode('none');
 
 			return stock;
 		},
