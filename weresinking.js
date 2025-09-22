@@ -103,21 +103,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			});
 
 			// create the card manager
-			this.cardsManager = new BgaCards.Manager({
-				animationManager: this.animationManager,
-				type: 'weresinking-cannons-card',
-				getId: (card) => card.id,
-//				div.style.backgroundPositionX = ``,
-//				div.style.backgroundPositionY = ``,
-				setupFrontDiv: (card, div) => {
-					div.style.background = 'blue';
-					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
-				},
-				cardWidth: this.cardWidth,
-				cardHeight: this.cardHeight,
-				cardBorderRadius: '5px',
-			});
-
+			this.waterManager = this.setupManager('water');
+			this.cannonsManager = this.setupManager('cannons');
 			this.setupCards();
 			dojo.style('gameCenter', 'marginBottom', `400px`)
 
@@ -126,14 +113,34 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
             console.log( "Ending game setup" );
         },
 
+		setupManager: function(deck)
+		{
+			const cardsManager = new BgaCards.Manager({
+				animationManager: this.animationManager,
+				type: `weresinking-${deck}-card`,
+				getId: (card) => card.id,
+//				div.style.backgroundPositionX = ``,
+//				div.style.backgroundPositionY = ``,
+				setupFrontDiv: (card, div) => {
+					div.style.background = 'gray';
+					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
+				},
+				cardWidth: this.cardWidth,
+				cardHeight: this.cardHeight,
+				cardBorderRadius: '5px',
+			});
+			
+			return cardsManager;
+		},
+
 		setupCards: function(gamedatas)
 		{
 			this.playerHand = null;
-			this.waterColumn = this.setupColumnStock('waterColumn'); 
-			this.treasureColumn = this.setupColumnStock('treasureColumn');
-			this.breaches = null;
-			this.operationalCannons = null;
-			this.bustedCannons = null;
+			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager); 
+			this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
+			//this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager);
+//			this.breaches = this.setupColumnStock('breachesColumn', 'breaches');
+			//this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager);
 			
 			this.waterColumn.addCards([
 				{id: 1, type: 'ruby', type_arg: 0, location: 'waterColumn', location_arg: 0},
@@ -142,8 +149,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			]);
 		},
 		
-		setupColumnStock: function(divId)
+		setupColumnStock: function(column, divId = null, manager)
 		{
+			if (divId == null)
+				divId = column;
+
 			// Function for manually positioning cards
 			this.cardGap = 25 / 100. * this.cardHeight;
 			const manualPositionStockUpdateDisplay = (element, cards, lastCard, stock) => {
@@ -153,7 +163,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				});
 			};
 
-			const stock = new BgaCards.ManualPositionStock(this.cardsManager, document.getElementById(divId), undefined, manualPositionStockUpdateDisplay);
+			const stock = new BgaCards.ManualPositionStock(manager, document.getElementById(divId), undefined, manualPositionStockUpdateDisplay);
 			stock.setSelectionMode('none');
 
 			return stock;
