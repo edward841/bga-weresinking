@@ -105,7 +105,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			// create the card manager
 			this.waterManager = this.setupManager('water');
 			this.cannonsManager = this.setupManager('cannons');
-			this.setupCards();
+			this.breachesManager = this.setupManager('breaches');
+
+			this.setupCards(gamedatas);
+
 			dojo.style('gameCenter', 'marginBottom', `400px`)
 
             this.setupNotifications();
@@ -138,15 +141,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			this.playerHand = null;
 			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager); 
 			this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
-			//this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager);
-//			this.breaches = this.setupColumnStock('breachesColumn', 'breaches');
-			//this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager);
+//			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager);
+//			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager);
+//			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager);
 			
-			this.waterColumn.addCards([
-				{id: 1, type: 'ruby', type_arg: 0, location: 'waterColumn', location_arg: 0},
-				{id: 2, type: 'fishingRod', type_arg: 0, location: 'waterColumn', location_arg: 0},
-				{id: 3, type: 'clearWater', type_arg: 2, location: 'waterColumn', location_arg: 0},
-			]);
+			this.populateStock(this.waterColumn, gamedatas.waterColumn);
+			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
+//			this.populateStock(this.bustedCannons, gamedatas.bustedCannons);
+//			this.populateStock(this.breaches, gamedatas.breaches);
+//			this.populateStock(this.operationalCannons, gamedatas.operationalCannons);
 		},
 		
 		setupColumnStock: function(column, divId = null, manager)
@@ -169,6 +172,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			return stock;
 		},
 
+		populateStock(stock, cards)
+		{
+			console.log('Populating column...');
+			for (var i in cards) 
+			{
+				var card = cards[i];
+				this.printCard(card);
+				stock.addCard(card);
+			}
+		},
 
 //		setupStocks: function(gamedatas)
 //		{
