@@ -213,7 +213,6 @@
 }
 
 .column {
-	position: absolute;
 	width: 120px;
 }
 
@@ -222,11 +221,11 @@
 }
 
 #treasureColumn {
-	margin-left: 210px;
+	margin-left: 70px;
 }
 
 #breachesColumn {
-	margin-left: 396px;
+	margin-left: 70px;
 	width: 120px;
 }
 
@@ -235,7 +234,7 @@
 }
 
 #cannonsColumn {
-	margin-left: 583px;
+	margin-left: 70px;
 }
 
 #myHandWrapper {

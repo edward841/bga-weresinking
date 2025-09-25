@@ -182,6 +182,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				var card = cards[i];
 				this.printCard(card);
 				stock.addCard(card);
+
+// 				Clearly this doesnt work, but why???
+//				if (card.card_type === 'backside')
+//					this.flipCard(this.waterManager, card);
 			}
 		},
 
