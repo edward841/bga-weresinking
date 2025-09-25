@@ -102,11 +102,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				animationsActive: () => this.bgaAnimationsActive(),
 			});
 
-			// create the card manager
-			this.waterManager = this.setupManager('water');
-			this.cannonsManager = this.setupManager('cannons');
-			this.breachesManager = this.setupManager('breaches');
+			// create the card managers 
+			this.setupManagers();
 
+			// Create the stocks and populate them
 			this.setupCards(gamedatas);
 
 			dojo.style('gameCenter', 'marginBottom', `400px`)
@@ -115,25 +114,27 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 
             console.log( "Ending game setup" );
         },
-
-		setupManager: function(deck)
+		
+		setupManagers: function()
 		{
-			const cardsManager = new BgaCards.Manager({
+			// I was trying to be fancier and repeat less but I guess I'll just do the boring long way and move on
+			this.waterManager = new BgaCards.Manager({
 				animationManager: this.animationManager,
-				type: `weresinking-${deck}-card`,
+				type: `weresinking-water-card`,
 				getId: (card) => card.id,
-//				div.style.backgroundPositionX = ``,
-//				div.style.backgroundPositionY = ``,
 				setupFrontDiv: (card, div) => {
-					div.style.background = 'gray';
+					div.style.backgroundPositionX = `${(this.waterDeckIndexCard(card) % 10) * this.cardWidth}px`;
+					div.style.backgroundPositionY = `${Math.floor(this.waterDeckIndexCard(card) / 7) * this.cardHeight}px`;
+					//div.style.background = 'gray';
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
 				cardWidth: this.cardWidth,
 				cardHeight: this.cardHeight,
 				cardBorderRadius: '5px',
 			});
-			
-			return cardsManager;
+
+			this.cannonsManager = null;
+			this.breachesManager = null;
 		},
 
 		setupCards: function(gamedatas)
@@ -277,28 +278,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 //			}
 //		},
 		
-		getCardUniqueId: function(type, type_arg)
-		{
-			if (type == 'clearWater')
-				return 100 + Number(type_arg);
-			else if (type == 'backside')
-				return 99;
-			else if (type == 'minor' || type == 'major' || type == 'massive' || type == 'monster')
-				return 1 + Number(type_arg);
-			else if (type == '1' || type == '2' || type == '3')
-				return Number(type);
-			// TODO: Maybe remove this check later for slight performance boost?
-			else if (this.items.includes(type))
-				return this.items.indexOf(type);
-			else
-				console.log(`getCardUniqueId: type <${type}> not recognized.`);
-		},
-
-		printCard: function(card)
-		{
-				console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}, jsId: ${this.getCardUniqueId(card.type, card.type_arg)}`);
-		},
-
 //		stockHeight: function(stock)
 //		{
 //			return (1 - stock.vertical_overlap / 100) * stock.item_height * (stock.count() - 1) + stock.item_height;
@@ -408,7 +387,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
         },        
 
         ///////////////////////////////////////////////////
-        //// Utility methods
+        //// Utility methods/ Helper Functions!
         
         /*
         
@@ -416,6 +395,48 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
             script.
         
         */
+//		getCardUniqueId: function(type, type_arg)
+//		{
+//			if (type == 'clearWater')
+//				return 100 + Number(type_arg);
+//			else if (type == 'backside')
+//				return 99;
+//			else if (type == 'minor' || type == 'major' || type == 'massive' || type == 'monster')
+//				return 1 + Number(type_arg);
+//			else if (type == '1' || type == '2' || type == '3')
+//				return Number(type);
+//			// TODO: Maybe remove this check later for slight performance boost?
+//			else if (this.items.includes(type))
+//				return this.items.indexOf(type);
+//			else
+//				console.log(`getCardUniqueId: type <${type}> not recognized.`);
+//		},
+
+		// Gives the index of the appropriate image in the WaterDeck.jpg (0 indexed)
+		waterDeckIndexCard(card)
+		{
+			if (card.type === 'clearWater')
+				return Number(card.type_arg) + 40;
+			else if (this.items.includes(card.type))
+				return this.items.indexOf(card.type);
+			else
+			{
+				console.log(`waterDeckIndexCard: card not recognized.`);
+				throw this.printCard(card);
+				
+			}
+		},
+
+		printCard: function(card)
+		{
+				console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}`); 
+		},
+
+		flipCard: function(cardManager, card)
+		{
+			card.flipped = !card.flipped;
+			cardManager.updateCardInformations(card);
+		},
 
 
         ///////////////////////////////////////////////////
