@@ -182,7 +182,6 @@
 	background-image: url('img/GameBoard.png');
 }
 
-
 #cardsOnBoardWrapper {
 	display: flex;
 	position: absolute;
@@ -262,8 +261,13 @@
 }
 */
 
-.weresinking-water-card {
+.weresinking-water-card-front {
 	background-image: url('img/WaterDeck.jpg');
+}
+
+.weresinking-water-card-back {
+	background-image: url('img/WaterDeck.jpg');
+	background-position: '0% 0%';
 }
 
 /* CSS Sprite magic */

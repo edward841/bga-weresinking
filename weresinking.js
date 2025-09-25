@@ -118,14 +118,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 		setupManagers: function()
 		{
 			// I was trying to be fancier and repeat less but I guess I'll just do the boring long way and move on
+				
 			this.waterManager = new BgaCards.Manager({
 				animationManager: this.animationManager,
 				type: `weresinking-water-card`,
 				getId: (card) => card.id,
 				setupFrontDiv: (card, div) => {
-					div.style.backgroundPositionX = `${(this.waterDeckIndexCard(card) % 10) * this.cardWidth}px`;
-					div.style.backgroundPositionY = `${Math.floor(this.waterDeckIndexCard(card) / 7) * this.cardHeight}px`;
-					//div.style.background = 'gray';
+					// The 10s being the number of cards across the spritesheet is and 7 being the number of rows of sprites in the spritesheet
+					div.style.backgroundPositionX = `${(10 - (this.waterDeckIndexCard(card) % 10)) * this.cardWidth}px`;
+					div.style.backgroundPositionY = `${(7 - Math.floor(this.waterDeckIndexCard(card) / 10)) * this.cardHeight}px`;
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
 				cardWidth: this.cardWidth,
