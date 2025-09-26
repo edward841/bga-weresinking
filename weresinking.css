@@ -190,11 +190,6 @@
 	margin-left: 112px;
 }
 
-#waterDrawPile {
-	background-image: url('img/WaterDeck.jpg');
-	background-position: 0px 0px;
-}
-
 #waterDiscardPile {
 	position: absolute;
 	margin-left: 189px;
@@ -203,8 +198,6 @@
 #breachesDrawPile {
 	position: absolute;
 	margin-left: 378px;
-	background-image: url('img/BreachDeck.jpg');
-	background-position: 0px 0px;
 }
 
 #columns {
@@ -266,7 +259,7 @@
 
 .weresinking-water-card-back {
 	background-image: url('img/WaterDeck.jpg');
-	background-position: '0% 0%';
+	background-position: '0px 0px';
 }
 
 /* CSS Sprite magic */

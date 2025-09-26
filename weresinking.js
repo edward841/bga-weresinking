@@ -72,9 +72,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				<div id="gameCore"> 
 					<div id="gameboard"></div>
 					<div id="cardsOnBoardWrapper">
-						<div id="waterDrawPile" class="card cardOnBoard"></div>
-						<div id="waterDiscardPile" class="card cardOnBoard"></div>
-						<div id="breachesDrawPile" class="card cardOnBoard"></div>
+						<div id="waterDrawPile"></div>
+						<div id="waterDiscardPile"></div>
+						<div id="breachesDrawPile"></div>
 					</div>
 					<div id="columns">
 						<div id="waterColumn" class="column"></div>
@@ -129,6 +129,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 					div.style.backgroundPositionY = `${(7 - Math.floor(this.waterDeckIndexCard(card) / 10)) * this.cardHeight}px`;
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
+				setupBackDiv: (card, div) => {},
+				isCardVisible: card => !card.flipped && card.type !== 'backside',
 				cardWidth: this.cardWidth,
 				cardHeight: this.cardHeight,
 				cardBorderRadius: '5px',
@@ -140,13 +142,19 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 
 		setupCards: function(gamedatas)
 		{
-			this.playerHand = null;
 			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager); 
 			this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
+			this.playerHand = null;
+			//this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, 5);
+			this.waterDiscard = null;
+
 //			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager);
-//			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager);
 //			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager);
-			
+//			this.cannonsDeck = null;	
+
+//			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager);
+//			this.breachesDeck = null;
+
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
 //			this.populateStock(this.bustedCannons, gamedatas.bustedCannons);
@@ -172,6 +180,19 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			stock.setSelectionMode('none');
 
 			return stock;
+		},
+
+		setupDeck: function(divId, manager, cardNbr)
+		{
+			const deck = new BgaCards.Deck(manager, document.getElementById(divId), {
+				cardNumber: cardNbr,
+				counter: {
+					position: 'center',
+					extraClasses: 'text-shadow',
+				},
+			});
+
+			return deck;
 		},
 
 		populateStock(stock, cards)
@@ -424,6 +445,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				return Number(card.type_arg) + 40;
 			else if (this.items.includes(card.type))
 				return this.items.indexOf(card.type);
+			else if (card.id === 'waterDrawPile-fake-top-card')
+				return this.waterDeckIndexCard('backside');
 			else
 			{
 				console.log(`waterDeckIndexCard: card not recognized.`);
