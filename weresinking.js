@@ -130,7 +130,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
 				setupBackDiv: (card, div) => {},
-				isCardVisible: card => !card.flipped && card.type !== 'backside',
+				isCardVisible: card => Boolean(card.type) && card.type !== 'backside',
 				cardWidth: this.cardWidth,
 				cardHeight: this.cardHeight,
 				cardBorderRadius: '5px',
@@ -145,7 +145,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager); 
 			this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
 			this.playerHand = null;
-			//this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, 5);
+			this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, 5);
 			this.waterDiscard = null;
 
 //			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager);
@@ -186,10 +186,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 		{
 			const deck = new BgaCards.Deck(manager, document.getElementById(divId), {
 				cardNumber: cardNbr,
-				counter: {
-					position: 'center',
-					extraClasses: 'text-shadow',
-				},
+//				counter: {
+//					position: 'center',
+//					extraClasses: 'text-shadow',
+//				},
 			});
 
 			return deck;
@@ -445,13 +445,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				return Number(card.type_arg) + 40;
 			else if (this.items.includes(card.type))
 				return this.items.indexOf(card.type);
-			else if (card.id === 'waterDrawPile-fake-top-card')
-				return this.waterDeckIndexCard('backside');
+//			else if (card.id === 'waterDrawPile-fake-top-card')
+//				return this.waterDeckIndexCard('backside');
 			else
 			{
 				console.log(`waterDeckIndexCard: card not recognized.`);
-				throw this.printCard(card);
-				
+				this.printCard(card);	
 			}
 		},
 
