@@ -187,7 +187,7 @@
 	position: absolute;
 	z-index: 1;
 	margin-top: -290px;
-	margin-left: 112px;
+	margin-left: 114px;
 }
 
 #waterDiscardPile {
@@ -197,7 +197,7 @@
 
 #breachesDrawPile {
 	position: absolute;
-	margin-left: 378px;
+	margin-left: 376px;
 }
 
 #columns {
@@ -222,9 +222,11 @@
 	width: 120px;
 }
 
+/*
 #breaches {
 	margin-top: 350px;
 }
+*/
 
 #cannonsColumn {
 	margin-left: 70px;

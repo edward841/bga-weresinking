@@ -31,6 +31,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
             // Here, you can init the global variables of your user interface
 			this.cardWidth = 120;
 			this.cardHeight = 168;
+			this.cardGap = 25 / 100. * this.cardHeight;
 
 			// Initialize stock:
 			this.playerHand = null;
@@ -183,6 +184,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 
 			//this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);	
 			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager);
+			this.bustedCannons.onCardCountChange = (cardCount) => {dojo.style('breaches', 'marginTop', `${this.cardHeight + this.cardGap * (cardCount-1) + 20}px`)};
 			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager);
 
 			this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, 1);
@@ -204,7 +206,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				divId = column;
 
 			// Function for manually positioning cards
-			this.cardGap = 25 / 100. * this.cardHeight;
 			const manualPositionStockUpdateDisplay = (element, cards, lastCard, stock) => {
 				cards.forEach((card, index) => {
 					const cardDiv = stock.getCardElement(card);
