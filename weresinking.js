@@ -155,7 +155,20 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				cardBorderRadius: '5px',
 			});
 
-			this.breachesManager = null;
+			this.breachesManager = new BgaCards.Manager({
+				animationManager: this.animationManager,
+				type: `weresinking-breach-card`,
+				getId: (card) => card.id,
+				setupFrontDiv: (card, div) => {
+					div.style.backgroundPositionX = `${(9 - card.type_arg) * this.cardWidth}px`;
+					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
+				},
+				setupBackDiv: (card, div) => {},
+				isCardVisible: (card) => card.location === 'breachesColumn',
+				cardWidth: this.cardWidth,
+				cardHeight: this.cardHeight,
+				cardBorderRadius: '5px',
+			});
 		},
 
 		setupCards: function(gamedatas)
@@ -172,8 +185,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager);
 			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager);
 
-//			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager);
-//			this.breachesDeck = null;
+			this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, 1);
+			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager);
 
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
@@ -182,7 +195,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			this.populateStock(this.bustedCannons, gamedatas.bustedCannons);
 			this.populateStock(this.operationalCannons, gamedatas.operationalCannons);
 
-//			this.populateStock(this.breaches, gamedatas.breaches);
+			this.populateStock(this.breaches, gamedatas.breaches);
 		},
 		
 		setupColumnStock: function(column, divId = null, manager)

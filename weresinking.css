@@ -223,7 +223,7 @@
 }
 
 #breaches {
-	margin-top: 140px;
+	margin-top: 350px;
 }
 
 #cannonsColumn {
@@ -269,6 +269,16 @@
 .weresinking-cannon-card-back {
 	background-image: url('img/Cannons.jpg');
 }
+
+.weresinking-breach-card-front {
+	background-image: url('img/BreachDeck.jpg');
+}
+
+.weresinking-breach-card-back {
+	background-image: url('img/BreachDeck.jpg');
+	background-position: '0px 0px';
+}
+
 
 /* CSS Sprite magic */
 /* Threshold Sheets: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
