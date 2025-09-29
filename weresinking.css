@@ -262,6 +262,14 @@
 	background-position: '0px 0px';
 }
 
+.weresinking-cannon-card-front {
+	background-image: url('img/Cannons.jpg');
+}
+
+.weresinking-cannon-card-back {
+	background-image: url('img/Cannons.jpg');
+}
+
 /* CSS Sprite magic */
 /* Threshold Sheets: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * 3 players */

@@ -136,7 +136,25 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				cardBorderRadius: '5px',
 			});
 
-			this.cannonsManager = null;
+			this.cannonsManager = new BgaCards.Manager({
+				animationManager: this.animationManager,
+				type: `weresinking-cannon-card`,
+				getId: (card) => card.id,
+				setupFrontDiv: (card, div) => {
+					div.style.backgroundPositionX = `${(4 - card.type) * this.cardWidth}px`;
+					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
+				},
+				setupBackDiv: (card, div) => {
+					div.style.backgroundPositionX = `${(7 - card.type) * this.cardWidth}px`;
+					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
+				},
+				// Front side is operational, backside is busted
+				isCardVisible: (card) => card.location === 'cannonsColumn',
+				cardWidth: this.cardWidth,
+				cardHeight: this.cardHeight,
+				cardBorderRadius: '5px',
+			});
+
 			this.breachesManager = null;
 		},
 
@@ -150,9 +168,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				autoPlace: card => card.location === 'hand' && card.location_arg === this.player_id,
 			});
 
-//			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager);
-//			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager);
-//			this.cannonsDeck = null;	
+			//this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);	
+			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager);
+			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager);
 
 //			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager);
 //			this.breachesDeck = null;
@@ -160,11 +178,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
 			this.populateStock(this.playerHand, gamedatas.hand);
-			
 
-//			this.populateStock(this.bustedCannons, gamedatas.bustedCannons);
+			this.populateStock(this.bustedCannons, gamedatas.bustedCannons);
+			this.populateStock(this.operationalCannons, gamedatas.operationalCannons);
+
 //			this.populateStock(this.breaches, gamedatas.breaches);
-//			this.populateStock(this.operationalCannons, gamedatas.operationalCannons);
 		},
 		
 		setupColumnStock: function(column, divId = null, manager)
