@@ -142,11 +142,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 
 		setupCards: function(gamedatas)
 		{
-			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager); 
-			this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
-			this.playerHand = null;
 			this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, 5);
 			this.waterDiscard = null;
+			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager); 
+			this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
+			this.playerHand = new BgaCards.HandStock(this.waterManager, document.getElementById('myHand'), {
+				autoPlace: card => card.location === 'hand' && card.location_arg === this.player_id,
+			});
 
 //			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager);
 //			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager);
@@ -157,6 +159,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
+			this.populateStock(this.playerHand, gamedatas.hand);
+			
+
 //			this.populateStock(this.bustedCannons, gamedatas.bustedCannons);
 //			this.populateStock(this.breaches, gamedatas.breaches);
 //			this.populateStock(this.operationalCannons, gamedatas.operationalCannons);
