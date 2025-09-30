@@ -109,7 +109,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			// Create the stocks and populate them
 			this.setupCards(gamedatas);
 
-			dojo.style('gameCenter', 'marginBottom', `400px`)
+			dojo.style('gameCenter', 'marginBottom', `200px`)
 
             this.setupNotifications();
 
@@ -178,8 +178,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 			this.waterDiscard = null;
 			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager); 
 			this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
-			this.playerHand = new BgaCards.HandStock(this.waterManager, document.getElementById('myHand'), {
+		
+			const playerHandStock = BgaCards.LineStock;
+			this.playerHand = new playerHandStock(this.waterManager, document.getElementById('myHand'), {
 				autoPlace: card => card.location === 'hand' && card.location_arg === this.player_id,
+				//fanShaped: true,
 			});
 
 			//this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);	
