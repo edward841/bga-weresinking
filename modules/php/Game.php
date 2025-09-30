@@ -459,6 +459,20 @@ class Game extends \Table
 
 		$activePlayer = $this->getActivePlayerId();
 		$this->DbQuery("UPDATE `player` SET `dial_value`='$value', `dial_location`='$location' WHERE `player_id`=$activePlayer");
+
+		$actionToColumn = [
+			'bucket' => 'Water Column',
+			'plunder' => 'Treasure Column',
+			'patch' => 'Breaches Column',
+			'fire' => 'Cannons Column',
+		];	
+		$this->notify->all('actDeclareDial', clienttranslate('${player_name} placed their dial in the ${dial_location}'),
+			array(
+				'player_id' => $activePlayer,
+				'player_name' => $this->getPlayerNameById($activePlayer),
+				'dial_location' => $actionToColumn[$location],
+			));
+
 		$this->gamestate->nextState('next');
 	}
 
