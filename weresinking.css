@@ -283,6 +283,73 @@
 
 
 /* CSS Sprite magic */
+/* Dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+.weresinking-die .bga-dice_die-face {
+	background: url('img/Dice.jpg');
+	height: 27px;
+	width: 27px;
+	border-radius: 5px;
+}
+
+/* Die values: */
+.bga-dice_die .bga-dice_die-face[data-face="1"] {
+	background-position-x: 0%;
+}
+
+.bga-dice_die .bga-dice_die-face[data-face="2"] {
+	background-position-x: 20%;
+}
+
+.bga-dice_die .bga-dice_die-face[data-face="3"] {
+	background-position-x: 40%;
+}
+
+.bga-dice_die .bga-dice_die-face[data-face="4"] {
+	background-position-x: 60%;
+}
+
+.bga-dice_die .bga-dice_die-face[data-face="5"] {
+	background-position-x: 80%;
+}
+
+.bga-dice_die .bga-dice_die-face[data-face="6"] {
+	background-position-x: 100%;
+}
+
+/* Die type: */
+.weresinking-die[data-color="Basic"] .bga-dice_die-face {
+	background-position-y: 216px;
+}
+
+.weresinking-die[data-color="Kraken"] .bga-dice_die-face {
+	background-position-y: 189px;
+}
+
+.weresinking-die[data-color="Shark"] .bga-dice_die-face {
+	background-position-y: 162px;
+}
+
+.weresinking-die[data-color="Sirens"] .bga-dice_die-face {
+	background-position-y: 0px;
+}
+
+.weresinking-die[data-color="Skullsairs"] .bga-dice_die-face {
+	background-position-y: 0px; 
+}
+
+.weresinking-die[data-color="Cannon1"] .bga-dice_die-face {
+	background-position-y: 0px;
+}
+
+.weresinking-die[data-color="Cannon2"] .bga-dice_die-face {
+	background-position-y: 0px;
+}
+
+.weresinking-die[data-color="Cannon3"] .bga-dice_die-face {
+	background-position-y: 0px; 
+}
+
 /* Threshold Sheets: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * 3 players */
 .threshold_3players_level1 {

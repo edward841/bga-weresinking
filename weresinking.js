@@ -92,6 +92,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				<div id="enemySheetWrapper">
 					<div id="enemySheet" class="sheet enemy${gamedatas.globals.enemy}Front"></div>
 					<div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
+					<div id="enemyDice"></div>
 				</div>
 			</div>
 			<div id="myHandWrapper" class="whiteblock">
@@ -110,6 +111,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 			// Create the stocks and populate them
 			this.setupCards(gamedatas);
+			this.setupDice(gamedatas);
 
 			dojo.style('gameCenter', 'marginBottom', `200px`)
 
@@ -242,7 +244,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			return deck;
 		},
 
-		populateStock(stock, cards)
+		populateStock: function(stock, cards)
 		{
 			console.log('Populating column...');
 			for (var i in cards) 
@@ -255,6 +257,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //				if (card.card_type === 'backside')
 //					this.flipCard(this.waterManager, card);
 			}
+		},
+
+		setupDice: function(gamedatas)
+		{
+			this.enemyDice = new BgaDice.LineStock(this.diceManager, document.getElementById('enemyDice'));	
+			this.enemyDice.addDice([
+				{id: 1, color: 'Basic', face: 1, location: 'table', locaton_arg: 0},
+			]);
 		},
 
 //		setupStocks: function(gamedatas)
