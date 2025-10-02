@@ -29,3 +29,15 @@ magick *.png DamageCounter.png
 
 // Clear Water cards
 magick montage *.png -resize 120x168 -mode Concatenate -tile 10x3 WaterDeck.jpg
+
+// Dice!
+// I did each die one by one, actually wasn't that bad. I thought about making a command that did all of the same type at the same time but I knew I would get distracted and spend too much time trying to figure out the perfect command so instead I did the more verbose method but didnt get distracted
+// Ex: Basic die
+// First name each side using subregions
+magick Basic.png[500x500+0+0] BasicBlank.png
+magick Basic.png[500x500+500+500] BasicBreach.png
+magick Basic.png[500x500+500+1000] BasicWater.png
+magick Basic.png[500x500+1000+1000] BasicCannon.png
+
+// Now assemble them into one row, in order of associated value (1,2,..., 6)
+magick montage B*Water.png B*Breach.png B*Blank.png B*Blank.png B*Blank.png B*Cannon.png -mode Concatenate -tile 6x1 BasicRow.png

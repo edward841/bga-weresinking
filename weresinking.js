@@ -22,8 +22,9 @@ define([
 	"ebg/stock",
 	getLibUrl('bga-animations', '1.x'),
 	getLibUrl('bga-cards', '1.x'),
+	getLibUrl('bga-dice', '1.x'),
 ],
-function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
+function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDice) {
     return declare("bgagame.weresinking", ebg.core.gamegui, {
         constructor: function(){
             console.log('weresinking constructor');
@@ -31,6 +32,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
             // Here, you can init the global variables of your user interface
 			this.cardWidth = 120;
 			this.cardHeight = 168;
+			this.diceWidth = 40;
 			this.cardGap = 25 / 100. * this.cardHeight;
 
 			// Initialize stock:
@@ -169,6 +171,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards) {
 				cardWidth: this.cardWidth,
 				cardHeight: this.cardHeight,
 				cardBorderRadius: '5px',
+			});
+
+			this.diceManager = new BgaDice.Manager({
+				animationManager: this.animationManager,
+				type: 'weresinking-die',
 			});
 		},
 
