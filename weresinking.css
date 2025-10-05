@@ -287,9 +287,6 @@
 
 .weresinking-die .bga-dice_die-face {
 	background: url('img/Dice.jpg');
-	height: 27px;
-	width: 27px;
-	border-radius: 5px;
 }
 
 /* Die values: */
@@ -319,11 +316,11 @@
 
 /* Die type: */
 .weresinking-die[data-color="Basic"] .bga-dice_die-face {
-	background-position-y: 216px;
+	background-position-y: 0%;
 }
 
 .weresinking-die[data-color="Kraken"] .bga-dice_die-face {
-	background-position-y: 189px;
+	background-position-y: 12.5%;
 }
 
 .weresinking-die[data-color="Shark"] .bga-dice_die-face {

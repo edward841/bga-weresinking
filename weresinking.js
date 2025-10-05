@@ -92,13 +92,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				<div id="enemySheetWrapper">
 					<div id="enemySheet" class="sheet enemy${gamedatas.globals.enemy}Front"></div>
 					<div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
-					<div id="enemyDice"></div>
 				</div>
 			</div>
 			<div id="myHandWrapper" class="whiteblock">
 				<b id="myHandLabel">${_('My hand')}</b>
 				<div id="myHand"></div>
 			</div>
+			<div id="enemyDice"></div>
 			`);
 
 			// create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
@@ -178,6 +178,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.diceManager = new BgaDice.Manager({
 				animationManager: this.animationManager,
 				type: 'weresinking-die',
+				size: 30,
+				//borderRadius: 5,
+				//getId: (die) => die.id,
 			});
 		},
 
@@ -263,7 +266,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			this.enemyDice = new BgaDice.LineStock(this.diceManager, document.getElementById('enemyDice'));	
 			this.enemyDice.addDice([
-				{id: 1, color: 'Basic', face: 1, location: 'table', locaton_arg: 0},
+				{id: 1, color: 'Kraken', face: 1, location: 'table', locaton_arg: 0},
+				{id: 2, color: 'Kraken', face: 2, location: 'table', locaton_arg: 0},
+				{id: 3, color: 'Kraken', face: 3, location: 'table', locaton_arg: 0},
+				{id: 4, color: 'Kraken', face: 4, location: 'table', locaton_arg: 0},
+				{id: 5, color: 'Kraken', face: 5, location: 'table', locaton_arg: 0},
+				{id: 6, color: 'Kraken', face: 6, location: 'table', locaton_arg: 0},
 			]);
 		},
 
