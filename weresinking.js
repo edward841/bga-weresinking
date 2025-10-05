@@ -90,15 +90,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					</div>
 				</div>
 				<div id="enemySheetWrapper">
-					<div id="enemySheet" class="sheet enemy${gamedatas.globals.enemy}Front"></div>
-					<div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
+					<div id="enemySheet" class="sheet enemy${gamedatas.globals.enemy}Front">
+						<div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
+					</div>
+					<div id="enemyDice"></div>
 				</div>
 			</div>
 			<div id="myHandWrapper" class="whiteblock">
 				<b id="myHandLabel">${_('My hand')}</b>
 				<div id="myHand"></div>
 			</div>
-			<div id="enemyDice"></div>
 			`);
 
 			// create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
@@ -181,6 +182,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				size: 30,
 				//borderRadius: 5,
 				//getId: (die) => die.id,
+				setupDieDiv: (die, element) => {
+					element.dataset.color = die.color ?? "Basic";
+				},
 			});
 		},
 
@@ -265,13 +269,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		setupDice: function(gamedatas)
 		{
 			this.enemyDice = new BgaDice.LineStock(this.diceManager, document.getElementById('enemyDice'));	
+		//	const currentDice = [];
+			
 			this.enemyDice.addDice([
-				{id: 1, color: 'Kraken', face: 1, location: 'table', locaton_arg: 0},
-				{id: 2, color: 'Kraken', face: 2, location: 'table', locaton_arg: 0},
-				{id: 3, color: 'Kraken', face: 3, location: 'table', locaton_arg: 0},
-				{id: 4, color: 'Kraken', face: 4, location: 'table', locaton_arg: 0},
-				{id: 5, color: 'Kraken', face: 5, location: 'table', locaton_arg: 0},
-				{id: 6, color: 'Kraken', face: 6, location: 'table', locaton_arg: 0},
+				{id: 10, color: 'Basic', face: 1, location: 'table', locaton_arg: 0},
+				{id: 20, color: 'Basic', face: 2, location: 'table', locaton_arg: 0},
+				{id: 30, color: 'Basic', face: 3, location: 'table', locaton_arg: 0},
+				{id: 40, color: 'Basic', face: 4, location: 'table', locaton_arg: 0},
+				{id: 50, color: 'Skullsairs', face: 5, location: 'table', locaton_arg: 0},
+				{id: 60, color: 'Skullsairs', face: 6, location: 'table', locaton_arg: 0},
 			]);
 		},
 

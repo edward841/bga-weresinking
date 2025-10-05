@@ -87,7 +87,7 @@
 .sheet {
 	width: 240px;
 	height: 336px;
-	border-radius: 10px;
+	margin-bottom: 15px;
 }
 
 #thresholdSheet {
@@ -102,6 +102,7 @@
 }
 
 #damageTokenSpaces {
+	position: absolute;
 	width: 200px;
 	height: 25px;
 	margin-left: 18px;
@@ -111,19 +112,19 @@
 }
 
 .damageCounterKraken {
-	margin-top: -42px;
+	margin-top: 294px;
 }
 
 .damageCounterShark {
-	margin-top: -56px;
+	margin-top: 280px;
 }
 
 .damageCounterSirens {
-	margin-top: -36px;
+	margin-top: 300px;
 }
 
 .damageCounterSkullsairs {
-	margin-top: -54px;
+	margin-top: 282px;
 }
 
 .enemy6HP {
@@ -316,35 +317,35 @@
 
 /* Die type: */
 .weresinking-die[data-color="Basic"] .bga-dice_die-face {
-	background-position-y: 0%;
+	background-position-y: 240px;
 }
 
 .weresinking-die[data-color="Kraken"] .bga-dice_die-face {
-	background-position-y: 12.5%;
+	background-position-y: 210px;
 }
 
 .weresinking-die[data-color="Shark"] .bga-dice_die-face {
-	background-position-y: 162px;
+	background-position-y: 180px;
 }
 
 .weresinking-die[data-color="Sirens"] .bga-dice_die-face {
-	background-position-y: 0px;
+	background-position-y: 150px;
 }
 
 .weresinking-die[data-color="Skullsairs"] .bga-dice_die-face {
-	background-position-y: 0px; 
+	background-position-y: 120px; 
 }
 
 .weresinking-die[data-color="Cannon1"] .bga-dice_die-face {
-	background-position-y: 0px;
+	background-position-y: 90px;
 }
 
 .weresinking-die[data-color="Cannon2"] .bga-dice_die-face {
-	background-position-y: 0px;
+	background-position-y: 60px;
 }
 
 .weresinking-die[data-color="Cannon3"] .bga-dice_die-face {
-	background-position-y: 0px; 
+	background-position-y: 30px; 
 }
 
 /* Threshold Sheets: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
