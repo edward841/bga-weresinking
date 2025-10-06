@@ -229,7 +229,7 @@
 }
 */
 
-#cannonsColumn {
+#cannonsColumnWrapper {
 	margin-left: 70px;
 }
 
@@ -285,7 +285,13 @@
 
 /* CSS Sprite magic */
 /* Dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/* Positioning */
+.diceColumn {
+	position: absolute;
+	margin-left: 130px;
+}
 
+/* Image */
 .weresinking-die .bga-dice_die-face {
 	background: url('img/Dice.jpg');
 }

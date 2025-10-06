@@ -32,7 +32,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             // Here, you can init the global variables of your user interface
 			this.cardWidth = 120;
 			this.cardHeight = 168;
-			this.diceWidth = 40;
+			this.diceWidth = 30;
 			this.cardGap = 25 / 100. * this.cardHeight;
 
 			// Initialize stock:
@@ -84,9 +84,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						<div id="treasureColumn" class="column"></div>
 						<div id="breachesColumn" class="column">
 							<div id="bustedCannons"></div>
+							<div id="bustedDice" class="diceColumn"></div>
 							<div id="breaches"></div>
 						</div>
-						<div id="cannonsColumn" class="column"></div>
+						<div id="cannonsColumnWrapper" class="column">
+							<div id="cannonsColumn"></div>
+							<div id="operationalDice" class="diceColumn"></div>
+						</div>
 					</div>
 				</div>
 				<div id="enemySheetWrapper">
@@ -179,7 +183,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.diceManager = new BgaDice.Manager({
 				animationManager: this.animationManager,
 				type: 'weresinking-die',
-				size: 30,
+				size: this.diceWidth,
 				//borderRadius: 5,
 				//getId: (die) => die.id,
 				setupDieDiv: (die, element) => {
@@ -269,15 +273,32 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		setupDice: function(gamedatas)
 		{
 			this.enemyDice = new BgaDice.LineStock(this.diceManager, document.getElementById('enemyDice'));	
+			this.bustedDice = new BgaDice.LineStock(this.diceManager, document.getElementById('bustedDice'), {
+				direction: "column",
+				gap: (this.cardGap - this.diceWidth)+'px',
+			});
+			this.operationalDice = new BgaDice.LineStock(this.diceManager, document.getElementById('operationalDice'), {
+				direction: "column",
+				gap: (this.cardGap - this.diceWidth)+'px',
+			});
 		//	const currentDice = [];
 			
 			this.enemyDice.addDice([
-				{id: 10, color: 'Basic', face: 1, location: 'table', locaton_arg: 0},
-				{id: 20, color: 'Basic', face: 2, location: 'table', locaton_arg: 0},
+//				{id: 10, color: 'Basic', face: 1, location: 'table', locaton_arg: 0},
+//				{id: 20, color: 'Basic', face: 2, location: 'table', locaton_arg: 0},
 				{id: 30, color: 'Basic', face: 3, location: 'table', locaton_arg: 0},
 				{id: 40, color: 'Basic', face: 4, location: 'table', locaton_arg: 0},
 				{id: 50, color: 'Skullsairs', face: 5, location: 'table', locaton_arg: 0},
 				{id: 60, color: 'Skullsairs', face: 6, location: 'table', locaton_arg: 0},
+			]);
+
+			this.bustedDice.addDice([
+				{id: 1, color: 'Cannon2', face: 1, location: 'table', location_arg: 0},
+				{id: 2, color: 'Cannon1', face: 3, location: 'table', location_arg: 0},
+			]);
+			
+			this.operationalDice.addDice([
+				{id: 3, color: 'Cannon1', face: 1, location: 'table', location_arg: 0},
 			]);
 		},
 
