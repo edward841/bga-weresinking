@@ -184,8 +184,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				animationManager: this.animationManager,
 				type: 'weresinking-die',
 				size: this.diceWidth,
-				//borderRadius: 5,
-				//getId: (die) => die.id,
+				borderRadius: 15,
+				getId: (die) => die.id,
 				setupDieDiv: (die, element) => {
 					element.dataset.color = die.color ?? "Basic";
 				},
