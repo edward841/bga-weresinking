@@ -878,7 +878,22 @@ class Game extends \Table
 		}
 
 		// Enemy dice
+		$dice = [];
+		
+		foreach ($diceInfo as $id => $details)
+		{
+			switch ($details['type'])
+			{
+				case 'special': 
+					$dice[] = ['id' => $id, 'color' => $result['globals']['enemy'], 'face' => $details['value']];
+					break;
 
+				case 'basic':
+					$dice[] = ['id' => $id, 'color' => 'Basic', 'face' => $details['value']];
+					break;
+			}
+		}
+		$result['attackDice'] = $dice;
 
         return $result;
     }

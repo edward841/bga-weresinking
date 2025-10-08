@@ -219,7 +219,7 @@
 }
 
 #breachesColumn {
-	margin-left: 70px;
+	margin-left: 65px;
 	width: 120px;
 }
 
@@ -288,7 +288,7 @@
 /* Positioning */
 .diceColumn {
 	position: absolute;
-	margin-left: 130px;
+	margin-left: 128px;
 }
 
 /* Image */

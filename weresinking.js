@@ -274,6 +274,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			const diePerspective = 0;
 			this.enemyDice = new BgaDice.LineStock(this.diceManager, document.getElementById('enemyDice'), {
+				gap: '4px',
 				perspective: diePerspective,
 			});	
 			this.bustedDice = new BgaDice.LineStock(this.diceManager, document.getElementById('bustedDice'), {
@@ -287,15 +288,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				perspective: diePerspective,
 			});
 			
-			this.enemyDice.addDice([
-				{id: 10, color: 'Basic', face: 1, location: 'table', locaton_arg: 0},
-				{id: 20, color: 'Basic', face: 2, location: 'table', locaton_arg: 0},
-				{id: 30, color: 'Basic', face: 3, location: 'table', locaton_arg: 0},
-				//{id: 40, color: 'Basic', face: 4, location: 'table', locaton_arg: 0},
-				{id: 50, color: 'Skullsairs', face: 5, location: 'table', locaton_arg: 0},
-				{id: 60, color: 'Skullsairs', face: 6, location: 'table', locaton_arg: 0},
-			]);
-
+			this.enemyDice.addDice(gamedatas.attackDice);
 			this.bustedDice.addDice(gamedatas.bustedDice);
 			this.operationalDice.addDice(gamedatas.operationalDice);
 		},
