@@ -865,6 +865,21 @@ class Game extends \Table
 		// This player's hand
 		$result['hand'] = $this->water->getPlayerHand($current_player_id);
 
+		// Cannon dice	
+		$diceInfo = $this->getCollectionFromDB("SELECT `die_id`, `type`, `value` FROM `dice`");
+		foreach (['busted', 'operational'] as $cannonType)
+		{
+			$dice = [];
+			foreach (array_keys($result[$cannonType . 'Cannons']) as $id)
+			{
+				$dice[] = ['id' => $id, 'color' => 'Cannon' . $diceInfo[$id]['type'], 'face' => $diceInfo[$id]['value']];
+			}
+			$result[$cannonType . 'Dice'] = $dice;
+		}
+
+		// Enemy dice
+
+
         return $result;
     }
 
