@@ -121,6 +121,40 @@ $this->tokens = [
 			'prologue' => clienttranslate('The sailors are saying that the gigantic, ship-eating megalodon shark is back after vanishing for over twenty years. Barnacle Joe swears he saw it swallow a merchant vessel whole. He claims its teeth are as tall as a man and sharper than a silver blade. Rumor has it, it can stalk its preyfor miles with a single drop of blood. Captain, is that a splinter? WHOOSH-CRAASH... WE\'RE SINKING!!!'),
 			'setup' => clienttranslate('Place the Shark\'s Belly card next to this sheet. Shuffle the Fishy Bait and the Cheeky Chum into the Water Deck. Start with 4 active enemy dice: 2 Shark dice and 2 Basic dice.'),
 		],
+
+		'Sirens' => [
+			'name' => clienttranslate('The Sirens'),
+			'specialAttack1' => [
+				'name' => clienttranslate('Tempting Tune'),
+				'effect' => clienttranslate('The last player to resolve a Plunder this round may also draw 2 cards from the Water Deck.'),
+				],
+			'specialAttack2' => [
+				'name' => clienttranslate('Screech!'),
+				'effect' => clienttranslate('Players cannot talk until Dials are revealed. Players declare actions by placing their Dial in front of them instead of in columns. Once all Dials are revealed, place them in their matching columns in player order, starting with the First Mate.'),
+				],
+			'reactToDamage' => clienttranslate('None'),
+			'complexity' => 2,
+			'description' => clienttranslate('Their deadly tunes can spread serious confusion and greed across the crew.'),
+			'prologue' => clienttranslate('Stories speak of the sonorous songs of the Sirens on a full moon. Their tunes can be heard for miles on a calm sea and can drive a whole crew mad--they will do anything to get closer to the source. These beauties are responsible for wrecking hundreds of ships on the jagged rocks they prowl.n The myth of their beauty grows, as does the ship graveyard around them. Wait a minute, is it a full moon? What\'s that noise? It\'s so... beautiful.. CRAASH... Oops, WE\'RE SINKING!!!'),
+			'setup' => clienttranslate('Shuffle the Siren Silencers and Siren Shiner into the Water Deck. Start with 6 active enemy dice: 2 Siren dice and 4 Basic dice.'),
+		],
+		
+		'Skullsairs' => [
+			'name' => clienttranslate('The Skullsairs'),
+			'specialAttack1' => [
+				'name' => clienttranslate('Cursed Search'),
+				'effect' => clienttranslate('All players must reveal 1 Cursed Amulet in their hand if able. If they have one, they must reveal a card at random from their hand. If it\'s a Treasure, add it to the Skullsair\'s Stash.'),
+				],
+			'specialAttack2' => [
+				'name' => clienttranslate('Boarding Party'),
+				'effect' => clienttranslate('Move the lowest card in the Treasure column to the Skullsair\'s Stash.'),
+				],
+			'reactToDamage' => clienttranslate('The player who deals damage may choose 1 card from the Skullsair\'s Stash and place it into their hand.'),
+			'complexity' => 3,
+			'description' => clienttranslate('They will steal your loot in search for their cursed amulets to become whole again. Don\'t get caught with them!'),
+			'prologue' => clienttranslate('There is no pirate crew more feared than the bone-chilling Skullsairs. Legend has it they roamed uncharted seas seeking the legendary Amulets of Immortality for decades only to discover thier true, cursed nature. Yea, so we might have accidentally stolen those very amulets from them, and now they\'re hot on our tracks! I think they want them back? BOOOM, CRAAASH... Uh-oh, WE\'RE SINKING!!!'),
+			'setup' => clienttranslate('Place the Skullsairs Stash card next to this sheet. Shuffle the 6 Cursed Amulets into the Water Deck. Start with 6 active dice: 2 Skullsairs dice and 4 Basic dice.'),
+		],
 	],
 
 	// 'adjustBasicDice' => [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0],

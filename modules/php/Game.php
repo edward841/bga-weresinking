@@ -66,19 +66,32 @@ class Game extends \Table
 
 		// Deal $water number of water cards from the deck to the waterColumn
 		$this->pickCardsForWaterColumn($water);
-
+		
+		$this->notify->all('checkForBreaches', clienttranslate('Step 1). Check For Breaches'));
+		$this->notify->all('checkForBreaches', clienttranslate('${waterNbr} card(s) to the Water Column'), array(
+			'waterNbr' => $water,	
+		));
 		$this->gamestate->nextState();
 	}
 
 	public function stCheckWaterThreshold()
 	{
+		$waterCardNbr = $this->water->countCardInLocation('waterColumn');	
+
 		// Check the water threshold. If equal to or greater, then carry out sinking procedures.
 		$numPlayers = $this->getPlayersNumber();
 		$thresholdLevel = $this->globals->get('THRESHOLD_LEVEL');
 		$waterThreshold = (int) $this->tokens['thresholdSheets']["$numPlayers players"]["level $thresholdLevel"]['threshold'];
-	
-		if ($this->water->countCardInLocation('waterColumn') >= $waterThreshold)
+
+		$this->notify->all('checkWaterThreshold', clienttranslate('Step 2). Check Water Threshold:'));
+		$this->notify->all('checkWaterThreshold', clienttranslate('Cards in Water Column: ${waterCardNbr}, Water Threshold: ${waterThreshold}'), array(
+			'waterCardNbr' => $waterCardNbr,
+			'waterThreshold' => $waterThreshold,	
+		));
+		if ($waterCardNbr >= $waterThreshold)
 		{
+			$this->notify->all('checkWaterThreshold', clienttranslate('The number of cards is equal to or greater than the Water Threshold. Continue on to sinking procedures.'));
+
 			// Sinking procedures here
 			// STEP 1: Remove the lowest section of the ship from the game and take out its two Chest Tokens (without revealing them)
 			// STEP 2: Place the Chest Tokens face-down in the bottom of the Breaches Column
@@ -106,12 +119,16 @@ class Game extends \Table
 
 			// STEP 6: Flip over the First Mate scroll and continue the round on Step 3 of the Duties Checklist.
 		}
+		else 
+			$this->notify->all('checkWaterThreshold', clienttranslate('The number of cards is less than the Water Threshold. Continue on to the Threat Phase'));
 
 		$this->gamestate->nextState();
 	}	
 	
 	public function stDealWaterAndTreasure()
 	{
+		$this->notify->all('dealWaterAndTreasure', clienttranslate('Step 3.) Deal Water and Treasure'));
+
 		$numPlayers = $this->getPlayersNumber();
 		$thresholdLevel = (int) $this->globals->get('THRESHOLD_LEVEL');
 		$thresholdPanelInfo = $this->tokens['thresholdSheets']["$numPlayers players"]["level $thresholdLevel"];
@@ -122,11 +139,15 @@ class Game extends \Table
 		// Draw the correct number of cards for the treasure column. If you find a clear water, put it in the water column and keep drawing.
 		// (since the default value of card_face_up is true, the waters we find will have the proper card_face_up value by default)
 		$remainingTreasures = (int) $thresholdPanelInfo['treasure'];
+		$clearWaterNbr = 0;
 		while ($remainingTreasures > 0)
 		{
 			$card = $this->water->getCardOnTop('deck');
 			if ($card['type'] === 'clearWater')
+			{
 				$this->water->insertCardOnExtremePosition($card['id'], 'waterColumn', COLUMN_BOTTOM);
+				$clearWaterNbr++;
+			}
 			else
 			{
 				$this->addToTreasureColumn((int) $card['id']);
@@ -134,15 +155,22 @@ class Game extends \Table
 			}
 		}
 		
+		$this->notify->all('dealWaterAndTreasure', clienttranslate('Dealt ${waterNbr} cards to Water Column. Dealt ${treasureNbr} Treasures. Dealt ${clearWaterNbr} additional Clear Waters.'), array(
+			'waterNbr' => $thresholdPanelInfo['water'],
+			'treasureNbr' => $thresholdPanelInfo['treasure'],
+			'clearWaterNbr' => $clearWaterNbr,
+		));	
 		$this->gamestate->nextState();
 	}
 
 	public function stRollEnemyDice()
 	{
+		$this->notify->all('rollEnemyDice', clienttranslate('Step 4). Roll and Resolve Enemy Dice'));
+
 		// Get the ids of all the attack die (both basic and special attack dice)
 		// Generate the correct number of random values 
 		// $$\forall x \in $rolls, x \in [1,6] $$
-		$diceIds = $this->getCollectionFromDB("SELECT `die_id` FROM `dice` WHERE `type` IN ('basic', 'special')");
+		$diceIds = $this->getCollectionFromDB("SELECT `die_id`, `type` FROM `dice` WHERE `type` IN ('basic', 'special')");
 		$rolls = array();
 		for ($x = 0; $x < count($diceIds); $x++)
 		{
@@ -150,13 +178,34 @@ class Game extends \Table
 		}
 
 		// Update the dice values in the database with the new values
+		$dieRollMapping = array();
 		$updateString = '';
 		foreach (array_keys($diceIds) as $id)
 		{
-			$updateString .= "WHEN $id THEN " . array_pop($rolls) . " ";
+			$roll = array_pop($rolls);
+			$dieRollMapping[$id] = $roll;
+			$updateString .= "WHEN $id THEN $roll ";
 		}
 		$spliced = implode(',', array_keys($diceIds));
 		$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` in ($spliced)");
+
+		// So far we have only worked with the DB die values (1-6)
+		// We now need to interpret those values in the context of the die types so that it means something in the notification
+		$enemy = $this->globals->get('ENEMY');
+		$attacks = array();
+		foreach (array_keys($diceIds) as $id)
+		{
+			$attack = $this->tokens['diceMappings'][$diceIds[$id]['type']][$dieRollMapping[$id]];
+			if ($attack == null)
+				$attack = clienttranslate('Blank');
+			else if (strlen($attack) == 1)
+				$attack = $this->tokens['enemySheets'][$enemy]["specialAttack$attack"]['name'];	
+
+			$attacks[] = $attack;
+		}
+		$this->notify->all('rollEnemyDice', clienttranslate('Rolled ${rollResult}'), array(
+			'rollResult' => implode(', ', $attacks),
+		));
 		$this->gamestate->nextState();
 	}
 
