@@ -593,21 +593,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         setupNotifications: function()
         {
             console.log( 'notifications subscriptions setup' );
-            
-            // TODO: here, associate your game notifications with local methods
-            
-            // Example 1: standard notification handling
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-            
-            // Example 2: standard notification handling + tell the user interface to wait
-            //            during 3 seconds after calling the method in order to let the players
-            //            see what is happening in the game.
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-            // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
-            // 
+        	this.bgaSetupPromiseNotifications();    
         },  
         
-        // TODO: from this point and below, you can write your game notifications handling methods
+        // From this point and below, you can write your game notifications handling methods
         
         /*
         Example:
@@ -623,5 +612,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         },    
         
         */
+
+		notif_rolledEnemyDice: function(notif)
+		{
+			console.log('notif_rolledEnemyDice');
+			console.log(notif);
+		
+			// Get the enemy dice, update their face values to match the new values from the notif, and play the die rolling animation
+			const dice = this.enemyDice.getDice();
+			dice.forEach(die => die.face = notif.diceRollMapping[die.id]);
+			this.enemyDice.rollDice(dice, {duration: [800, 1200]});
+		}
    });             
 });

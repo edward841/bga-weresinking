@@ -178,12 +178,12 @@ class Game extends \Table
 		}
 
 		// Update the dice values in the database with the new values
-		$dieRollMapping = array();
+		$diceRollMapping = array();
 		$updateString = '';
 		foreach (array_keys($diceIds) as $id)
 		{
 			$roll = array_pop($rolls);
-			$dieRollMapping[$id] = $roll;
+			$diceRollMapping[$id] = $roll;
 			$updateString .= "WHEN $id THEN $roll ";
 		}
 		$spliced = implode(',', array_keys($diceIds));
@@ -195,7 +195,7 @@ class Game extends \Table
 		$attacks = array();
 		foreach (array_keys($diceIds) as $id)
 		{
-			$attack = $this->tokens['diceMappings'][$diceIds[$id]['type']][$dieRollMapping[$id]];
+			$attack = $this->tokens['diceMappings'][$diceIds[$id]['type']][$diceRollMapping[$id]];
 			if ($attack == null)
 				$attack = clienttranslate('Blank');
 			else if (strlen($attack) == 1)
@@ -203,8 +203,9 @@ class Game extends \Table
 
 			$attacks[] = $attack;
 		}
-		$this->notify->all('rollEnemyDice', clienttranslate('Rolled ${rollResult}'), array(
+		$this->notify->all('rolledEnemyDice', clienttranslate('Rolled ${rollResult}'), array(
 			'rollResult' => implode(', ', $attacks),
+			'diceRollMapping' => $diceRollMapping,
 		));
 		$this->gamestate->nextState();
 	}
