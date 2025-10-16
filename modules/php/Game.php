@@ -65,11 +65,12 @@ class Game extends \Table
 		}
 
 		// Deal $water number of water cards from the deck to the waterColumn
-		$this->pickCardsForWaterColumn($water);
+		$ids = $this->pickCardsForWaterColumn($water);
 		
-		$this->notify->all('checkForBreaches', clienttranslate('Step 1). Check For Breaches'));
+		$this->notify->all('checkForBreachesMessage', clienttranslate('Step 1). Check For Breaches'));
 		$this->notify->all('checkForBreaches', clienttranslate('${waterNbr} card(s) to the Water Column'), array(
 			'waterNbr' => $water,	
+			'ids' => $ids,
 		));
 		$this->gamestate->nextState();
 	}
@@ -83,14 +84,14 @@ class Game extends \Table
 		$thresholdLevel = $this->globals->get('THRESHOLD_LEVEL');
 		$waterThreshold = (int) $this->tokens['thresholdSheets']["$numPlayers players"]["level $thresholdLevel"]['threshold'];
 
-		$this->notify->all('checkWaterThreshold', clienttranslate('Step 2). Check Water Threshold:'));
+		$this->notify->all('checkWaterThresholdMessage', clienttranslate('Step 2). Check Water Threshold:'));
 		$this->notify->all('checkWaterThreshold', clienttranslate('Cards in Water Column: ${waterCardNbr}, Water Threshold: ${waterThreshold}'), array(
 			'waterCardNbr' => $waterCardNbr,
 			'waterThreshold' => $waterThreshold,	
 		));
 		if ($waterCardNbr >= $waterThreshold)
 		{
-			$this->notify->all('checkWaterThreshold', clienttranslate('The number of cards is equal to or greater than the Water Threshold. Continue on to sinking procedures.'));
+			$this->notify->all('sinkingProcedures', clienttranslate('The number of cards is equal to or greater than the Water Threshold. Continue on to sinking procedures.'));
 
 			// Sinking procedures here
 			// STEP 1: Remove the lowest section of the ship from the game and take out its two Chest Tokens (without revealing them)
@@ -127,7 +128,7 @@ class Game extends \Table
 	
 	public function stDealWaterAndTreasure()
 	{
-		$this->notify->all('dealWaterAndTreasure', clienttranslate('Step 3.) Deal Water and Treasure'));
+		$this->notify->all('dealWaterAndTreasureMessage', clienttranslate('Step 3.) Deal Water and Treasure'));
 
 		$numPlayers = $this->getPlayersNumber();
 		$thresholdLevel = (int) $this->globals->get('THRESHOLD_LEVEL');
@@ -165,7 +166,7 @@ class Game extends \Table
 
 	public function stRollEnemyDice()
 	{
-		$this->notify->all('rollEnemyDice', clienttranslate('Step 4). Roll and Resolve Enemy Dice'));
+		$this->notify->all('rollEnemyDiceMessage', clienttranslate('Step 4). Roll and Resolve Enemy Dice'));
 
 		// Get the ids of all the attack die (both basic and special attack dice)
 		// Generate the correct number of random values 
@@ -203,7 +204,7 @@ class Game extends \Table
 
 			$attacks[] = $attack;
 		}
-		$this->notify->all('rolledEnemyDice', clienttranslate('Rolled ${rollResult}'), array(
+		$this->notify->all('rollEnemyDice', clienttranslate('Rolled ${rollResult}'), array(
 			'rollResult' => implode(', ', $attacks),
 			'diceRollMapping' => $diceRollMapping,
 		));
@@ -1308,7 +1309,7 @@ class Game extends \Table
 		return (int) $nextPlayer;
 	}
 	
-	public function pickCardsForWaterColumn(int $number)
+	public function pickCardsForWaterColumn(int $number): array
 	{
 		$cardIds = [];
 		while ($number > 0)
@@ -1321,6 +1322,7 @@ class Game extends \Table
 		
 		$implodedCardIds = implode(',', $cardIds);	
 		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id` IN ($implodedCardIds)");
+		return $cardIds;
 	}
 
 	public function addToTreasureColumn(int $cardId)
@@ -1446,19 +1448,28 @@ class Game extends \Table
 	public function resolveBasicWater(): void
 	{
 		$this->debug("\nResolving basic water...\n");
-		$this->pickCardsForWaterColumn(1);
+		$ids = $this->pickCardsForWaterColumn(1);
+		$this->notify->all('resolveBasicWater', 'Resolved water die result: Dealt a card to water column', array(
+			'ids' => $ids,	
+		));
 	}
 
 	public function resolveBasicBreach(): void
 	{
 		$this->debug("\nResolving basic breach...\n");
-		$this->breaches->pickCardForLocation('deck', 'breachesColumn');
+		$id = $this->breaches->pickCardForLocation('deck', 'breachesColumn');
+		$this->notify->all('resolveBasicBreach', 'Resolved breach die result: Dealt a new breach', array(
+			'ids' => [$id],	
+		));
 	}
 
 	public function resolveBasicCannon(): void
 	{
 		$this->debug("\nResolving basic cannon...\n");
 		$this->removeFromCannonsColumn();
+		$this->notify->all('resolveBasicCannon', 'Resolved basic cannon die result', array(
+			'ids' => [],
+		));
 	}
 
 	// Special Enemy Dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -33,12 +33,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.cardWidth = 120;
 			this.cardHeight = 168;
 			this.diceWidth = 30;
-			this.cardGap = 25 / 100. * this.cardHeight;
+			this.smallCardGap = 24 / 100. * this.cardHeight;
+			this.bigCardGap = 38 / 100. * this.cardHeight;
 
 			// Initialize stock:
 			this.playerHand = null;
+			this.waterDeck = null;
 			this.waterColumn = null;
 			this.treasureColumn = null;
+			this.breachDeck = null;
 			this.breaches = null;
 			this.operationalCannons = null;
 			this.bustedCannons = null;
@@ -206,12 +209,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			});
 
 			//this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);	
-			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager);
-			this.bustedCannons.onCardCountChange = (cardCount) => {dojo.style('breaches', 'marginTop', `${this.cardHeight + this.cardGap * (cardCount-1) + 20}px`)};
-			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager);
+			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager, this.bigCardGap);
+			this.bustedCannons.onCardCountChange = (cardCount) => {dojo.style('breaches', 'marginTop', `${this.cardHeight + this.bigCardGap * (cardCount-1) + 20}px`)};
+			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager, this.bigCardGap);
 
 			this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, 1);
-			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager);
+			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager, this.bigCardGap);
 
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
@@ -223,7 +226,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.populateStock(this.breaches, gamedatas.breaches);
 		},
 		
-		setupColumnStock: function(column, divId = null, manager)
+		setupColumnStock: function(column, divId = null, manager, gap = this.smallCardGap)
 		{
 			if (divId == null)
 				divId = column;
@@ -232,7 +235,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			const manualPositionStockUpdateDisplay = (element, cards, lastCard, stock) => {
 				cards.forEach((card, index) => {
 					const cardDiv = stock.getCardElement(card);
-					cardDiv.style.top = `${index*this.cardGap}px`;
+					cardDiv.style.top = `${index*gap}px`;
 				});
 			};
 
@@ -279,12 +282,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			});	
 			this.bustedDice = new BgaDice.LineStock(this.diceManager, document.getElementById('bustedDice'), {
 				direction: "column",
-				gap: (this.cardGap - this.diceWidth)+'px',
+				gap: (this.bigCardGap - this.diceWidth)+'px',
 				perspective: diePerspective,
 			});
 			this.operationalDice = new BgaDice.LineStock(this.diceManager, document.getElementById('operationalDice'), {
 				direction: "column",
-				gap: (this.cardGap - this.diceWidth)+'px',
+				gap: (this.bigCardGap - this.diceWidth)+'px',
 				perspective: diePerspective,
 			});
 			
@@ -292,118 +295,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.bustedDice.addDice(gamedatas.bustedDice);
 			this.operationalDice.addDice(gamedatas.operationalDice);
 		},
-
-//		setupStocks: function(gamedatas)
-//		{
-//			// Initialize ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//			console.log("Setting up stocks...");
-//			this.waterColumn = this.initializeCardStock('waterColumn');
-//			this.treasureColumn = this.initializeCardStock('treasureColumn');
-//			this.bustedCannons = this.initializeCardStock('bustedCannons', 6);
-//			this.operationalCannons = this.initializeCardStock('cannonsColumn', 6);
-//			this.breaches = this.initializeCardStock('breaches');
-//			this.playerHand = this.initializeCardStock('myHand');
-//
-//			// Busted Cannons, Breaches, and Player hand are ordered by a static ordering
-//			// Water column, treasure column, cannons column are ordered by deck order (impacts gameplay)
-//			// 		*Right now the latter ordering is actually a lack of ordering with weight of 0, may cause issues later? Maybe unstable? Not sure yet
-//
-//			// Create card types ~~~~~~~~~~~~~~~~~~~~
-//			// Card Backside
-//			this.waterColumn.addItemType(this.getCardUniqueId('backside'), 0, g_gamethemeurl + 'img/WaterDeckItems.jpg', 0);
-//
-//			// Clear Water
-//			for (var i = 0; i < 30; i++)
-//			{
-//				var cardTypeId = this.getCardUniqueId('clearWater', i);
-//				this.waterColumn.addItemType(cardTypeId, 0, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
-//				this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/WaterDeckClearWater.jpg', i);
-//			}
-//			// Items
-//			for (var i = 1; i <= 39; i++)
-//			{
-//				this.treasureColumn.addItemType(i, 0, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
-//				this.playerHand.addItemType(i, i, g_gamethemeurl + 'img/WaterDeckItems.jpg', i);
-//			}
-//
-//			// Cannons
-//			for (var strength = 1; strength < 4; strength++)
-//			{
-//				this.operationalCannons.addItemType(strength, 0, g_gamethemeurl + 'img/Cannons.jpg', strength+2);
-//				this.bustedCannons.addItemType(strength, strength, g_gamethemeurl + 'img/Cannons.jpg', strength-1);
-//			}
-//
-//			// Breaches
-//			for (var i = 1; i < 10; i++)
-//			{
-//				this.breaches.addItemType(i, i, g_gamethemeurl + 'img/BreachDeck.jpg', i);
-//			}
-//
-//			// Populate the stocks: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//			this.populateStock(this.waterColumn, gamedatas.waterColumn);
-//			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
-//			this.populateStock(this.bustedCannons, gamedatas.bustedCannons);
-//			this.populateStock(this.breaches, gamedatas.breaches);
-//			this.populateStock(this.operationalCannons, gamedatas.operationalCannons);
-//
-//			this.populateStock(this.playerHand, gamedatas.hand);
-//
-//			// Add the card class to all stock items
-//			dojo.query('.stockitem').forEach(node=>dojo.addClass(node, 'card'));
-//			// Add the cardInHand to all the children divs of #myHand
-//			dojo.query('#myHand div').forEach(node=>dojo.addClass(node, 'cardInHand'));
-//		},
-//
-//		initializeCardStock: function(div_container, itemsPerRow)
-//		{
-//			var stock = new ebg.stock();
-//			stock.create(this, $(div_container), this.cardWidth, this.cardHeight);
-//			if (itemsPerRow == undefined)
-//				itemsPerRow = 10;
-//			stock.image_items_per_row = itemsPerRow;
-//			stock.setSelectionMode(1);
-//			
-//			if (div_container != 'myHand')
-//			{
-//				stock.container_div.width = "120px"; // enough just for 1 card
-//				stock.autowidth = false; // this is required so it obeys the width set above
-//				stock.use_vertical_overlap_as_offset = false; // this is to use normal vertical_overlap
-//				stock.vertical_overlap = 75; // overlap
-//				stock.horizontal_overlap  = -1; // current bug in stock - this is needed to enable z-index on overlapping items
-//				stock.item_margin = 0; // has to be 0 if using overlap
-//			}
-//
-//			return stock;
-//		},
-//
-//		populateStock: function(stockVariable, stockCards)
-//		{
-//			console.log(`Populating ${stockVariable.control_name}:`);
-//			for (var i in stockCards) 
-//			{
-//				var card = stockCards[i];
-//				this.printCard(card);
-//				stockVariable.addToStockWithId(this.getCardUniqueId(card.type, card.type_arg), card.id);
-//			}
-//		},
-		
-//		stockHeight: function(stock)
-//		{
-//			return (1 - stock.vertical_overlap / 100) * stock.item_height * (stock.count() - 1) + stock.item_height;
-//		},
-//
-//		columnsHeight: function()
-//		{
-//			columnHeights = [
-//				this.stockHeight(this.waterColumn),
-//				this.stockHeight(this.treasureColumn),
-//				this.stockHeight(this.bustedCannons) + this.stockHeight(this.breaches) + 10,
-//				this.stockHeight(this.operationalCannons)
-//			];
-//			
-//			// The +15 accounts for the bottom padding of the #gameboard 
-//			return Math.max(...columnHeights) + 15;
-//		},
 
         ///////////////////////////////////////////////////
         //// Game & client states
@@ -504,23 +395,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             script.
         
         */
-//		getCardUniqueId: function(type, type_arg)
-//		{
-//			if (type == 'clearWater')
-//				return 100 + Number(type_arg);
-//			else if (type == 'backside')
-//				return 99;
-//			else if (type == 'minor' || type == 'major' || type == 'massive' || type == 'monster')
-//				return 1 + Number(type_arg);
-//			else if (type == '1' || type == '2' || type == '3')
-//				return Number(type);
-//			// TODO: Maybe remove this check later for slight performance boost?
-//			else if (this.items.includes(type))
-//				return this.items.indexOf(type);
-//			else
-//				console.log(`getCardUniqueId: type <${type}> not recognized.`);
-//		},
-
 		// Gives the index of the appropriate image in the WaterDeck.jpg (0 indexed)
 		waterDeckIndexCard(card)
 		{
@@ -539,15 +413,22 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 		printCard: function(card)
 		{
-				console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}`); 
+			console.log(`card.type: ${card.type}, card.type_arg: ${card.type_arg}, card.id: ${card.id}`); 
 		},
-
-		flipCard: function(cardManager, card)
+		
+		// Animation helpers
+		dealWaterCardAnimation: function(ids, destination)
 		{
-			card.flipped = !card.flipped;
-			cardManager.updateCardInformations(card);
+			let cardNumber = 0;
+			ids.forEach(cardId => {
+				cardNumber = this.waterDeck.getCardNumber();
+				if (cardNumber >= 1)
+				{
+					const topCard = {id: cardId};
+					destination.addCard(topCard, {fromStock: this.waterDeck});
+				}
+			});
 		},
-
 
         ///////////////////////////////////////////////////
         //// Player's action
@@ -612,16 +493,61 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         },    
         
         */
-
-		notif_rolledEnemyDice: function(notif)
+		
+		notif_checkForBreaches: function(notif)
 		{
-			console.log('notif_rolledEnemyDice');
+			console.log('notif_checkForBreaches');
+			console.log(notif);
+			
+			this.dealWaterCardAnimation(notif.ids, this.waterColumn);	
+		},
+
+		notif_sinkingProcedures: function(notif)
+		{
+			console.log('notif_sinkingProcedures');
+			console.log(notif);
+
+			// Rebuild the water deck with all available cards (water column, treasure column, discard, deck) and shuffle
+			this.waterDeck.addCards(this.waterColumn.getCards().map(card => ({id: card.id,})));
+			this.waterDeck.addCards(this.treasureColumn.getCards().map(card => ({id: card.id,})));
+			// TODO: also add cards from the discard pile
+			this.waterDeck.shuffle().then(() => console.log('Water deck shuffled'));
+			
+			// Manage the breaches as well
+			this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
+		},
+
+		notif_rollEnemyDice: function(notif)
+		{
+			console.log('notif_rollEnemyDice');
 			console.log(notif);
 		
 			// Get the enemy dice, update their face values to match the new values from the notif, and play the die rolling animation
 			const dice = this.enemyDice.getDice();
 			dice.forEach(die => die.face = notif.diceRollMapping[die.id]);
 			this.enemyDice.rollDice(dice, {duration: [800, 1200]});
-		}
+		},
+
+		notif_resolveBasicWater: function(notif)
+		{
+			console.log('notif_resolveBasicWater');
+			console.log(notif);
+
+			this.dealWaterCardAnimation(notif.ids, this.waterColumn);
+		},
+
+		notif_resolveBasicBreach: function(notif)
+		{
+			console.log('notif_resolveBasicBreach');
+			console.log(notif);
+
+			this.breaches.addCard(notif.ids[0]);
+		},
+
+		notif_resolveBasicCannon: function(notif)
+		{
+			console.log('notif_resolveBasicCannon');
+			console.log(notif);
+		},
    });             
 });
