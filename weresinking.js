@@ -197,7 +197,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 		setupCards: function(gamedatas)
 		{
-			this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, 5);
+			this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, gamedatas.deckCount.water);
 			this.waterDiscard = null;
 			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager); 
 			this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
@@ -213,7 +213,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.bustedCannons.onCardCountChange = (cardCount) => {dojo.style('breaches', 'marginTop', `${this.cardHeight + this.bigCardGap * (cardCount-1) + 20}px`)};
 			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager, this.bigCardGap);
 
-			this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, 1);
+			this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, gamedatas.deckCount.breaches);
 			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager, this.bigCardGap);
 
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
@@ -417,17 +417,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		},
 		
 		// Animation helpers
-		dealWaterCardAnimation: function(ids, destination)
+		dealWaterCardAnimation: function(cards, destination)
 		{
-			let cardNumber = 0;
-			ids.forEach(cardId => {
-				cardNumber = this.waterDeck.getCardNumber();
-				if (cardNumber >= 1)
-				{
-					const topCard = {id: cardId};
-					destination.addCard(topCard, {fromStock: this.waterDeck});
-				}
-			});
+			console.log('New dealWaterCardAnimation');
+			let cardNumber = this.waterDeck.getCardNumber();
+
+			if (cardNumber >= cards.length)
+				destination.addCards(cards, {fromStock: this.waterDeck}, true); 
+			else
+				console.log('dealWaterCardAnimation: not enough cards. Need ' + cards.length + ' but only have ' + cardNumber);
 		},
 
         ///////////////////////////////////////////////////
@@ -499,7 +497,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_checkForBreaches');
 			console.log(notif);
 			
-			this.dealWaterCardAnimation(notif.ids, this.waterColumn);	
+			this.dealWaterCardAnimation(notif.cards, this.waterColumn);	
 		},
 
 		notif_sinkingProcedures: function(notif)
@@ -515,6 +513,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			
 			// Manage the breaches as well
 			this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
+		},
+
+		notif_dealWaterAndTreasure: function(notif)
+		{
+			console.log('notif_dealWaterAndTreasure');
+			console.log(notif);
+
+			// Deal the necessary water and treasure cards
+			this.dealWaterCardAnimation(notif.ids, this.waterColumn);
 		},
 
 		notif_rollEnemyDice: function(notif)
@@ -533,7 +540,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_resolveBasicWater');
 			console.log(notif);
 
-			this.dealWaterCardAnimation(notif.ids, this.waterColumn);
+			this.dealWaterCardAnimation(notif.cards, this.waterColumn);
 		},
 
 		notif_resolveBasicBreach: function(notif)
@@ -541,13 +548,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_resolveBasicBreach');
 			console.log(notif);
 
-			this.breaches.addCard(notif.ids[0]);
+			this.breaches.addCard(notif.ids[0], {fromStock: this.breachesDeck}, true);
 		},
 
 		notif_resolveBasicCannon: function(notif)
 		{
 			console.log('notif_resolveBasicCannon');
 			console.log(notif);
+
+			this.bustedCannons.addCard(notif.ids[0], {fromStock: this.cannons}, true);
 		},
    });             
 });

@@ -64,13 +64,11 @@ class Game extends \Table
 			$water += $this->tokens['breaches'][$details['type']]['scale'];
 		}
 
-		// Deal $water number of water cards from the deck to the waterColumn
-		$ids = $this->pickCardsForWaterColumn($water);
-		
+		// Notify client to deal water cards to the Water Column
 		$this->notify->all('checkForBreachesMessage', clienttranslate('Step 1). Check For Breaches'));
 		$this->notify->all('checkForBreaches', clienttranslate('${waterNbr} card(s) to the Water Column'), array(
-			'waterNbr' => $water,	
-			'ids' => $ids,
+			'waterNbr' => $water, // Needed for the notification's message
+			'cards' => array_map(fn($id): array => ['id' => $id, 'type' => 'backside', 'type_arg' => 0], $this->pickCardsForWaterColumn($water)),
 		));
 		$this->gamestate->nextState();
 	}
@@ -916,6 +914,13 @@ class Game extends \Table
 		// This player's hand
 		$result['hand'] = $this->water->getPlayerHand($current_player_id);
 
+		// Deck info
+		$result['deckCount'] = [
+			'water' => $this->water->countCardInLocation('deck'),
+			'breaches' => $this->breaches->countCardInLocation('deck'),
+			'cannons' => $this->cannons->countCardInLocation('deck'),
+		];
+
 		// Cannon dice	
 		$diceInfo = $this->getCollectionFromDB("SELECT `die_id`, `type`, `value` FROM `dice`");
 		foreach (['busted', 'operational'] as $cannonType)
@@ -1448,9 +1453,9 @@ class Game extends \Table
 	public function resolveBasicWater(): void
 	{
 		$this->debug("\nResolving basic water...\n");
-		$ids = $this->pickCardsForWaterColumn(1);
+		$id = $this->pickCardsForWaterColumn(1)[0];
 		$this->notify->all('resolveBasicWater', 'Resolved water die result: Dealt a card to water column', array(
-			'ids' => $ids,	
+			'cards' => [['id' => $id, 'type' => 'backside', 'type_arg' => 0]],
 		));
 	}
 
