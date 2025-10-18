@@ -127,13 +127,18 @@ class Game extends \Table
 	public function stDealWaterAndTreasure()
 	{
 		$this->notify->all('dealWaterAndTreasureMessage', clienttranslate('Step 3.) Deal Water and Treasure'));
+		
+		// Making a list of all the cards added for the client to do proper animations
+		$cards = [];
 
 		$numPlayers = $this->getPlayersNumber();
 		$thresholdLevel = (int) $this->globals->get('THRESHOLD_LEVEL');
 		$thresholdPanelInfo = $this->tokens['thresholdSheets']["$numPlayers players"]["level $thresholdLevel"];
 		
 		// Pick the correct number of cards for the water column according to the threshold panel
-		$this->pickCardsForWaterColumn((int) $thresholdPanelInfo['water']);
+		$waterIds = $this->pickCardsForWaterColumn((int) $thresholdPanelInfo['water']);
+		foreach ($waterIds as $id)
+			$cards[] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
 
 		// Draw the correct number of cards for the treasure column. If you find a clear water, put it in the water column and keep drawing.
 		// (since the default value of card_face_up is true, the waters we find will have the proper card_face_up value by default)
@@ -142,6 +147,10 @@ class Game extends \Table
 		while ($remainingTreasures > 0)
 		{
 			$card = $this->water->getCardOnTop('deck');
+			
+			// Whether its a clear water or a treasure, this will work either way.
+			$cards[] = ['id' => $card['id'], 'type' => $card['type'], 'type_arg' => $card['type_arg']];
+
 			if ($card['type'] === 'clearWater')
 			{
 				$this->water->insertCardOnExtremePosition($card['id'], 'waterColumn', COLUMN_BOTTOM);
@@ -158,6 +167,7 @@ class Game extends \Table
 			'waterNbr' => $thresholdPanelInfo['water'],
 			'treasureNbr' => $thresholdPanelInfo['treasure'],
 			'clearWaterNbr' => $clearWaterNbr,
+			'cards' => $cards,
 		));	
 		$this->gamestate->nextState();
 	}
@@ -1261,6 +1271,11 @@ class Game extends \Table
 		$this->fireCannons($operableCannons);
 	}
 
+	public function testUpdate()
+	{
+		$this->notify->all('testUpdate');
+	}
+
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public function getStateName()
 	{
@@ -1455,7 +1470,7 @@ class Game extends \Table
 		$this->debug("\nResolving basic water...\n");
 		$id = $this->pickCardsForWaterColumn(1)[0];
 		$this->notify->all('resolveBasicWater', 'Resolved water die result: Dealt a card to water column', array(
-			'cards' => [['id' => $id, 'type' => 'backside', 'type_arg' => 0]],
+			'card' => ['id' => $id, 'type' => 'backside', 'type_arg' => 0],
 		));
 	}
 

@@ -419,11 +419,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		// Animation helpers
 		dealWaterCardAnimation: function(cards, destination)
 		{
-			console.log('New dealWaterCardAnimation');
-			let cardNumber = this.waterDeck.getCardNumber();
+			let cardsNumber = this.waterDeck.getCardNumber();
 
-			if (cardNumber >= cards.length)
-				destination.addCards(cards, {fromStock: this.waterDeck}, true); 
+			if (cardsNumber >= cards.length)
+				destination.addCard(cards, {fromStock: this.waterDeck}, true); 
 			else
 				console.log('dealWaterCardAnimation: not enough cards. Need ' + cards.length + ' but only have ' + cardNumber);
 		},
@@ -497,13 +496,21 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_checkForBreaches');
 			console.log(notif);
 			
-			this.dealWaterCardAnimation(notif.cards, this.waterColumn);	
+			this.dealWaterCardAnimation(notif.cards, this.waterColumn);
 		},
-
+		
+		// Sinking procedures animation!
+		// STEP 1) Remove the owest section of the ship from the game and take out its two Chest Tokens (without revealing them)
+		// STEP 2) Place the Chest Tokens face-down at the bottom of the Breaches Column
+		// STEP 3) Move the Threshold Sheet to the next level by either rotating or flipping it to its other side. Then tuck half of the sheet back under the Game Board so that only the current level shows and faces the same direction as the Game Board
+		// STEP 4) Shuffle all cards in the Water Deck, Discard Pile, and the Water and Treasure Columns to create a new Water Deck
+		// STEP 5) IF there are any Breach cards in the Breaches Column, discard all breach cards and gain 1 Permanent Breach Token. Add the Permanent Breach Token to the top of the Breaches Column.
+		// STEP 6) Flip over the First Mate Scroll and continue the round on Step 3 of the duties checklist.
 		notif_sinkingProcedures: function(notif)
 		{
 			console.log('notif_sinkingProcedures');
 			console.log(notif);
+
 
 			// Rebuild the water deck with all available cards (water column, treasure column, discard, deck) and shuffle
 			this.waterDeck.addCards(this.waterColumn.getCards().map(card => ({id: card.id,})));
@@ -515,13 +522,26 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
 		},
 
+		notif_testUpdate()
+		{
+			console.log('TESTING UPDATING THRESHOLD');
+
+			// Trying to figure out how to update threshold sheet
+			// <div id="thresholdSheet" class="sheet threshold_${playerCount}players_level${gamedatas.globals.threshold}"></div>
+			dojo.setStyle('thresholdSheet', 'z-index', 10);
+			//dojo.Animation('thresholdSheet', 'transform', 'rotateZ(180deg)');
+			dojo.style('thresholdSheet', 'transform', 'rotateZ(180deg)');
+			dojo.setStyle('thresholdSheet', 'z-index', 0);
+		},
+
 		notif_dealWaterAndTreasure: function(notif)
 		{
 			console.log('notif_dealWaterAndTreasure');
 			console.log(notif);
 
 			// Deal the necessary water and treasure cards
-			this.dealWaterCardAnimation(notif.ids, this.waterColumn);
+			const cards = notif.cards;
+			
 		},
 
 		notif_rollEnemyDice: function(notif)
@@ -540,7 +560,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_resolveBasicWater');
 			console.log(notif);
 
-			this.dealWaterCardAnimation(notif.cards, this.waterColumn);
+			this.dealWaterCardAnimation(notif.card, this.waterColumn);
 		},
 
 		notif_resolveBasicBreach: function(notif)
