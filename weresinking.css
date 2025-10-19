@@ -92,9 +92,12 @@
 }
 
 #thresholdSheet {
+	perspective: 1000px;
 	z-index: 0;
 	margin-top: 110px;
 	background-color: #5E4C42;
+	transform-style: preserve-3d;
+	transition: transform 1s;
 }
 
 #enemySheetWrapper {
@@ -355,8 +358,16 @@
 	background-position-y: 30px; 
 }
 
-/* Threshold Sheets: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * 3 players */
+/* Threshold Sheets: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+.threshold_rotateAround {
+	transform: rotateZ(180deg);
+}
+
+.threshold_flipOver {
+	transform: rotateX(180deg);
+}
+
+/* 3 players */
 .threshold_3players_level1 {
 	background-image: url('img/ThresholdSheets.jpg');
 	background-position: 0px 336px;

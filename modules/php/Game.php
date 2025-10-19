@@ -89,7 +89,10 @@ class Game extends \Table
 		));
 		if ($waterCardNbr >= $waterThreshold)
 		{
-			$this->notify->all('sinkingProcedures', clienttranslate('The number of cards is equal to or greater than the Water Threshold. Continue on to sinking procedures.'));
+			$this->notify->all('sinkingProcedures', clienttranslate('The number of cards is equal to or greater than the Water Threshold. Continue on to sinking procedures.'), array(
+				'playerNbr' => $this->getPlayersNumber(),
+				'thresholdLevel' => $this->globals->get('THRESHOLD_LEVEL'),
+			));
 
 			// Sinking procedures here
 			// STEP 1: Remove the lowest section of the ship from the game and take out its two Chest Tokens (without revealing them)
@@ -1273,7 +1276,10 @@ class Game extends \Table
 
 	public function testUpdate()
 	{
-		$this->notify->all('testUpdate');
+		$this->notify->all('testUpdate', '', array(
+			'playerNbr' => $this->getPlayersNumber(),
+			'thresholdLevel' => $this->globals->get('THRESHOLD_LEVEL'),
+		));
 	}
 
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

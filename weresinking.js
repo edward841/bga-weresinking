@@ -511,6 +511,23 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_sinkingProcedures');
 			console.log(notif);
 
+			// Adjust water threshold sheet
+			switch (notif.thresholdLevel)
+			{	
+				case 1: case 3:
+					dojo.style('thresholdSheet', 'transform', 'rotateZ(180deg)');
+					dojo.addClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel+1}`);	
+					dojo.removeClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel}`);	
+					break;
+
+				case 2:
+					dojo.style('thresholdSheet', 'transform', 'rotateX(180deg)');
+
+					dojo.addClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel+1}`);	
+					dojo.removeClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel}`);	
+					dojo.style('thresholdSheet', 'transform', 'rotateX(0deg)');
+					break;
+			}
 
 			// Rebuild the water deck with all available cards (water column, treasure column, discard, deck) and shuffle
 			this.waterDeck.addCards(this.waterColumn.getCards().map(card => ({id: card.id,})));
@@ -522,16 +539,28 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
 		},
 
-		notif_testUpdate()
+		notif_testUpdate: function(notif)
 		{
 			console.log('TESTING UPDATING THRESHOLD');
+			console.log(notif);
 
 			// Trying to figure out how to update threshold sheet
-			// <div id="thresholdSheet" class="sheet threshold_${playerCount}players_level${gamedatas.globals.threshold}"></div>
-			dojo.setStyle('thresholdSheet', 'z-index', 10);
-			//dojo.Animation('thresholdSheet', 'transform', 'rotateZ(180deg)');
-			dojo.style('thresholdSheet', 'transform', 'rotateZ(180deg)');
-			dojo.setStyle('thresholdSheet', 'z-index', 0);
+			switch (notif.thresholdLevel)
+			{	
+				case 1: case 3:
+					dojo.style('thresholdSheet', 'transform', 'rotateZ(180deg)');
+					dojo.addClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel+1}`);	
+					dojo.removeClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel}`);	
+					break;
+
+				case 2:
+					dojo.style('thresholdSheet', 'transform', 'rotateX(180deg)');
+
+					dojo.addClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel+1}`);	
+					dojo.removeClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel}`);	
+					dojo.style('thresholdSheet', 'transform', 'rotateX(0deg)');
+					break;
+			}
 		},
 
 		notif_dealWaterAndTreasure: function(notif)
@@ -540,7 +569,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 
 			// Deal the necessary water and treasure cards
-			const cards = notif.cards;
+			notif.cards.forEach(card => {
+				if (card.type === 'backside' || card.type === 'clearWater')
+					this.waterColumn.addCard(card, {fromStock: this.waterDeck,});
+				else
+					this.treasureColumn.addCard(card, {fromStock: this.waterDeck,});
+			});
 			
 		},
 
