@@ -92,6 +92,7 @@ class Game extends \Table
 			$this->notify->all('sinkingProcedures', clienttranslate('The number of cards is equal to or greater than the Water Threshold. Continue on to sinking procedures.'), array(
 				'playerNbr' => $this->getPlayersNumber(),
 				'thresholdLevel' => $this->globals->get('THRESHOLD_LEVEL'),
+				'deckNbr' => $this->water->countCardInLocation('deck'),
 			));
 
 			// Sinking procedures here
@@ -363,7 +364,7 @@ class Game extends \Table
 					$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
 					$dialValues = array_column(array_values($playerInfo), 'dial_location'); 
 					$plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
-					$treasureNbr = $this->water->countCardsInLocation('treasureColumn');
+					$treasureNbr = $this->water->countCardInLocation('treasureColumn');
 					$moveOnToNextAction = false;
 
 					// 1. Only 1 plunderer! Give them all that precious treasure ARGH!!	
@@ -1324,7 +1325,7 @@ class Game extends \Table
 			// Dial values of each player in order (e.g. ['bucket', 'plunder', 'plunder', 'patch', 'fire'])
 			$dialValues = array_column(array_values($playerInfo), 'dial_location'); 
 			$plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
-			$theresStillEnoughTreasure = $this->water->countCardsInLocation('treasureColumn') >= $plunderingPlayersNbr;
+			$theresStillEnoughTreasure = $this->water->countCardInLocation('treasureColumn') >= $plunderingPlayersNbr;
 				
 			if ($nobodyPlundersNext && $theresStillEnoughTreasure)
 			{

@@ -86,8 +86,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						<div id="waterColumn" class="column"></div>
 						<div id="treasureColumn" class="column"></div>
 						<div id="breachesColumn" class="column">
-							<div id="bustedCannons"></div>
-							<div id="bustedDice" class="diceColumn"></div>
+							<div id="permanentBreaches"></div>
+							<div id="bustedCannonsWrapper">
+								<div id="bustedCannons"></div>
+								<div id="bustedDice" class="diceColumn"></div>
+							</div>
 							<div id="breaches"></div>
 						</div>
 						<div id="cannonsColumnWrapper" class="column">
@@ -121,7 +124,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.setupCards(gamedatas);
 			this.setupDice(gamedatas);
 
-			dojo.style('gameCenter', 'marginBottom', `200px`)
+			// Additional UI modifications to fine tune the look further:
+			for (let i = 0; i < gamedatas.globals.permanentBreaches; i++)
+			{
+				dojo.create("div", {class: "permanentBreach"}, "permanentBreaches");
+			}
+
+			// Controls the amount of space for cards (the height of the gap between the board and the player hand)
+			this.correctGapUnderBoard();
 
             this.setupNotifications();
 
@@ -266,10 +276,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				var card = cards[i];
 				this.printCard(card);
 				stock.addCard(card);
-
-// 				Clearly this doesnt work, but why???
-//				if (card.card_type === 'backside')
-//					this.flipCard(this.waterManager, card);
 			}
 		},
 
@@ -427,6 +433,35 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				console.log('dealWaterCardAnimation: not enough cards. Need ' + cards.length + ' but only have ' + cardNumber);
 		},
 
+		correctGapUnderBoard: function()
+		{
+			var water = 0, treasure = 0, breaches = 0, cannons = 0;
+			if (this.waterColumn.getCardCount() > 0)
+				water = (this.waterColumn.getCardCount() - 1) * this.smallCardGap + this.cardHeight;
+
+			if (this.treasureColumn.getCardCount() > 0)
+				treasure = (this.treasureColumn.getCardCount() - 1) * this.smallCardGap + this.cardHeight;
+		
+			const permanentBreachNbr = dojo.query('.permanentBreach').length;
+			if (permanentBreachNbr > 0)
+				breaches += permanentBreachNbr * (34 + 15); // The +15 accounts for margin-bottom
+			if (this.bustedCannons.getCardCount() > 0)
+				breaches += (this.bustedCannons.getCardCount() - 1) * this.bigCardGap + this.cardHeight;
+			if (this.breaches.getCardCount() > 0)
+				breaches += (this.breaches.getCardCount() - 1) * this.bigCardGap + this.cardHeight;
+			if (this.bustedCannons.getCardCount() > 0 && this.breaches.getCardCount() > 0)
+				breaches += 5; // Account for the gap between busted cannons and breaches?
+			
+			if (this.operationalCannons.getCardCount() > 0)
+				cannons = (this.operationalCannons.getCardCount() - 1) * this.bigCardGap + this.cardHeight;
+
+			gap = Math.max(water, treasure, breaches, cannons);
+			gap += 30 // For the gap at the top and a gap at the bottom
+			console.log(`water:${water}\ntreasure:${treasure}\nbreaches:${breaches}\ncannons:${cannons}\ngap:${gap}`);
+
+			dojo.style('gameCenter', 'marginBottom', `${gap}px`);
+		},
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -497,6 +532,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 			
 			this.dealWaterCardAnimation(notif.cards, this.waterColumn);
+			this.correctGapUnderBoard();
 		},
 		
 		// Sinking procedures animation!
@@ -530,13 +566,20 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			}
 
 			// Rebuild the water deck with all available cards (water column, treasure column, discard, deck) and shuffle
-			this.waterDeck.addCards(this.waterColumn.getCards().map(card => ({id: card.id,})));
-			this.waterDeck.addCards(this.treasureColumn.getCards().map(card => ({id: card.id,})));
+			this.waterDeck.addCards(this.waterColumn.getCards().map(card => ({id: card.id})));
+			this.waterDeck.addCards(this.treasureColumn.getCards().map(card => ({id: card.id})));
 			// TODO: also add cards from the discard pile
 			this.waterDeck.shuffle().then(() => console.log('Water deck shuffled'));
+			this.waterDeck.setCardNumber(notif.deckNbr);
+			
+			this.correctGapUnderBoard();
 			
 			// Manage the breaches as well
-			this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
+			if (this.breachesDeck.getCardCount() > 0)
+			{
+				this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
+				dojo.create('div', {class: 'permanentBreach'}, 'permanentBreaches');
+			}
 		},
 
 		notif_testUpdate: function(notif)
@@ -576,6 +619,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					this.treasureColumn.addCard(card, {fromStock: this.waterDeck,});
 			});
 			
+			this.correctGapUnderBoard();
 		},
 
 		notif_rollEnemyDice: function(notif)
@@ -595,6 +639,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 
 			this.dealWaterCardAnimation(notif.card, this.waterColumn);
+			this.correctGapUnderBoard();
 		},
 
 		notif_resolveBasicBreach: function(notif)
@@ -603,6 +648,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 
 			this.breaches.addCard(notif.ids[0], {fromStock: this.breachesDeck}, true);
+			this.correctGapUnderBoard();
 		},
 
 		notif_resolveBasicCannon: function(notif)
@@ -611,6 +657,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 
 			this.bustedCannons.addCard(notif.ids[0], {fromStock: this.cannons}, true);
+			this.correctGapUnderBoard();
 		},
    });             
 });
