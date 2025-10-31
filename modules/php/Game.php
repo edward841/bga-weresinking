@@ -92,7 +92,7 @@ class Game extends \Table
 			$this->notify->all('sinkingProcedures', clienttranslate('The number of cards is equal to or greater than the Water Threshold. Continue on to sinking procedures.'), array(
 				'playerNbr' => $this->getPlayersNumber(),
 				'thresholdLevel' => $this->globals->get('THRESHOLD_LEVEL'),
-				'deckNbr' => $this->water->countCardInLocation('deck'),
+				'deckNbr' => $this->water->countCardInLocation('deck') + $this->water->countCardInLocation('discard') + $this->water->countCardInLocation('waterColumn') + $this->water->countCardInLocation('treasureColumn'),
 			));
 
 			// Sinking procedures here

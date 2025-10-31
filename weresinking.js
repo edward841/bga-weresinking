@@ -569,8 +569,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.waterDeck.addCards(this.waterColumn.getCards().map(card => ({id: card.id})));
 			this.waterDeck.addCards(this.treasureColumn.getCards().map(card => ({id: card.id})));
 			// TODO: also add cards from the discard pile
-			this.waterDeck.shuffle().then(() => console.log('Water deck shuffled'));
 			this.waterDeck.setCardNumber(notif.deckNbr);
+			this.waterDeck.shuffle().then(() => console.log('Water deck shuffled'));
 			
 			this.correctGapUnderBoard();
 			
