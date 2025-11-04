@@ -883,15 +883,16 @@ class Game extends \Table
         $result = [];
 
         // WARNING: We must only return information visible by the current player.
-        $current_player_id = (int) $this->getCurrentPlayerId();
+		$current_player_id = (int) $this->getCurrentPlayerId();
+		$result['currentPlayer'] = $current_player_id;
 
         // Get information about players.
         // NOTE: you can retrieve some extra field you added for "player" table in `dbmodel.sql` if you need it.
         $result["players"] = $this->getCollectionFromDb(
-            "SELECT `player_id` `id`, `player_score` `score` FROM `player`"
+            "SELECT `player_id` `id`, `player_score` `score`, `player_color` `color` FROM `player`"
         );
 
-        // TODO: Gather all information about current game situation (visible by player $current_player_id).
+        // Gather all information about current game situation (visible by player $current_player_id).
 		$globals['threshold'] = $this->globals->get('THRESHOLD_LEVEL');
 		$globals['enemy'] = $this->globals->get('ENEMY');
 		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
@@ -1470,6 +1471,26 @@ class Game extends \Table
 		$this->globals->set('LIST', $activatedCannons);
 	}
 
+//	define('RED', 'ff5165');
+//	define('ORANGE','f19c27');
+//	define('GREEN','00c398');
+//	define('BLUE','4ccaf2');
+//	define('PURPLE', 'af73b1');
+//	define('GRAY', '646D74');
+//
+//	public function colorCodeToName(string $code)
+//	{
+//		$mapping = [
+//			'ff5165' => 'red',
+//			'f19c27' => 'orange',
+//			'00c398' => 'green',
+//			'4ccaf2' => 'blue',
+//			'af73b1' => 'purple',
+//			'646D74' => 'gray',
+//		];
+//		return $mapping[$code];
+//	}
+	
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Basic Enemy Dice:
 	public function resolveBasicWater(): void

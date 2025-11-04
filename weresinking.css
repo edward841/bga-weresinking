@@ -91,6 +91,15 @@
 	border-radius: 10px;	
 }
 
+.playerSheet {
+	width: 336px;
+	height: 240px;
+	margin-top: 10px;
+	margin-bottom: 0px;
+	background-color: red;
+	background-image: url('img/CharacterSheets.jpg');
+}
+
 #thresholdSheet {
 	perspective: 1000px;
 	z-index: 0;
@@ -514,3 +523,45 @@
 	background-image: url('img/EnemySheets.jpg');
 	background-position: 720px 0px;
 }
+
+/* Player Sheets */
+.playerSheet.actionSide {
+	background-position-x: 0px;
+}
+
+.playerSheet.backstorySide {
+	background-position-x: 336px;
+}
+
+/*	
+	RED		ff5165
+	ORANGE	f19c27
+	GREEN	00c398
+	BLUE	4ccaf2
+	PURPLE	af73b1
+	GRAY	646D74
+*/
+.playerSheet[data-color="ff5165"]{
+	background-position-y: 0px;
+}
+
+.playerSheet[data-color="f19c27"] {
+	background-position-y: 960px;
+}
+
+.playerSheet[data-color="00c398"] {
+	background-position-y: 720px;
+}
+
+.playerSheet[data-color="4ccaf2"] {
+	background-position-y: 480px;
+}
+
+.playerSheet[data-color="af73b1"] {
+	background-position-y: 240px;
+}
+
+.playerSheet[data-color="646D74"] {
+	background-position-y: 1200px;
+}
+

@@ -71,6 +71,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log( "Starting game setup" );
 			console.log( `Enemy is ${gamedatas.globals.enemy}.`);
 			console.log( `There are ${playerCount} players!`);
+			const playerColor = gamedatas.players[gamedatas.currentPlayer].color;
 
 			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
 			<div id="gameCenter"> 
@@ -109,6 +110,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			<div id="myHandWrapper" class="whiteblock">
 				<b id="myHandLabel">${_('My hand')}</b>
 				<div id="myHand"></div>
+			</div>
+			<div id="myCharacterWrapper" class="whiteblock">
+				<b id="myCharacterLabel">${_('My character')}</b>
+				<div id="myCharacter" class="sheet playerSheet actionSide" data-color="${playerColor}"></div>
 			</div>
 			`);
 
