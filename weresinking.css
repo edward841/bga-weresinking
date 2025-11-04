@@ -95,9 +95,16 @@
 	width: 336px;
 	height: 240px;
 	margin-top: 10px;
+	margin-right: 10px;
 	margin-bottom: 0px;
 	background-color: red;
 	background-image: url('img/CharacterSheets.jpg');
+}
+
+#myCrew {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
 }
 
 #thresholdSheet {

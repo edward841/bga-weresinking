@@ -115,6 +115,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				<b id="myCharacterLabel">${_('My character')}</b>
 				<div id="myCharacter" class="sheet playerSheet actionSide" data-color="${playerColor}"></div>
 			</div>
+			<div id="myCrewWrapper" class="whiteblock">
+				<b id="myCrewLabel">${_('My crew')}</b>
+				<div id="myCrew"></div>
+			</div>
 			`);
 
 			// create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
@@ -137,6 +141,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 			// Controls the amount of space for cards (the height of the gap between the board and the player hand)
 			this.correctGapUnderBoard();
+			for (var player_id in gamedatas.players)
+			{
+				if (player_id === gamedatas.currentPlayer + '')
+					continue;
+
+				var color = this.gamedatas.players[player_id].color;
+				dojo.create("div", {class: "sheet playerSheet backstorySide", 'data-color': color}, 'myCrew');
+			}
 
             this.setupNotifications();
 
