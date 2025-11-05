@@ -152,7 +152,7 @@
 #gameboard {
 	width: 720px;
 	height: 447px;
-	margin-bottom: 15px; /* Matching the margin-bottom: 15px of the #permanentBreach */
+	margin-bottom: 15px; /* Matching the margin-bottom: 15px of the last #permanentBreach */
 	background-image: url('img/GameBoard.png');
 }
 
@@ -204,7 +204,12 @@
 	width: 120px;
 	height: 34px;
 	border-radius: 5px;
+	margin-bottom: 5px; /* The spacing between two permanent breaches */
+}
+
+#permanentBreaches > .permanentBreach:last-child {
 	margin-bottom: 15px; /* Matching the margin-bottom: 15px of the #gameboard */
+	/* If you want to adjust this, also adjust the details of this.gapBetweenCannonsAndBreaches */
 }
 
 #cannonsColumnWrapper {
@@ -271,7 +276,7 @@
 	width: 102px;
 	height: 102px;
 	border-radius: 51px;
-	margin: 10px;
+	margin-top: 10px;
 	background-image: url('img/Dials.jpg');
 }
 
@@ -279,7 +284,6 @@
 	width: 120px;
 	display: flex;
 	flex-direction: column;
-	flex-wrap: nowrap;
 	align-items: center;
 }
 

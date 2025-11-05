@@ -86,10 +86,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					<div id="columns">
 						<div id="waterColumnWrapper">
 							<div id="waterColumn" class="column"></div>
-							<div id="waterColumnDials" class="dialColumn">
-								<div id="dialTest" class="dial" data-value="backside" data-color="${playerColor}"></div>
-								<div id="dialTest1" class="dial" data-value="fire" data-color="${playerColor}"></div>
-							</div>
+							<div id="waterColumnDials" class="dialColumn"></div>
 						</div>
 						<div id="treasureColumnWrapper">
 							<div id="treasureColumn" class="column"></div>
@@ -102,7 +99,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 								<div id="bustedDice" class="diceColumn"></div>
 							</div>
 							<div id="breaches"></div>
-							<div id="breachesColumnDials" class="dialColumn"></div>
+							<div id="breachesColumnDials" class="dialColumn">
+								<div id="dialTest" class="dial" data-value="backside" data-color="${playerColor}"></div>
+								<div id="dialTest1" class="dial" data-value="fire" data-color="${playerColor}"></div>
+							</div>
 						</div>
 						<div id="cannonsColumnWrapper" class="column">
 							<div id="cannonsColumn"></div>
@@ -238,10 +238,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 		setupCards: function(gamedatas)
 		{
+			const gapBetweenCardsAndDials = 0;
+			const gapBetweenCannonsAndBreaches = (gamedatas.globals.permanentBreaches > 0) ? 30 : 20;
+
 			this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, gamedatas.deckCount.water);
 			this.waterDiscard = null;
-			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager); 
+			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager);
+			this.waterColumn.onCardCountChange = (cardCount) => {dojo.style('waterColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.smallCardGap) + gapBetweenCardsAndDials}px`)};
 			this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
+			this.treasureColumn.onCardCountChange = (cardCount) => {dojo.style('treasureColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.smallCardGap) + gapBetweenCardsAndDials}px`)};
 		
 			const playerHandStock = BgaCards.LineStock;
 			this.playerHand = new playerHandStock(this.waterManager, document.getElementById('myHand'), {
@@ -249,13 +254,19 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				//fanShaped: true,
 			});
 
+
 			//this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);	
 			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager, this.bigCardGap);
-			this.bustedCannons.onCardCountChange = (cardCount) => {dojo.style('breaches', 'marginTop', `${this.cardHeight + this.bigCardGap * (cardCount-1) + 20}px`)};
+			this.bustedCannons.onCardCountChange = (cardCount) => {
+				dojo.style('breaches', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCannonsAndBreaches}px`); 
+				dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); 
+			};
 			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager, this.bigCardGap);
+			this.operationalCannons.onCardCountChange = (cardCount) => {dojo.style('cannonsColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCardsAndDials}px`)};
 
 			this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, gamedatas.deckCount.breaches);
 			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager, this.bigCardGap);
+			this.breaches.onCardCountChange = (cardCount) => {dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); };
 
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
@@ -491,6 +502,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(`water:${water}\ntreasure:${treasure}\nbreaches:${breaches}\ncannons:${cannons}\ngap:${gap}`);
 
 			dojo.style('gameCenter', 'marginBottom', `${gap}px`);
+		},
+
+		calculateStockHeight: function(count, gap)
+		{
+			return (count == 0) ? 0 : this.cardHeight + (count - 1) * gap;
 		},
 
         ///////////////////////////////////////////////////
