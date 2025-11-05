@@ -12,7 +12,7 @@
  * weresinking stylesheet
  *
  *
-
+ */
 /*
     This is the CSS stylesheet of your game User Interface.
     
@@ -115,53 +115,6 @@
 	background-repeat: no-repeat;
 }
 
-.damageCounterKraken {
-	margin-top: 294px;
-}
-
-.damageCounterShark {
-	margin-top: 280px;
-}
-
-.damageCounterSirens {
-	margin-top: 300px;
-}
-
-.damageCounterSkullsairs {
-	margin-top: 282px;
-}
-
-.enemy6HP {
-	background-position: -6px;
-}
-
-.enemy5HP {
-	background-position: 21px;
-}
-
-.enemy4HP {
-	background-position: 49px;
-}
-
-.enemy3HP {
-	background-position: 77px;
-}
-
-.enemy2HP {
-	background-position: 105px;
-}
-
-.enemy1HP {
-	background-position: 133px;
-}
-
-.enemy0HP {
-	background-position: 160px;
-}
-
-.noDamageCounter {
-	background-position: -50px;
-}
 
 .playerSheet {
 	width: 336px;
@@ -179,20 +132,12 @@
 	flex-wrap: wrap;
 }
 
-.dial {
-	width: 102px;
-	height: 102px;
-	border-radius: 51px;
-	margin: 20px;
-	background-image: url('img/Dials.jpg');
-}
-
 /* Critical divs positioning/styling:
  * gameCenter: Everything that goes in the middle of the table (threshold sheet, enemy sheet, game board, all the columns)
  * gameCore: Everything in the game center except for the threshold and enemy sheets (game board, cards, columns) 
  * gameBoard: The actual game board with the curved top that defines the location of all the other gameCenter components.
  * cardsOnBoardWrapper: Wrapper div that contains the three card piles on the game board (#waterDrawPile, #waterDiscardPile, #breachDrawPile)
- * columns: Wrapper div that contains all four columns (#waterColumn, #treasureColumn, #breachesColumn, #cannonColumn)
+ * columns: Wrapper div that contains all four columns (#waterColumnWrapper, #treasureColumnWrapper, #breachesColumnWrapper, #cannonsColumnWrapper)
  * myHandWrapper: Wrapper div for #myHand div that displays the current player's hand
  */
 #gameCenter {
@@ -239,15 +184,17 @@
 	width: 120px;
 }
 
-#waterColumn {
+#waterColumnWrapper {
+	display: flex;
+	flex-direction: column;
 	margin-left: 20px;
 }
 
-#treasureColumn {
+#treasureColumnWrapper {
 	margin-left: 70px;
 }
 
-#breachesColumn {
+#breachesColumnWrapper {
 	margin-left: 65px;
 	width: 120px;
 }
@@ -313,8 +260,83 @@
 	background-position: '0px 0px';
 }
 
+#myCharacterItemsWrapper {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.dial {
+	width: 102px;
+	height: 102px;
+	border-radius: 51px;
+	margin: 10px;
+	background-image: url('img/Dials.jpg');
+}
+
+.dialColumn {
+	width: 120px;
+	display: flex;
+	flex-direction: column;
+	flex-wrap: nowrap;
+	align-items: center;
+}
+
+#myDial {
+	margin: 30px;
+}
 
 /* CSS Sprite magic */
+/* Damage token */
+.damageCounterKraken {
+	margin-top: 294px;
+}
+
+.damageCounterShark {
+	margin-top: 280px;
+}
+
+.damageCounterSirens {
+	margin-top: 300px;
+}
+
+.damageCounterSkullsairs {
+	margin-top: 282px;
+}
+
+.enemy6HP {
+	background-position: -6px;
+}
+
+.enemy5HP {
+	background-position: 21px;
+}
+
+.enemy4HP {
+	background-position: 49px;
+}
+
+.enemy3HP {
+	background-position: 77px;
+}
+
+.enemy2HP {
+	background-position: 105px;
+}
+
+.enemy1HP {
+	background-position: 133px;
+}
+
+.enemy0HP {
+	background-position: 160px;
+}
+
+.noDamageCounter {
+	background-position: -50px;
+}
+
 /* Dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /* Positioning */
 .diceColumn {
@@ -539,7 +561,10 @@
 	background-position: 720px 0px;
 }
 
-/* Player Sheets */
+/* Player Sheets:
+ * actionSide class for the side with action summary, backstorySide class for the side with a backstory
+ * data-color for sheet color (one of the six hexadecimal values)
+ */
 .playerSheet.actionSide {
 	background-position-x: 0px;
 }
@@ -548,14 +573,6 @@
 	background-position-x: 336px;
 }
 
-/*	
-	RED		ff5165
-	ORANGE	f19c27
-	GREEN	00c398
-	BLUE	4ccaf2
-	PURPLE	af73b1
-	GRAY	646D74
-*/
 .playerSheet[data-color="ff5165"]{
 	background-position-y: 0px;
 }
@@ -580,6 +597,10 @@
 	background-position-y: 1200px;
 }
 
+/* Dial
+ * data-color indicates color (one of the six hexadecimal values)
+ * data-value indicates which action to display (one of backside, bucket, plunder, patch, fire)
+ */
 .dial[data-color="ff5165"] {
 	background-position-y: 0px;
 }

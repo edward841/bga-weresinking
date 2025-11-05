@@ -84,19 +84,30 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						<div id="breachesDrawPile"></div>
 					</div>
 					<div id="columns">
-						<div id="waterColumn" class="column"></div>
-						<div id="treasureColumn" class="column"></div>
-						<div id="breachesColumn" class="column">
+						<div id="waterColumnWrapper">
+							<div id="waterColumn" class="column"></div>
+							<div id="waterColumnDials" class="dialColumn">
+								<div id="dialTest" class="dial" data-value="backside" data-color="${playerColor}"></div>
+								<div id="dialTest1" class="dial" data-value="fire" data-color="${playerColor}"></div>
+							</div>
+						</div>
+						<div id="treasureColumnWrapper">
+							<div id="treasureColumn" class="column"></div>
+							<div id="treasureColumnDials" class="dialColumn"></div>
+						</div>
+						<div id="breachesColumnWrapper" class="column">
 							<div id="permanentBreaches"></div>
 							<div id="bustedCannonsWrapper">
 								<div id="bustedCannons"></div>
 								<div id="bustedDice" class="diceColumn"></div>
 							</div>
 							<div id="breaches"></div>
+							<div id="breachesColumnDials" class="dialColumn"></div>
 						</div>
 						<div id="cannonsColumnWrapper" class="column">
 							<div id="cannonsColumn"></div>
 							<div id="operationalDice" class="diceColumn"></div>
+							<div id="cannonsColumnDials" class="dialColumn"></div>
 						</div>
 					</div>
 				</div>
@@ -113,7 +124,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			</div>
 			<div id="myCharacterWrapper" class="whiteblock">
 				<b id="myCharacterLabel">${_('My character')}</b>
-				<div id="myCharacter" class="sheet playerSheet actionSide" data-color="${playerColor}"></div>
+				<div id="myCharacterItemsWrapper">
+					<div id="myCharacter" class="sheet playerSheet actionSide" data-color="${playerColor}"></div>
+					<div id="myDial" class="dial" data-color="${playerColor}" data-value="backside"></div>
+				</div>
 			</div>
 			<div id="myCrewWrapper" class="whiteblock">
 				<b id="myCrewLabel">${_('My crew')}</b>
