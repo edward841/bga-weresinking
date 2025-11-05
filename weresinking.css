@@ -91,22 +91,6 @@
 	border-radius: 10px;	
 }
 
-.playerSheet {
-	width: 336px;
-	height: 240px;
-	margin-top: 10px;
-	margin-right: 10px;
-	margin-bottom: 0px;
-	background-color: red;
-	background-image: url('img/CharacterSheets.jpg');
-}
-
-#myCrew {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-}
-
 #thresholdSheet {
 	perspective: 1000px;
 	z-index: 0;
@@ -177,6 +161,30 @@
 
 .noDamageCounter {
 	background-position: -50px;
+}
+
+.playerSheet {
+	width: 336px;
+	height: 240px;
+	margin-top: 10px;
+	margin-right: 10px;
+	margin-bottom: 0px;
+	background-color: red;
+	background-image: url('img/CharacterSheets.jpg');
+}
+
+#myCrew {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+}
+
+.dial {
+	width: 102px;
+	height: 102px;
+	border-radius: 51px;
+	margin: 20px;
+	background-image: url('img/Dials.jpg');
 }
 
 /* Critical divs positioning/styling:
@@ -572,3 +580,46 @@
 	background-position-y: 1200px;
 }
 
+.dial[data-color="ff5165"] {
+	background-position-y: 0px;
+}
+
+.dial[data-color="f19c27"] {
+	background-position-y: 510px;
+}
+
+.dial[data-color="00c398"] {
+	background-position-y: 408px;
+}
+
+.dial[data-color="4ccaf2"] {
+	background-position-y: 306px;
+}
+
+.dial[data-color="af73b1"] {
+	background-position-y: 204px;
+}
+
+.dial[data-color="646D74"] {
+	background-position-y: 102px;
+}
+
+.dial[data-value="backside"] {
+	background-position-x: 0px;
+}
+
+.dial[data-value="bucket"] {
+	background-position-x: 408px;
+}
+
+.dial[data-value="plunder"] {
+	background-position-x: 306px;
+}
+
+.dial[data-value="patch"] {
+	background-position-x: 204px;
+}
+
+.dial[data-value="fire"] {
+	background-position-x: 102px;
+}
