@@ -99,10 +99,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 								<div id="bustedDice" class="diceColumn"></div>
 							</div>
 							<div id="breaches"></div>
-							<div id="breachesColumnDials" class="dialColumn">
-								<div id="dialTest" class="dial" data-value="backside" data-color="${playerColor}"></div>
-								<div id="dialTest1" class="dial" data-value="fire" data-color="${playerColor}"></div>
-							</div>
+							<div id="breachesColumnDials" class="dialColumn"></div>
 						</div>
 						<div id="cannonsColumnWrapper" class="column">
 							<div id="cannonsColumn"></div>
@@ -126,7 +123,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				<b id="myCharacterLabel">${_('My character')}</b>
 				<div id="myCharacterItemsWrapper">
 					<div id="myCharacter" class="sheet playerSheet actionSide" data-color="${playerColor}"></div>
-					<div id="myDial" class="dial" data-color="${playerColor}" data-value="backside"></div>
 				</div>
 			</div>
 			<div id="myCrewWrapper" class="whiteblock">
@@ -148,9 +144,25 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.setupDice(gamedatas);
 
 			// Additional UI modifications to fine tune the look further:
+			// Add permanent breaches
 			for (let i = 0; i < gamedatas.globals.permanentBreaches; i++)
 			{
 				dojo.create("div", {class: "permanentBreach"}, "permanentBreaches");
+			}
+
+			// Place dials if necessary
+			console.log(gamedatas.dials);	
+			var parentElement = '';
+			for (let i = 0; i < gamedatas.dials.length; i++)
+			{
+				var dial = gamedatas.dials[i];
+				if (dial['dial_location'] !== 'player')
+					parentElement = this.actionToColumn([dial['dial_location']]) + 'Dials';
+				else if (dial['id'] === gamedatas.currentPlayer + '')
+					parentElement = 'myCharacterItemsWrapper';
+				else
+					continue;
+				dojo.create("div", {class: "dial", 'data-value': dial['dial_value'], 'data-color': gamedatas.players[dial['id']].color}, parentElement);
 			}
 
 			// Controls the amount of space for cards (the height of the gap between the board and the player hand)
@@ -160,7 +172,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				if (player_id === gamedatas.currentPlayer + '')
 					continue;
 
-				var color = this.gamedatas.players[player_id].color;
+				var color = gamedatas.players[player_id].color;
 				dojo.create("div", {class: "sheet playerSheet backstorySide", 'data-color': color}, 'myCrew');
 			}
 
@@ -479,26 +491,37 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			var water = 0, treasure = 0, breaches = 0, cannons = 0;
 			if (this.waterColumn.getCardCount() > 0)
-				water = (this.waterColumn.getCardCount() - 1) * this.smallCardGap + this.cardHeight;
+				water = this.calculateStockHeight(this.waterColumn.getCardCount(), this.smallCardGap);
 
 			if (this.treasureColumn.getCardCount() > 0)
-				treasure = (this.treasureColumn.getCardCount() - 1) * this.smallCardGap + this.cardHeight;
+				water = this.calculateStockHeight(this.treasureColumn.getCardCount(), this.smallCardGap);
 		
 			const permanentBreachNbr = dojo.query('.permanentBreach').length;
 			if (permanentBreachNbr > 0)
-				breaches += permanentBreachNbr * (34 + 15); // The +15 accounts for margin-bottom
+				// 34 is height of a breach, 5 is margin-bottom, and +10 accounts for the slightly larger gap between permanent breaches and the next thing 
+				breaches += permanentBreachNbr * (34 + 5) + 10; 
 			if (this.bustedCannons.getCardCount() > 0)
-				breaches += (this.bustedCannons.getCardCount() - 1) * this.bigCardGap + this.cardHeight;
+				breaches +=	this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap); 
 			if (this.breaches.getCardCount() > 0)
-				breaches += (this.breaches.getCardCount() - 1) * this.bigCardGap + this.cardHeight;
+				breaches +=	this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap); 
 			if (this.bustedCannons.getCardCount() > 0 && this.breaches.getCardCount() > 0)
-				breaches += 5; // Account for the gap between busted cannons and breaches?
+				breaches += 20; // Account for the gap between busted cannons and breaches?
 			
 			if (this.operationalCannons.getCardCount() > 0)
-				cannons = (this.operationalCannons.getCardCount() - 1) * this.bigCardGap + this.cardHeight;
+				cannons = this.calculateStockHeight(this.operationalCannons.getCardCount(), this.bigCardGap); 
+
+			// Account for dials in columns	
+			var dialsCounter = {'bucket': 0, 'plunder': 0, 'patch': 0, 'fire': 0, 'player': 0};
+			for (var i = 0; i < this.gamedatas.dials.length; i++)
+				dialsCounter[this.gamedatas.dials[i]['dial_location']] += 1;
+			var dialHeight = 102 + 10;
+			water += dialsCounter['bucket'] * dialHeight;
+			treasure += dialsCounter['plunder'] * dialHeight;
+			breaches += dialsCounter['patch'] * dialHeight;
+			cannons += dialsCounter['fire'] * dialHeight;
 
 			gap = Math.max(water, treasure, breaches, cannons);
-			gap += 30 // For the gap at the top and a gap at the bottom
+			gap += 30; // For the gap at the top and a gap at the bottom
 			console.log(`water:${water}\ntreasure:${treasure}\nbreaches:${breaches}\ncannons:${cannons}\ngap:${gap}`);
 
 			dojo.style('gameCenter', 'marginBottom', `${gap}px`);
@@ -507,6 +530,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		calculateStockHeight: function(count, gap)
 		{
 			return (count == 0) ? 0 : this.cardHeight + (count - 1) * gap;
+		},
+
+		actionToColumn: function(action)
+		{
+			const actionToColumnMapping = {'bucket': 'waterColumn', 'plunder': 'treasureColumn', 'patch': 'breachesColumn', 'fire': 'cannonsColumn'};
+			return actionToColumnMapping[action];
 		},
 
         ///////////////////////////////////////////////////

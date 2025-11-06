@@ -879,20 +879,76 @@ class Game extends \Table
      * - when a player refreshes the game page (F5)
      */
     protected function getAllDatas(): array
-    {
+	{
         $result = [];
 
         // WARNING: We must only return information visible by the current player.
-		$current_player_id = (int) $this->getCurrentPlayerId();
-		$result['currentPlayer'] = $current_player_id;
+		$currentPlayerId = (int) $this->getCurrentPlayerId();
+		$result['currentPlayer'] = $currentPlayerId;
 
         // Get information about players.
         // NOTE: you can retrieve some extra field you added for "player" table in `dbmodel.sql` if you need it.
-        $result["players"] = $this->getCollectionFromDb(
-            "SELECT `player_id` `id`, `player_score` `score`, `player_color` `color` FROM `player`"
-        );
+        $result['players'] = $this->getCollectionFromDb('SELECT `player_id` `id`, `player_score` `score`, `player_color` `color` FROM `player`');
 
-        // Gather all information about current game situation (visible by player $current_player_id).
+		// Dials!
+		// Tell the client what dials to place where, and what value they should display
+		// This is a bit trickier than it sounds. We have to be careful not to tell the client more than the player should know at the current moment. This means hiding the value of the dial of other players if it is too early (or if the sirens' screech attack is active)
+		//
+//			define('STATE_START_GAME', 1);
+//		
+//			define('STATE_CHECK_FOR_BREACHES', 11);
+//			define('STATE_CHECK_WATER_THRESHOLD', 12);
+//			define('STATE_DEAL_WATER_AND_TREASURE', 13);
+//			define('STATE_ROLL_ENEMY_DICE', 14);
+//			define('STATE_RESOLVE_ENEMY_DICE', 15);
+	//			define('STATE_DECLARE_DIAL_HELPER', 20);
+	//			define('STATE_DECLARE_DIAL', 22);
+//			define('STATE_REVEAL_DIAL', 24);
+//			define('STATE_RESOLVE_BUCKET_HELPER', 26);	
+//			define('STATE_RESOLVE_BUCKET', 28);
+//			define('STATE_RESOLVE_PLUNDER_HELPER', 30);
+//			define('STATE_RESOLVE_PLUNDER', 32);
+//			define('STATE_RESOLVE_PATCH_HELPER', 34);
+//			define('STATE_RESOLVE_PATCH', 36);
+//			define('STATE_RESOLVE_FIRE_HELPER', 38);
+//			define('STATE_RESOLVE_FIRE', 40);
+//			define('STATE_UPKEEP', 50);
+//		
+//			define('STATE_END_GAME_SCORING', 98);
+//			define('STATE_END_GAME', 99);
+//
+		$dialsInfo = $this->getCollectionFromDb('SELECT `player_id` `id`, `dial_location`, `dial_value` FROM `player`');
+		$dials = [];
+		foreach ($dialsInfo as $id => $details)
+		{
+			$stateId = $this->gamestate->getCurrentMainStateId();
+			
+			// Handle current player correctly: Always show the value, except show the backside after they declared and before it is revealed
+			if ($id == $currentPlayerId)
+			{
+				$dial = ['id' => $details['id'], 'dial_location' => $details['dial_location'], 'dial_value' => $details['dial_value']];
+
+				// Show the backside after the current player has declared but we haven't revealed dials yet (it is still upside down on the table)
+				$haveAlreadyDeclared = $dial['dial_location'] !== 'player';
+				if (($stateId == STATE_DECLARE_DIAL || $stateId == STATE_DECLARE_DIAL_HELPER) && $haveAlreadyDeclared)
+					$dial['dial_value'] = 'backside';
+
+				$dials[] = $dial;
+			}
+			// If we have not revealed dials yet, hide the value of the other players' dials
+			else if ($stateId < STATE_REVEAL_DIAL)
+			{
+				$dials[] = ['id' => $details['id'], 'dial_location' => $details['dial_location'], 'dial_value' => 'backside'];	
+			}
+			// Else reveal all info (we are either currently in or past STATE_REVEAL_DIAL, so dial values and locations are all known at this point
+			else 
+			{
+				$dials[] = ['id' => $details['id'], 'dial_location' => $details['dial_location'], 'dial_value' => $details['dial_value']];
+			}
+		}
+		$result['dials'] = $dials;
+		
+        // Gather all information about current game situation (visible by player $currentPlayerId).
 		$globals['threshold'] = $this->globals->get('THRESHOLD_LEVEL');
 		$globals['enemy'] = $this->globals->get('ENEMY');
 		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
@@ -902,6 +958,7 @@ class Game extends \Table
 		// Cards in the waterColumn, either 'backside' or a clear water
 		// It is important we only tell the client backside or face up clear water. Anything more would be revealing more info than we should,
 		// telling them information hidden to the players (known to the backend of course)
+		// TODO Actually we might be telling them more than we want by showing the card_type_arg... Do we need to obfuscate this?
 		$waterColumn = array();
 		$cards = $this->getCollectionFromDB("SELECT `card_id`, `card_face_up`, `card_type_arg` FROM `water` WHERE `card_location`='waterColumn' ORDER BY `card_location_arg`");
 		foreach ($cards as $id => $details)
@@ -927,7 +984,7 @@ class Game extends \Table
 		$result['operationalCannons'] = $this->cannons->getCardsInLocation('cannonsColumn');
 		
 		// This player's hand
-		$result['hand'] = $this->water->getPlayerHand($current_player_id);
+		$result['hand'] = $this->water->getPlayerHand($currentPlayerId);
 
 		// Deck info
 		$result['deckCount'] = [
@@ -950,7 +1007,6 @@ class Game extends \Table
 
 		// Enemy dice
 		$dice = [];
-		
 		foreach ($diceInfo as $id => $details)
 		{
 			switch ($details['type'])
@@ -1001,7 +1057,7 @@ class Game extends \Table
 				addslashes($player["player_avatar"]),
 				// My custom additions: custom_order, dial_value, and dial_location
 				$player_id,
-				'water',
+				'bucket',
 				'player',	
             ]);
         }

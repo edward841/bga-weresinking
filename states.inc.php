@@ -78,10 +78,6 @@ if (!defined('STATE_END_GAME'))
 	define('STATE_END_GAME', 99);
 }
 
-
-
-
-
 $machinestates = [
 
     // The initial state. Please do not modify.
