@@ -650,36 +650,59 @@
 	background-position-x: 102px;
 }
 
+/* Player panel! Spacing and styling. All of the necessary icons. */
+#iconsWrapper {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align: center;
+}
+
 /* Character Icons! */
 .characterIcon {
-	width: 54px;
-	height: 54px;
-	margin: 20px;
+	width: 30px;
+	height: 30px;
+	margin: 2px;
+	border: 1px solid gray;
 	border-radius: 50%;
+	background-size: calc(672px * 30 / 54) auto;
 	background-image: url('img/CharacterSheets.jpg');
-	background-position-x: 63px;
+	background-position-x: calc(63px * 30 / 54);
 }
 
 .characterIcon[data-color="ff5165"] {
-	background-position-y: -8px;
+	background-position-y: calc(-8px * 30 / 54);
 }
 
 .characterIcon[data-color="f19c27"] {
-	background-position-y: 952px;
+	background-position-y: calc(952px * 30 / 54);
 }
 
 .characterIcon[data-color="00c398"] {
-	background-position-y: 712px;
+	background-position-y: calc(712px * 30 / 54);
 }
 
 .characterIcon[data-color="4ccaf2"] {
-	background-position-y: 472px;
+	background-position-y: calc(472px * 30 / 54);
 }
 
 .characterIcon[data-color="af73b1"] {
-	background-position-y: 232px;
+	background-position-y: calc(232px * 30 / 54);
 }
 
 .characterIcon[data-color="646D74"] {
-	background-position-y: 1192px;
+	background-position-y: calc(1192px * 30 / 54);
+}
+
+/* Hand size icon */
+.handSizeIcon {
+	width: calc(120px * 30 / 168); 
+	height: 30px;
+	border: 1px solid gray;
+	border-radius: 3px;
+	margin-top: 2px;
+	margin-left: 8px;
+	background-size: calc(1176px * 30 / 168) auto;
+	background-image: url('img/WaterDeck.jpg');		
+	background-position: 0px 0px;
 }

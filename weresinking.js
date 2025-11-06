@@ -116,12 +116,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				</div>
 			</div>
 			<div id="testWrapper" class="whiteblock">
-				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.RED}"></div>
-				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.ORANGE}"></div>
-				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.GREEN}"></div>
-				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.BLUE}"></div>
-				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.PURPLE}"></div>
-				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.GRAY}"></div>
+				<div id="testIcon" class="handSizeIcon"></div>
 			</div>
 			<div id="myHandWrapper" class="whiteblock">
 				<b id="myHandLabel">${_('My hand')}</b>
@@ -138,7 +133,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				<div id="myCrew"></div>
 			</div>
 			`);
-
+			
+			// Essential Setup: Managers, cards, dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			// create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
 			this.animationManager = new BgaAnimations.Manager({
 				animationsActive: () => this.bgaAnimationsActive(),
@@ -151,7 +147,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.setupCards(gamedatas);
 			this.setupDice(gamedatas);
 
-			// Additional UI modifications to fine tune the look further:
+           	// Notificataions
+			this.setupNotifications();
+
+			// Additional UI modifications to fine tune the look further ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			// Add permanent breaches
 			for (let i = 0; i < gamedatas.globals.permanentBreaches; i++)
 			{
@@ -186,7 +185,18 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				dojo.create("div", {class: "sheet characterSheet backstorySide", 'data-color': color}, 'myCrew');
 			}
 
-            this.setupNotifications();
+			// Player Panels!
+			for (var playerId in gamedatas.players)
+			{
+				var player = gamedatas.players[playerId];
+
+				this.getPlayerPanelElement(player.id).innerHTML = `
+				<div id="iconsWrapper">
+					<div class="characterIcon" data-color="${player.color}"></div>
+					<div class="handSizeIcon"></div>
+				</div>
+				`;
+			}
 
             console.log( "Ending game setup" );
         },
