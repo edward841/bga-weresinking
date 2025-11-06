@@ -1022,6 +1022,9 @@ class Game extends \Table
 		}
 		$result['attackDice'] = $dice;
 
+		// Developer Help: (may want to delete or comment for final version)
+		$result['constants'] = get_defined_constants(true)['user'];
+
         return $result;
     }
 

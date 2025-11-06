@@ -116,16 +116,6 @@
 }
 
 
-.playerSheet {
-	width: 336px;
-	height: 240px;
-	margin-top: 10px;
-	margin-right: 10px;
-	margin-bottom: 0px;
-	background-color: red;
-	background-image: url('img/CharacterSheets.jpg');
-}
-
 #myCrew {
 	display: flex;
 	flex-direction: row;
@@ -272,24 +262,6 @@
 	flex-wrap: wrap;
 }
 
-.dial {
-	width: 102px;
-	height: 102px;
-	border-radius: 51px;
-	margin-top: 10px;
-	background-image: url('img/Dials.jpg');
-}
-
-.dialColumn {
-	width: 120px;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-}
-
-#myDial {
-	margin: 30px;
-}
 
 /* CSS Sprite magic */
 /* Damage token */
@@ -569,35 +541,45 @@
  * actionSide class for the side with action summary, backstorySide class for the side with a backstory
  * data-color for sheet color (one of the six hexadecimal values)
  */
-.playerSheet.actionSide {
+.characterSheet {
+	width: 336px;
+	height: 240px;
+	margin-top: 10px;
+	margin-right: 10px;
+	margin-bottom: 0px;
+	background-color: red;
+	background-image: url('img/CharacterSheets.jpg');
+}
+
+.characterSheet.actionSide {
 	background-position-x: 0px;
 }
 
-.playerSheet.backstorySide {
+.characterSheet.backstorySide {
 	background-position-x: 336px;
 }
 
-.playerSheet[data-color="ff5165"]{
+.characterSheet[data-color="ff5165"]{
 	background-position-y: 0px;
 }
 
-.playerSheet[data-color="f19c27"] {
+.characterSheet[data-color="f19c27"] {
 	background-position-y: 960px;
 }
 
-.playerSheet[data-color="00c398"] {
+.characterSheet[data-color="00c398"] {
 	background-position-y: 720px;
 }
 
-.playerSheet[data-color="4ccaf2"] {
+.characterSheet[data-color="4ccaf2"] {
 	background-position-y: 480px;
 }
 
-.playerSheet[data-color="af73b1"] {
+.characterSheet[data-color="af73b1"] {
 	background-position-y: 240px;
 }
 
-.playerSheet[data-color="646D74"] {
+.characterSheet[data-color="646D74"] {
 	background-position-y: 1200px;
 }
 
@@ -605,6 +587,25 @@
  * data-color indicates color (one of the six hexadecimal values)
  * data-value indicates which action to display (one of backside, bucket, plunder, patch, fire)
  */
+.dial {
+	width: 102px;
+	height: 102px;
+	border-radius: 51px;
+	margin-top: 10px;
+	background-image: url('img/Dials.jpg');
+}
+
+.dialColumn {
+	width: 120px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+#myDial {
+	margin: 30px;
+}
+
 .dial[data-color="ff5165"] {
 	background-position-y: 0px;
 }
@@ -647,4 +648,38 @@
 
 .dial[data-value="fire"] {
 	background-position-x: 102px;
+}
+
+/* Character Icons! */
+.characterIcon {
+	width: 54px;
+	height: 54px;
+	margin: 20px;
+	border-radius: 50%;
+	background-image: url('img/CharacterSheets.jpg');
+	background-position-x: 63px;
+}
+
+.characterIcon[data-color="ff5165"] {
+	background-position-y: -8px;
+}
+
+.characterIcon[data-color="f19c27"] {
+	background-position-y: 952px;
+}
+
+.characterIcon[data-color="00c398"] {
+	background-position-y: 712px;
+}
+
+.characterIcon[data-color="4ccaf2"] {
+	background-position-y: 472px;
+}
+
+.characterIcon[data-color="af73b1"] {
+	background-position-y: 232px;
+}
+
+.characterIcon[data-color="646D74"] {
+	background-position-y: 1192px;
 }

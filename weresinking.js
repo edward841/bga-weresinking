@@ -115,6 +115,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					<div id="enemyDice"></div>
 				</div>
 			</div>
+			<div id="testWrapper" class="whiteblock">
+				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.RED}"></div>
+				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.ORANGE}"></div>
+				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.GREEN}"></div>
+				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.BLUE}"></div>
+				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.PURPLE}"></div>
+				<div id="testIcon" class="characterIcon" data-color="${gamedatas.constants.GRAY}"></div>
+			</div>
 			<div id="myHandWrapper" class="whiteblock">
 				<b id="myHandLabel">${_('My hand')}</b>
 				<div id="myHand"></div>
@@ -122,7 +130,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			<div id="myCharacterWrapper" class="whiteblock">
 				<b id="myCharacterLabel">${_('My character')}</b>
 				<div id="myCharacterItemsWrapper">
-					<div id="myCharacter" class="sheet playerSheet actionSide" data-color="${playerColor}"></div>
+					<div id="myCharacter" class="sheet characterSheet actionSide" data-color="${playerColor}"></div>
 				</div>
 			</div>
 			<div id="myCrewWrapper" class="whiteblock">
@@ -167,13 +175,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 			// Controls the amount of space for cards (the height of the gap between the board and the player hand)
 			this.correctGapUnderBoard();
+
+			// Add character sheets for my crew
 			for (var player_id in gamedatas.players)
 			{
 				if (player_id === gamedatas.currentPlayer + '')
 					continue;
 
 				var color = gamedatas.players[player_id].color;
-				dojo.create("div", {class: "sheet playerSheet backstorySide", 'data-color': color}, 'myCrew');
+				dojo.create("div", {class: "sheet characterSheet backstorySide", 'data-color': color}, 'myCrew');
 			}
 
             this.setupNotifications();
