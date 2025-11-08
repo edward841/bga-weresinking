@@ -35,6 +35,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.diceWidth = 30;
 			this.smallCardGap = 24 / 100. * this.cardHeight;
 			this.bigCardGap = 38 / 100. * this.cardHeight;
+			
+			this.handSizeCounters = {};
+			this.chestSizeCounters = {};
 
 			// Initialize stock:
 			this.playerHand = null;
@@ -78,12 +81,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				<div id="thresholdSheet" class="sheet threshold_${playerCount}players_level${gamedatas.globals.threshold}"></div>
 				<div id="gameCore"> 
 					<div id="gameboard"></div>
-					<div id="cardsOnBoardWrapper">
+					<div id="cardsOnBoardWrapper" class="flexRow">
 						<div id="waterDrawPile"></div>
 						<div id="waterDiscardPile"></div>
 						<div id="breachesDrawPile"></div>
 					</div>
-					<div id="columns">
+					<div id="columns" class="flexRow">
 						<div id="waterColumnWrapper">
 							<div id="waterColumn" class="column"></div>
 							<div id="waterColumnDials" class="dialColumn"></div>
@@ -116,7 +119,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				</div>
 			</div>
 			<div id="testWrapper" class="whiteblock">
-				<div id="testIcon" class="handSizeIcon"></div>
+				<div id="testIcon" class="chestsSizeIcon"></div>
 			</div>
 			<div id="myHandWrapper" class="whiteblock">
 				<b id="myHandLabel">${_('My hand')}</b>
@@ -124,13 +127,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			</div>
 			<div id="myCharacterWrapper" class="whiteblock">
 				<b id="myCharacterLabel">${_('My character')}</b>
-				<div id="myCharacterItemsWrapper">
+				<div id="myCharacterItemsWrapper" class="flexRow">
 					<div id="myCharacter" class="sheet characterSheet actionSide" data-color="${playerColor}"></div>
 				</div>
 			</div>
 			<div id="myCrewWrapper" class="whiteblock">
 				<b id="myCrewLabel">${_('My crew')}</b>
-				<div id="myCrew"></div>
+				<div id="myCrew" class="flexRow"></div>
 			</div>
 			`);
 			
@@ -190,12 +193,27 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			{
 				var player = gamedatas.players[playerId];
 
-				this.getPlayerPanelElement(player.id).innerHTML = `
-				<div id="iconsWrapper">
-					<div class="characterIcon" data-color="${player.color}"></div>
-					<div class="handSizeIcon"></div>
+				this.getPlayerPanelElement(playerId).innerHTML = `
+				<div class="flexRow iconsWrapper">
+					<div class="icon characterIcon" data-color="${player.color}"></div>
+					<div class="flexRow">
+						<div class="icon handSizeIcon"></div>
+						<span id="handSize_${playerId}" class="iconText">0</span>
+					</div>
+					<div class="flexRow">
+						<div class="icon chestsSizeIcon"></div>
+						<span id="chestSize_${playerId}" class="iconText">0</span>
+					</div>
 				</div>
 				`;
+				
+				// Counter for hand size
+				this.handSizeCounters[playerId] = new counter();
+				this.handSizeCounters[playerId].create('handSize_' + playerId);
+				this.handSizeCounters[playerId].setValue(4);
+				
+				this.chestSizeCounters[playerId] = new counter();
+				this.chestSizeCounters[playerId].create('chestSize_' + playerId);
 			}
 
             console.log( "Ending game setup" );

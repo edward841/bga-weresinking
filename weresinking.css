@@ -66,6 +66,16 @@
         background-repeat: none;
     }
 */
+
+/* Universal classes! Generally helpful and could go anywhere. */
+/* Horizontal flex container: display children in a row, evenly spaced and centered */
+.flexRow {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: center;
+}
+
 /* https://stackoverflow.com/questions/4191260/drawing-a-grid-using-css 
  * The grid will help scale elements to appropriate sizes. (each square is 1"x1")
  */
@@ -115,10 +125,7 @@
 	background-repeat: no-repeat;
 }
 
-
 #myCrew {
-	display: flex;
-	flex-direction: row;
 	flex-wrap: wrap;
 }
 
@@ -147,7 +154,6 @@
 }
 
 #cardsOnBoardWrapper {
-	display: flex;
 	position: absolute;
 	z-index: 1;
 	margin-top: -290px;
@@ -166,8 +172,8 @@
 
 #columns {
 	position: relative;
-	display: flex;
 	height: 0px;
+	align-items: flex-start;
 }
 
 .column {
@@ -254,14 +260,6 @@
 	background-image: url('img/BreachDeck.jpg');
 	background-position: '0px 0px';
 }
-
-#myCharacterItemsWrapper {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	flex-wrap: wrap;
-}
-
 
 /* CSS Sprite magic */
 /* Damage token */
@@ -651,23 +649,29 @@
 }
 
 /* Player panel! Spacing and styling. All of the necessary icons. */
-#iconsWrapper {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: nowrap;
-	align: center;
+/* Character Icons! */
+.iconsWrapper {
+	justify-content: space-between;	
 }
 
-/* Character Icons! */
+.icon {
+	border: 1px solid gray;
+	border-radius: 5px;
+	background-position: 0px 0px;
+}
+
 .characterIcon {
 	width: 30px;
 	height: 30px;
-	margin: 2px;
-	border: 1px solid gray;
 	border-radius: 50%;
 	background-size: calc(672px * 30 / 54) auto;
 	background-image: url('img/CharacterSheets.jpg');
 	background-position-x: calc(63px * 30 / 54);
+}
+
+.iconText {
+	font-size: large;
+	margin-left: 2px;
 }
 
 .characterIcon[data-color="ff5165"] {
@@ -698,11 +702,20 @@
 .handSizeIcon {
 	width: calc(120px * 30 / 168); 
 	height: 30px;
-	border: 1px solid gray;
-	border-radius: 3px;
 	margin-top: 2px;
-	margin-left: 8px;
 	background-size: calc(1176px * 30 / 168) auto;
 	background-image: url('img/WaterDeck.jpg');		
-	background-position: 0px 0px;
 }
+
+/* Chests size icon */
+.chestsSizeIcon {
+	width: 30px;
+	height: calc(33.625px * 30 / 69);
+	margin-left: -10px;
+	margin-right: -8px;
+	background-size: calc(69px * 30 / 69) auto;
+	background-image: url('img/Chests.jpg');		
+	transform: rotate(90deg);
+	transform-origin: center;
+}
+
