@@ -210,10 +210,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				// Counter for hand size
 				this.handSizeCounters[playerId] = new counter();
 				this.handSizeCounters[playerId].create('handSize_' + playerId);
-				this.handSizeCounters[playerId].setValue(4);
+				this.handSizeCounters[playerId].setValue(Number(gamedatas.players[playerId].handSize));
 				
 				this.chestSizeCounters[playerId] = new counter();
 				this.chestSizeCounters[playerId].create('chestSize_' + playerId);
+				this.chestSizeCounters[playerId].setValue(Number(gamedatas.players[playerId].chestSize));
 			}
 
             console.log( "Ending game setup" );

@@ -888,7 +888,14 @@ class Game extends \Table
 
         // Get information about players.
         // NOTE: you can retrieve some extra field you added for "player" table in `dbmodel.sql` if you need it.
-        $result['players'] = $this->getCollectionFromDb('SELECT `player_id` `id`, `player_score` `score`, `player_color` `color` FROM `player`');
+		$result['players'] = $this->getCollectionFromDb('SELECT `player_id` `id`, `player_score` `score`, `player_color` `color` FROM `player`');
+
+		// Hand size and chest size for player panels...
+		foreach (array_keys($result['players']) as $id)
+		{
+			$result['players'][$id]['handSize'] = $this->water->countCardInLocation('hand', $id);
+			$result['players'][$id]['chestSize'] = 0;
+		}
 
 		// Dials!
 		// Tell the client what dials to place where, and what value they should display
