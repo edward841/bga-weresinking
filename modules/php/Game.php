@@ -960,6 +960,7 @@ class Game extends \Table
 		$globals['enemy'] = $this->globals->get('ENEMY');
 		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
 		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
+		$globals['firstMate'] = $this->globals->get('FIRST_MATE');
 		$result['globals'] = $globals;
 		
 		// Cards in the waterColumn, either 'backside' or a clear water

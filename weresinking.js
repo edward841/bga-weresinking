@@ -119,7 +119,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				</div>
 			</div>
 			<div id="testWrapper" class="whiteblock">
-				<div id="testIcon" class="chestsSizeIcon"></div>
+				<div id="testDutiesChecklist" class="firstMateIcon hide"></div>
 			</div>
 			<div id="myHandWrapper" class="whiteblock">
 				<b id="myHandLabel">${_('My hand')}</b>
@@ -192,7 +192,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			for (var playerId in gamedatas.players)
 			{
 				var player = gamedatas.players[playerId];
-
+				var hideFirstMate = "";
+				if (playerId !== gamedatas.globals.firstMate + '')
+					hideFirstMate = " hide";
+			
 				this.getPlayerPanelElement(playerId).innerHTML = `
 				<div class="flexRow iconsWrapper">
 					<div class="icon characterIcon" data-color="${player.color}"></div>
@@ -204,6 +207,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						<div class="icon chestsSizeIcon"></div>
 						<span id="chestSize_${playerId}" class="iconText">0</span>
 					</div>
+					<div class="firstMateIcon${hideFirstMate}"></div>
 				</div>
 				`;
 				

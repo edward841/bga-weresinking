@@ -67,28 +67,6 @@
     }
 */
 
-/* Universal classes! Generally helpful and could go anywhere. */
-/* Horizontal flex container: display children in a row, evenly spaced and centered */
-.flexRow {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: nowrap;
-	align-items: center;
-}
-
-/* https://stackoverflow.com/questions/4191260/drawing-a-grid-using-css 
- * The grid will help scale elements to appropriate sizes. (each square is 1"x1")
- */
-.grid {
-	height: 100%;
-	width: 100%;
-	margin: 0;
-	background-image:
-		repeating-linear-gradient(#000 0 1px, transparent 1px 100%),
-		repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 100%);
-	background-size: 48px 48px;
-}
-
 /* Everything about sheets! (Threshold sheets, enemy sheets, player sheets) 
  * Actually they are all the same dimensions and have a front and backside. 
  * Here we define the look of the sheet, their precise positions, and
@@ -648,6 +626,22 @@
 	background-position-x: 102px;
 }
 
+/* Duties checklist! */
+.dutiesChecklist {
+	width: 132px;
+	height: 253px;
+	background-position-y: 0%;
+	background-image: url('img/DutiesChecklist.png');
+}
+
+.dutiesChecklist.front {
+	background-position-x: 0%;
+}
+
+.dutiesChecklist.back {
+	background-position-y: 50%;
+}
+
 /* Player panel! Spacing and styling. All of the necessary icons. */
 /* Character Icons! */
 .iconsWrapper {
@@ -713,9 +707,44 @@
 	height: calc(33.625px * 30 / 69);
 	margin-left: -10px;
 	margin-right: -8px;
-	background-size: calc(69px * 30 / 69) auto;
+	background-size: 30px auto;
 	background-image: url('img/Chests.jpg');		
 	transform: rotate(90deg);
 	transform-origin: center;
+}
+
+.firstMateIcon {
+	height: 30px;
+	width: calc(132px * 30 / 254);
+	background-image: url('img/DutiesChecklist.png');
+	background-size: auto 30px;
+}
+
+/* Universal classes! Generally helpful and could go anywhere. And have priority over other classes for being at the bottom...*/
+/* Horizontal flex container: display children in a row, evenly spaced and centered */
+.flexRow {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: center;
+}
+
+/* https://stackoverflow.com/questions/4191260/drawing-a-grid-using-css 
+ * The grid will help scale elements to appropriate sizes. (each square is 1"x1")
+ */
+.grid {
+	height: 100%;
+	width: 100%;
+	margin: 0;
+	background-image:
+		repeating-linear-gradient(#000 0 1px, transparent 1px 100%),
+		repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 100%);
+	background-size: 48px 48px;
+}
+
+.hide {
+	background-image: none;
+	background-color: none;
+	border: none;
 }
 
