@@ -118,9 +118,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					<div id="enemyDice"></div>
 				</div>
 			</div>
-			<div id="testWrapper" class="whiteblock">
-				<div id="testDutiesChecklist" class="firstMateIcon hide"></div>
-			</div>
 			<div id="myHandWrapper" class="whiteblock">
 				<b id="myHandLabel">${_('My hand')}</b>
 				<div id="myHand"></div>
@@ -159,6 +156,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			{
 				dojo.create("div", {class: "permanentBreach"}, "permanentBreaches");
 			}
+			
+			// Place the Duties Checklist in my character panel iff i am first mate
+			if (gamedatas.currentPlayer === gamedatas.globals.firstMate)
+				dojo.create("div", {class: "dutiesChecklist"}, "myCharacterItemsWrapper");
 
 			// Place dials if necessary
 			console.log(gamedatas.dials);	
