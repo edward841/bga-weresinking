@@ -244,6 +244,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				cardWidth: this.cardWidth,
 				cardHeight: this.cardHeight,
 				cardBorderRadius: '5px',
+				cardClickEventFilter: 'all', 
 			});
 
 			this.cannonsManager = new BgaCards.Manager({
@@ -259,10 +260,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
 				// Front side is operational, backside is busted
+				onCardClick: (card) => this.onCardClick('cannon', card),
 				isCardVisible: (card) => card.location === 'cannonsColumn',
 				cardWidth: this.cardWidth,
 				cardHeight: this.cardHeight,
 				cardBorderRadius: '5px',
+				cardClickEventFilter: 'all', 
 			});
 
 			this.breachesManager = new BgaCards.Manager({
@@ -274,10 +277,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
 				setupBackDiv: (card, div) => {},
+				onCardClick: (card) => this.onCardClick('breach', card),
 				isCardVisible: (card) => card.location === 'breachesColumn',
 				cardWidth: this.cardWidth,
 				cardHeight: this.cardHeight,
 				cardBorderRadius: '5px',
+				cardClickEventFilter: 'all', 
 			});
 
 			this.diceManager = new BgaDice.Manager({
@@ -309,6 +314,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				autoPlace: card => card.location === 'hand' && card.location_arg === this.player_id,
 				//fanShaped: true,
 			});
+			this.playerHand.onCardClick = (card) => {
+				//alert('clicked player hand');
+				this.onCardClick('myHand', card);
+			};
 
 
 			//this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);	
@@ -349,6 +358,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 			const stock = new BgaCards.ManualPositionStock(manager, document.getElementById(divId), undefined, manualPositionStockUpdateDisplay);
 			stock.setSelectionMode('none');
+			stock.onCardClick = (card) => {
+				//alert(`clicked ${divId}`);
+				this.onCardClick(divId, card);
+			};
 
 			return stock;
 		},
@@ -595,20 +608,29 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             _ make a call to the game server
         
         */
-        
-        // Example:
-        
-        onCardClick: function( card_id )
-        {
-            console.log( 'onCardClick', card_id );
+		onCardClick: function(parentDiv, card)
+		{
+			console.log(`Clicked card of type ${parentDiv}`);	
+			if (!this.current_player_is_active)
+				return;
+		
+			// Active player is attempting to take their turn
+			// We need to verify that this move is allowed and then hand it off to backend
+			const constants = this.gamedatas.constants;
+			const possibleActions = this.gamedatas.gamestate.args.possibleActions;
+			if (possibleActions.includes('Draw') && parentDiv === this.gamedatas.gamestate.args.location)
+				this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv,});
+			else if (possibleActions.includes('Discard') && parentDiv === 'myHand')
+				this.bgaPerformAction('actDiscard', {cardId: card.id});
 
-            this.bgaPerformAction("actPlayCard", { 
-                card_id,
-            }).then(() =>  {                
-                // What to do after the server call if it succeeded
-                // (most of the time, nothing, as the game will react to notifs / change of state instead)
-            });        
-        },    
+//			switch (this.gamedatas.gamestate.id)
+//			{
+//				case constants.STATE_RESOLVE_BUCKET:
+//					if (possibleActions.includes('Draw') && parentDiv === 'waterColumn')
+//						this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv});
+//					break;
+//			}
+		},
 
         
         ///////////////////////////////////////////////////
@@ -630,22 +652,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         },  
         
         // From this point and below, you can write your game notifications handling methods
-        
-        /*
-        Example:
-        
-        notif_cardPlayed: function( notif )
-        {
-            console.log( 'notif_cardPlayed' );
-            console.log( notif );
-            
-            // Note: notif.args contains the arguments specified during you "notifyAllPlayers" / "notifyPlayer" PHP call
-            
-            // TODO: play the card in the user interface.
-        },    
-        
-        */
-		
 		notif_checkForBreaches: function(notif)
 		{
 			console.log('notif_checkForBreaches');
@@ -689,7 +695,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.waterDeck.addCards(this.waterColumn.getCards().map(card => ({id: card.id})));
 			this.waterDeck.addCards(this.treasureColumn.getCards().map(card => ({id: card.id})));
 			// TODO: also add cards from the discard pile
-			this.waterDeck.setCardNumber(notif.deckNbr);
+			//this.waterDeck.setCardNumber(notif.deckNbr);
 			this.waterDeck.shuffle().then(() => console.log('Water deck shuffled'));
 			
 			this.correctGapUnderBoard();
