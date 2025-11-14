@@ -118,6 +118,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					<div id="enemyDice"></div>
 				</div>
 			</div>
+			<div id="temp" class="whiteblock">
+				<div id="tempBox" class="dialIcon"></div>
+			</div>
 			<div id="myHandWrapper" class="whiteblock">
 				<b id="myHandLabel">${_('My hand')}</b>
 				<div id="myHand"></div>
@@ -192,11 +195,22 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			// Player Panels!
 			for (var playerId in gamedatas.players)
 			{
+				// Hide the first mate for all players except for the first mate
 				var player = gamedatas.players[playerId];
 				var hideFirstMate = "";
 				if (playerId !== gamedatas.globals.firstMate + '')
 					hideFirstMate = " hide";
-			
+
+				// Hide the dial icon if the player has already declared their dial
+				var hideDialIcon = "";
+				var i = 0;
+				for (; i < this.gamedatas.playerorder.length; i++)
+					if (gamedatas.dials[i].id + '' === playerId + '')
+						break;
+				if (gamedatas.dials[i]['dial_location'] !== 'player')
+					hideDialIcon = " hide";
+		
+				// The meat and potatoes of the player panels
 				this.getPlayerPanelElement(playerId).innerHTML = `
 				<div class="flexRow iconsWrapper">
 					<div class="icon characterIcon" data-color="${player.color}"></div>
@@ -208,6 +222,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						<div class="icon chestsSizeIcon"></div>
 						<span id="chestSize_${playerId}" class="iconText">0</span>
 					</div>
+					<div class="dialIcon${hideDialIcon}"></div>
 					<div class="firstMateIcon${hideFirstMate}"></div>
 				</div>
 				`;
@@ -217,6 +232,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				this.handSizeCounters[playerId].create('handSize_' + playerId);
 				this.handSizeCounters[playerId].setValue(Number(gamedatas.players[playerId].handSize));
 				
+				// Counter for chest size
 				this.chestSizeCounters[playerId] = new counter();
 				this.chestSizeCounters[playerId].create('chestSize_' + playerId);
 				this.chestSizeCounters[playerId].setValue(Number(gamedatas.players[playerId].chestSize));
@@ -784,6 +800,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 			this.bustedCannons.addCard(notif.ids[0], {fromStock: this.cannons}, true);
 			this.correctGapUnderBoard();
+		},
+
+		notif_actDeclareDial: function(notif)
+		{
+			console.log('notif_actDeclareDial');
+			console.log(notif);
+
 		},
    });             
 });

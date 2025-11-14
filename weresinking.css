@@ -722,8 +722,28 @@
 	background-size: auto 30px;
 }
 
+/* Dial icon! */
+.dialIcon {
+	width: 30px;
+	height: 30px;
+	background-image: url('img/Dial.png');
+	background-size: 100%;
+	background-color: var(--dark-brown);
+	background-blend-mode: multiply;
+	mask: url('img/Dial.png');
+	-webkit-mask: url('img/Dial.png');
+}
+
 /* Universal classes! Generally helpful and could go anywhere. And have priority over other classes for being at the bottom...*/
 /* Horizontal flex container: display children in a row, evenly spaced and centered */
+/*
+	#3B2314 
+	#6C5C56
+ */
+:root {
+	--dark-brown: #3B2314; 
+}
+
 .flexRow {
 	display: flex;
 	flex-direction: row;
@@ -746,7 +766,7 @@
 
 .hide {
 	background-image: none;
-	background-color: none;
+	background-color: transparent;
 	border: none;
 }
 
