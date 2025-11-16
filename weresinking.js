@@ -222,7 +222,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						<div class="icon chestsSizeIcon"></div>
 						<span id="chestSize_${playerId}" class="iconText">0</span>
 					</div>
-					<div class="dialIcon${hideDialIcon}"></div>
+					<div id="dialIcon_${playerId}" class="dialIcon${hideDialIcon}"></div>
 					<div class="firstMateIcon${hideFirstMate}"></div>
 				</div>
 				`;
@@ -665,6 +665,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         {
             console.log( 'notifications subscriptions setup' );
         	this.bgaSetupPromiseNotifications();    
+
+			// Ignore notifications! These notifications have private versions, communicating private information privy only to the current player
+			this.notifqueue.setIgnoreNotificationCheck('actDraw', (notif) => (notif.args.player_id == this.player_id));
         },  
         
         // From this point and below, you can write your game notifications handling methods
@@ -806,7 +809,39 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_actDeclareDial');
 			console.log(notif);
+			
+			// Hide the dial icon in the corresponding player panel
+			dojo.addClass(`dialIcon_${notif.player_id}`, 'hide');
 
+			// Create a dial on the player panel
+			
+			var destination = `${notif.dial_location}Dials`.replace(' ', '');
+			destination = destination.charAt(0).toLowerCase() + destination.slice(1);
+			var color = this.gamedatas.players[Number(notif.player_id)].color;
+
+			dojo.create("div", {id: `dial_${notif.player_id}`, class: "dial", 'data-value': 'backside', 'data-color': color}, this.getPlayerPanelElement(notif.player_id));
+			this.placeOnObject(`dial_${notif.player_id}`, this.getPlayerPanelElement(notif.player_id));
+			this.slideToObject(`dial_${notif.player_id}`, destination, 1000).play();
+			this.correctGapUnderBoard();
+		},
+
+		notif_actDraw: function(notif)
+		{
+			console.log('notif_actDraw');
+			console.log(notif);
+	
+			// Need to animate moving it to player panel
+			//this.playerHand.addCard(notif.card_id);
+			this.correctGapUnderBoard();
+		},
+
+		notif_actDrawPrivate: function(notif)
+		{
+			console.log('notif_actDraw');
+			console.log(notif);
+		
+			this.playerHand.addCard(notif.card_id);
+			this.correctGapUnderBoard();
 		},
    });             
 });

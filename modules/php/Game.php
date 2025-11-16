@@ -550,6 +550,7 @@ class Game extends \Table
 	public function actDraw(string $cardId, string $location)
 	{
 		// Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
+		$playerId = $this->getActivePlayerId();
 		$currentState = $this->getStateName();
 		$argFunction = 'arg' . ucfirst($currentState);
 		$args = $this->$argFunction();
@@ -575,10 +576,21 @@ class Game extends \Table
 			throw new \BgaSystemException("actDraw: cardId: '$cardId', location: '$location' not allowed in state {$this->getStateName()}\n($message)");
 
 		// Proceed now that all input has been verified: Move the indicated card to the active player's hand
+		$card = [];
 		if ($location === 'deck')
-			$this->water->pickCard('deck', $this->getActivePlayerId());
+			$card = $this->water->pickCard('deck', $this->getActivePlayerId());
 		else
-			$this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
+			$card = $this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
+
+		$this->notify->all('actDraw', clienttranslate('${player_name} drew one card'), array(
+			'player_id' => $playerId,
+			'player_name' => $this->getActivePlayerName(),
+			'card_id' => $cardId,
+		));	
+		$this->notify->player($playerId, 'actDrawPrivate', clienttranslate('You drew a ${card_name}'), array(
+			'card_name' => $card['card_type'],
+			'card_id' => $cardId,
+		));
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
 		if ($this->globals->inc('COUNTER', -1) <= 0)
