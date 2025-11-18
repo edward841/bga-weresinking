@@ -146,6 +146,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			// Create the stocks and populate them
 			this.setupCards(gamedatas);
 			this.setupDice(gamedatas);
+			console.log(this.waterDeck);
+			console.log(this.waterColumn);
 
            	// Notificataions
 			this.setupNotifications();
@@ -162,7 +164,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				dojo.create("div", {class: "dutiesChecklist"}, "myCharacterItemsWrapper");
 
 			// Place dials if necessary
-			console.log(gamedatas.dials);	
 			var parentElement = '';
 			for (let i = 0; i < gamedatas.dials.length; i++)
 			{
@@ -199,14 +200,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					hideFirstMate = " hide";
 
 				// Hide the dial icon if the player has already declared their dial
-				var hideDialIcon = "";
-				var i = 0;
-				for (; i < this.gamedatas.playerorder.length; i++)
-					if (gamedatas.dials[i].id + '' === playerId + '')
-						break;
-				if (gamedatas.dials[i]['dial_location'] !== 'player')
-					hideDialIcon = " hide";
-		
+// For now, keep the code ready here but hide the dial icon
+//				var hideDialIcon = "";
+//				var i = 0;
+//				for (; i < this.gamedatas.playerorder.length; i++)
+//					if (gamedatas.dials[i].id + '' === playerId + '')
+//						break;
+//				if (gamedatas.dials[i]['dial_location'] !== 'player')
+//					hideDialIcon = " hide";
+//				<div id="dialIcon_${playerId}" class="dialIcon${hideDialIcon}"></div>
+
 				// The meat and potatoes of the player panels
 				this.getPlayerPanelElement(playerId).innerHTML = `
 				<div class="flexRow iconsWrapper">
@@ -219,7 +222,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						<div class="icon chestsSizeIcon"></div>
 						<span id="chestSize_${playerId}" class="iconText">0</span>
 					</div>
-					<div id="dialIcon_${playerId}" class="dialIcon${hideDialIcon}"></div>
 					<div class="firstMateIcon${hideFirstMate}"></div>
 				</div>
 				`;
@@ -552,7 +554,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			let cardsNumber = this.waterDeck.getCardNumber();
 
 			if (cardsNumber >= cards.length)
-				destination.addCard(cards, {fromStock: this.waterDeck}, true); 
+				destination.addCards(cards, {fromStock: this.waterDeck}, true); 
 			else
 				console.log('dealWaterCardAnimation: not enough cards. Need ' + cards.length + ' but only have ' + cardNumber);
 		},
@@ -815,7 +817,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			targetColumn = targetColumn.charAt(0).toLowerCase() + targetColumn.slice(1);
 			
 			// Hide the dial icon in the corresponding player panel
-			dojo.addClass(`dialIcon_${notif.player_id}`, 'hide');
+			//dojo.addClass(`dialIcon_${notif.player_id}`, 'hide');
 		
 			// If the current player just declared, change the id of the dial in their character panel to avoid naming conflicts
 			if (this.player_id == notif.player_id)
@@ -857,6 +859,26 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_actDraw');
 			console.log(notif);
+
+			var card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
+
+			var source = null;
+			switch (notif.source)
+			{
+				case 'waterColumn':
+					source = this.waterColumn;
+					break;
+					
+				case 'treasureColumn':
+					source = this.treasureColumn;
+					break;
+
+				default:
+					source = this.waterDeck;
+					break;
+			}
+			if (source != this.waterDeck)
+				source.removeCard(card);
 	
 			// TODO Need to animate moving it to player panel
 			this.handSizeCounters[notif.player_id].incValue(1);
@@ -867,8 +889,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_actDraw');
 			console.log(notif);
+			
+			var card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
 		
-			this.playerHand.addCard(notif.card_id);
+			this.playerHand.addCard(card);
 			this.handSizeCounters[this.player_id].incValue(1);
 			this.correctGapUnderBoard();
 		},

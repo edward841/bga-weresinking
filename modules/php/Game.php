@@ -576,20 +576,33 @@ class Game extends \Table
 			throw new \BgaSystemException("actDraw: cardId: '$cardId', location: '$location' not allowed in state {$this->getStateName()}\n($message)");
 
 		// Proceed now that all input has been verified: Move the indicated card to the active player's hand
-		$card = [];
+		$card = $this->water->getCard($cardId);
 		if ($location === 'deck')
-			$card = $this->water->pickCard('deck', $this->getActivePlayerId());
+			$this->water->pickCard('deck', $this->getActivePlayerId());
 		else
-			$card = $this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
+			$this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
 
-		$this->notify->all('actDraw', clienttranslate('${player_name} drew one card'), array(
+		// Obfuscated version for the other players
+		$cardObfuscated = $card;
+		$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
+		// If the card was face-down, obfuscate the details for the other players
+		// If it was already facep-up (treasure column card or revealed clear water), then there is no need to obfuscate
+		if (intval($this->getUniqueValueFromDB("SELECT `card_face_up` FROM `water` WHERE `card_id`='$cardId'")) == 0)
+		{
+			$cardObfuscated['type'] = 'backside';
+			$cardObfuscated['type_arg'] = 0;
+			$cardDescription = clienttranslate('one unknown card');
+		}
+
+		$this->notify->all('actDraw', clienttranslate('${player_name} drew ${card_description}'), array(
 			'player_id' => $playerId,
+			'card_description' => $cardDescription,
 			'player_name' => $this->getActivePlayerName(),
-			'card_id' => $cardId,
+			'card' => $card,	
 		));	
-		$this->notify->player($playerId, 'actDrawPrivate', clienttranslate('You drew a ${card_name}'), array(
-			'card_name' => $card['card_type'],
-			'card_id' => $cardId,
+		$this->notify->player(intval($playerId), 'actDrawPrivate', clienttranslate('You drew a ${card_description}'), array(
+			'card_description' => $cardDescription,
+			'card' => $card,
 		));
 
 		// If COUNTER decremented is 0, then move on to whatever comes next

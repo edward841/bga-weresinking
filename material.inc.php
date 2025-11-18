@@ -253,6 +253,7 @@ $this->tokens = [
 	'waterDeck' => [
 		// Clear Water
 		'clearWater' => [
+			'name' => clienttranslate('Clear Water'),
 			'type' => 'water',
 			'remove' => [
 				3 => 15,
@@ -264,26 +265,31 @@ $this->tokens = [
 
 		// Gems
 		'amethyst' => [
+			'name' => clienttranslate('Amethyst'),
 			'type' => 'gem',
 			'value' => 2,
 			'quantity' => 9,
 			],
 		'topaz' => [
+			'name' => clienttranslate('Topaz'),
 			'type' => 'gem',
 			'value' => 3,
 			'quantity' => 7,
 			],
 		'sapphire' => [
+			'name' => clienttranslate('Sapphire'),
 			'type' => 'gem',
 			'value' => 4,
 			'quantity' => 5,
 			],
 		'emerald' => [
+			'name' => clienttranslate('Emerald'),
 			'type' => 'gem',
 			'value' => 5,
 			'quantity' => 3,
 			],
 		'ruby' => [
+			'name' => clienttranslate('Ruby'),
 			'type' => 'gem',
 			'value' => 6,
 			'quantity' => 2,
