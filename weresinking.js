@@ -118,9 +118,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					<div id="enemyDice"></div>
 				</div>
 			</div>
-			<div id="temp" class="whiteblock">
-				<div id="tempBox" class="dialIcon"></div>
-			</div>
 			<div id="myHandWrapper" class="whiteblock">
 				<b id="myHandLabel">${_('My hand')}</b>
 				<div id="myHand"></div>
@@ -176,7 +173,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					parentElement = 'myCharacterItemsWrapper';
 				else
 					continue;
-				dojo.create("div", {class: "dial", 'data-value': dial['dial_value'], 'data-color': gamedatas.players[dial['id']].color}, parentElement);
+				dojo.create("div", {id: `dial_${dial['id']}`, class: "dial", 'data-value': dial['dial_value'], 'data-color': gamedatas.players[dial['id']].color}, parentElement);
 			}
 
 			// Controls the amount of space for cards (the height of the gap between the board and the player hand)
@@ -567,7 +564,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				water = this.calculateStockHeight(this.waterColumn.getCardCount(), this.smallCardGap);
 
 			if (this.treasureColumn.getCardCount() > 0)
-				water = this.calculateStockHeight(this.treasureColumn.getCardCount(), this.smallCardGap);
+				treasure = this.calculateStockHeight(this.treasureColumn.getCardCount(), this.smallCardGap);
 		
 			const permanentBreachNbr = dojo.query('.permanentBreach').length;
 			if (permanentBreachNbr > 0)
@@ -584,9 +581,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				cannons = this.calculateStockHeight(this.operationalCannons.getCardCount(), this.bigCardGap); 
 
 			// Account for dials in columns	
-			var dialsCounter = {'bucket': 0, 'plunder': 0, 'patch': 0, 'fire': 0, 'player': 0};
-			for (var i = 0; i < this.gamedatas.dials.length; i++)
-				dialsCounter[this.gamedatas.dials[i]['dial_location']] += 1;
+			var dialsCounter = {'bucket': 0, 'plunder': 0, 'patch': 0, 'fire': 0};
+			for (var action in dialsCounter)
+				dialsCounter[action] += dojo.query(`#${this.actionToColumn(action)}Dials > div.dial`).length; 
 			var dialHeight = 102 + 10;
 			water += dialsCounter['bucket'] * dialHeight;
 			treasure += dialsCounter['plunder'] * dialHeight;
@@ -805,24 +802,55 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.correctGapUnderBoard();
 		},
 
-		notif_actDeclareDial: function(notif)
+		notif_actDeclareDial: async function(notif)
 		{
 			console.log('notif_actDeclareDial');
 			console.log(notif);
+		
+			// Necessary info
+			var dialId = `dial_${notif.player_id}`;
+			var tempId = dialId + 'temp';
+			var color = this.gamedatas.players[Number(notif.player_id)].color;
+			var targetColumn = `${notif.dial_location}Dials`.replace(' ', '');
+			targetColumn = targetColumn.charAt(0).toLowerCase() + targetColumn.slice(1);
 			
 			// Hide the dial icon in the corresponding player panel
 			dojo.addClass(`dialIcon_${notif.player_id}`, 'hide');
+		
+			// If the current player just declared, change the id of the dial in their character panel to avoid naming conflicts
+			if (this.player_id == notif.player_id)
+			{
+				dojo.attr(dialId, 'data-value', 'backside');
+				$(dialId).id = tempId; 
+			}
+			// Else (a player besides the current player declared) create a temporary dial above their player panel
+			else
+			{
+				var playerPanel = this.getPlayerPanelElement(notif.player_id);
+				dojo.create('div', {
+					'id': tempId, 
+					'class': 'dial',
+					'data-value': 'backside', 
+					'data-color': color,
+				}, playerPanel);
+				//this.placeOnObject(tempId, playerPanel);
+			}
 
-			// Create a dial on the player panel
+			// Prepare the dial in the column
+			dojo.create('div', {
+				'id': dialId, 
+				'class': 'dial hide',
+				'data-value': 'backside', 
+				'data-color': color,
+			}, targetColumn);
 			
-			var destination = `${notif.dial_location}Dials`.replace(' ', '');
-			destination = destination.charAt(0).toLowerCase() + destination.slice(1);
-			var color = this.gamedatas.players[Number(notif.player_id)].color;
-
-			dojo.create("div", {id: `dial_${notif.player_id}`, class: "dial", 'data-value': 'backside', 'data-color': color}, this.getPlayerPanelElement(notif.player_id));
-			this.placeOnObject(`dial_${notif.player_id}`, this.getPlayerPanelElement(notif.player_id));
-			this.slideToObject(`dial_${notif.player_id}`, destination, 1000).play();
+			// Correct whitespace
 			this.correctGapUnderBoard();
+			
+			// Move the temp dial into the column
+			// Mobile, targetColumn, duration, delay
+			await this.slideToObjectAndDestroy(tempId, dialId, 3000, 500).promise;
+			dojo.removeClass(dialId, 'hide');
 		},
 
 		notif_actDraw: function(notif)
@@ -830,8 +858,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_actDraw');
 			console.log(notif);
 	
-			// Need to animate moving it to player panel
-			//this.playerHand.addCard(notif.card_id);
+			// TODO Need to animate moving it to player panel
+			this.handSizeCounters[notif.player_id].incValue(1);
 			this.correctGapUnderBoard();
 		},
 
@@ -841,6 +869,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 		
 			this.playerHand.addCard(notif.card_id);
+			this.handSizeCounters[this.player_id].incValue(1);
 			this.correctGapUnderBoard();
 		},
    });             
