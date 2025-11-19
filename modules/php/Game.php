@@ -592,7 +592,7 @@ class Game extends \Table
 		{
 			$cardObfuscated['type'] = 'backside';
 			$cardObfuscated['type_arg'] = 0;
-			$cardDescriptionObfuscated = clienttranslate('one unknown card');
+			$cardDescriptionObfuscated = clienttranslate('an unknown card');
 		}
 
 		$this->notify->all('actDraw', clienttranslate('${player_name} drew ${card_description}'), array(
@@ -601,7 +601,7 @@ class Game extends \Table
 			'player_name' => $this->getActivePlayerName(),
 			'card' => $cardObfuscated,	
 		));	
-		$this->notify->player(intval($playerId), 'actDrawPrivate', clienttranslate('You drew a ${card_description}'), array(
+		$this->notify->player(intval($playerId), 'actDrawPrivate', clienttranslate('You drew ${card_description}'), array(
 			'card_description' => $cardDescription,
 			'card' => $card,
 		));
@@ -674,7 +674,7 @@ class Game extends \Table
 			'player_name' => $this->getActivePlayerName(),
 			'card' => $cardObfuscated,	
 		));	
-		$this->notify->player(intval($playerId), 'actDiscardPrivate', clienttranslate('You discard a ${card_description}'), array(
+		$this->notify->player(intval($playerId), 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
 			'card_description' => $cardDescription,
 			'card' => $card,
 		));

@@ -147,8 +147,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			// Create the stocks and populate them
 			this.setupCards(gamedatas);
 			this.setupDice(gamedatas);
-			console.log(this.waterDeck);
-			console.log(this.waterColumn);
 
            	// Notificataions
 			this.setupNotifications();
@@ -253,7 +251,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					// The 10s being the number of cards across the spritesheet is and 7 being the number of rows of sprites in the spritesheet
 					div.style.backgroundPositionX = `${(10 - (this.waterDeckIndexCard(card) % 10)) * this.cardWidth}px`;
 					div.style.backgroundPositionY = `${(7 - Math.floor(this.waterDeckIndexCard(card) / 10)) * this.cardHeight}px`;
-					div.style.top = '0px';
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
 				setupBackDiv: (card, div) => {},
@@ -378,9 +375,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 			const stock = new BgaCards.ManualPositionStock(manager, document.getElementById(divId), undefined, manualPositionStockUpdateDisplay);
 			stock.setSelectionMode('none');
-			stock.onCardClick = (card) => {
-				//alert(`clicked ${divId}`);
-				this.onCardClick(divId, card);
+
+			// Event listener for user clicks
+			stock.onCardClick = (card) => {this.onCardClick(divId, card);};
+
+			// Correct formatting when cards are removed (otherwise the tops of the cards will still be offset for the stock and the whitespace will be all wrong)
+			stock.onCardRemoved = (card) => {
+				var element = stock.getCardElement(card);
+				if (element != null)
+					element.style.top = '0px';
 			};
 
 			return stock;
@@ -390,10 +393,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			const deck = new BgaCards.Deck(manager, document.getElementById(divId), {
 				cardNumber: cardNbr,
-//				counter: {
-//					position: 'center',
-//					extraClasses: 'text-shadow',
-//				},
 			});
 
 			return deck;
@@ -866,10 +865,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_actDraw');
 			console.log(notif);
 
-			var card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
+			var card = {'id': Number(notif.card.id), 'type': notif.card.type, 'type_arg': Number(notif.card.type_arg)};
 
 			var source = null;
-			switch (notif.source)
+			switch (notif.card.location)
 			{
 				case 'waterColumn':
 					source = this.waterColumn;
@@ -883,9 +882,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					source = this.waterDeck;
 					break;
 			}
-			if (source != this.waterDeck)
+			if (source != this.waterDeck)	
 				source.removeCard(card);
-	
+			
 			// TODO Need to animate moving it to player panel
 			this.handSizeCounters[notif.player_id].incValue(1);
 			this.correctGapUnderBoard();
