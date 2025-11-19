@@ -42,6 +42,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			// Initialize stock:
 			this.playerHand = null;
 			this.waterDeck = null;
+			this.waterDiscard = null;
 			this.waterColumn = null;
 			this.treasureColumn = null;
 			this.breachDeck = null;
@@ -252,6 +253,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					// The 10s being the number of cards across the spritesheet is and 7 being the number of rows of sprites in the spritesheet
 					div.style.backgroundPositionX = `${(10 - (this.waterDeckIndexCard(card) % 10)) * this.cardWidth}px`;
 					div.style.backgroundPositionY = `${(7 - Math.floor(this.waterDeckIndexCard(card) / 10)) * this.cardHeight}px`;
+					div.style.top = '0px';
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
 				setupBackDiv: (card, div) => {},
@@ -318,7 +320,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			const gapBetweenCannonsAndBreaches = (gamedatas.globals.permanentBreaches > 0) ? 30 : 20;
 
 			this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, gamedatas.deckCount.water);
-			this.waterDiscard = null;
+			
+			this.waterDiscard = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('waterDiscardPile'), {
+			});
+			this.waterDiscard.addCards(gamedatas.discardDeck);
+
 			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager);
 			this.waterColumn.onCardCountChange = (cardCount) => {dojo.style('waterColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.smallCardGap) + gapBetweenCardsAndDials}px`)};
 			this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
@@ -330,7 +336,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				//fanShaped: true,
 			});
 			this.playerHand.onCardClick = (card) => {
-				//alert('clicked player hand');
 				this.onCardClick('myHand', card);
 			};
 
@@ -556,7 +561,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			if (cardsNumber >= cards.length)
 				destination.addCards(cards, {fromStock: this.waterDeck}, true); 
 			else
-				console.log('dealWaterCardAnimation: not enough cards. Need ' + cards.length + ' but only have ' + cardNumber);
+				console.log('dealWaterCardAnimation: not enough cards. Need ' + cards.length + ' but only have ' + cardsNumber);
 		},
 
 		correctGapUnderBoard: function()
@@ -667,6 +672,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 			// Ignore notifications! These notifications have private versions, communicating private information privy only to the current player
 			this.notifqueue.setIgnoreNotificationCheck('actDraw', (notif) => (notif.args.player_id == this.player_id));
+			this.notifqueue.setIgnoreNotificationCheck('actDiscard', (notif) => (notif.args.player_id == this.player_id));
         },  
         
         // From this point and below, you can write your game notifications handling methods
@@ -710,9 +716,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			}
 
 			// Rebuild the water deck with all available cards (water column, treasure column, discard, deck) and shuffle
+			this.waterDeck.addCards(this.waterDiscard.getCards().map(card => ({id: card.id})));
 			this.waterDeck.addCards(this.waterColumn.getCards().map(card => ({id: card.id})));
 			this.waterDeck.addCards(this.treasureColumn.getCards().map(card => ({id: card.id})));
-			// TODO: also add cards from the discard pile
 			//this.waterDeck.setCardNumber(notif.deckNbr);
 			this.waterDeck.shuffle().then(() => console.log('Water deck shuffled'));
 			
@@ -887,14 +893,34 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 		notif_actDrawPrivate: function(notif)
 		{
-			console.log('notif_actDraw');
+			console.log('notif_actDrawPrivate');
 			console.log(notif);
 			
 			var card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
+			console.log(card);
 		
 			this.playerHand.addCard(card);
 			this.handSizeCounters[this.player_id].incValue(1);
 			this.correctGapUnderBoard();
+		},
+
+		notif_actDiscard: function(notif)
+		{
+			console.log('notif_actDiscard');
+			console.log(notif);
+			
+			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
+			this.waterDiscard.addCard(card);
+		},
+
+		notif_actDiscardPrivate: function(notif)
+		{
+			console.log('notif_actDiscardPrivate');
+			console.log(notif);
+	
+			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
+			this.waterDiscard.addCard(card);
+			this.waterDiscard.setCardVisible(card, false);
 		},
    });             
 });

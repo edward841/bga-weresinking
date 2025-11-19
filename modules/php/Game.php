@@ -583,22 +583,23 @@ class Game extends \Table
 			$this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
 
 		// Obfuscated version for the other players
-		$cardObfuscated = $card;
 		$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
+		$cardDescriptionObfuscated = $cardDescription;
+		$cardObfuscated = $card;
 		// If the card was face-down, obfuscate the details for the other players
 		// If it was already facep-up (treasure column card or revealed clear water), then there is no need to obfuscate
 		if (intval($this->getUniqueValueFromDB("SELECT `card_face_up` FROM `water` WHERE `card_id`='$cardId'")) == 0)
 		{
 			$cardObfuscated['type'] = 'backside';
 			$cardObfuscated['type_arg'] = 0;
-			$cardDescription = clienttranslate('one unknown card');
+			$cardDescriptionObfuscated = clienttranslate('one unknown card');
 		}
 
 		$this->notify->all('actDraw', clienttranslate('${player_name} drew ${card_description}'), array(
 			'player_id' => $playerId,
-			'card_description' => $cardDescription,
+			'card_description' => $cardDescriptionObfuscated,
 			'player_name' => $this->getActivePlayerName(),
-			'card' => $card,	
+			'card' => $cardObfuscated,	
 		));	
 		$this->notify->player(intval($playerId), 'actDrawPrivate', clienttranslate('You drew a ${card_description}'), array(
 			'card_description' => $cardDescription,
@@ -658,7 +659,25 @@ class Game extends \Table
 			throw new \BgaSystemException("actDiscard: cardId: '$cardId' not allowed in state {$this->getStateName()}\n($message)");
 		
 		// Proceed now that all input has been verified: Move the indicated card to the discard pile
+		$playerId = $this->getActivePlayerId();
+		$card = $this->water->getCard($cardId);
+		$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
 		$this->discard($cardId);
+		
+		// Obfuscated version for the other players
+		$cardObfuscated = $card;
+		$cardObfuscated['type'] = 'backside';
+		$cardObfuscated['type_arg'] = 0;
+
+		$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
+			'player_id' => $playerId,
+			'player_name' => $this->getActivePlayerName(),
+			'card' => $cardObfuscated,	
+		));	
+		$this->notify->player(intval($playerId), 'actDiscardPrivate', clienttranslate('You discard a ${card_description}'), array(
+			'card_description' => $cardDescription,
+			'card' => $card,
+		));
 
 		// Handles specific states
 		if ($this->getStateName() === 'resolveBucket')
@@ -987,7 +1006,13 @@ class Game extends \Table
 		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
 		$globals['firstMate'] = $this->globals->get('FIRST_MATE');
 		$result['globals'] = $globals;
-		
+
+		// Cards in the discard deck
+		$discardDeck = array();
+		foreach ($this->water->getCardsInLocation('discard') as $id => $details)
+			$discardDeck[] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
+		$result['discardDeck'] = $discardDeck;
+
 		// Cards in the waterColumn, either 'backside' or a clear water
 		// It is important we only tell the client backside or face up clear water. Anything more would be revealing more info than we should,
 		// telling them information hidden to the players (known to the backend of course)
