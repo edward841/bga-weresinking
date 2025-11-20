@@ -564,6 +564,10 @@ class Game extends \Table
 		$argFunction = 'arg' . ucfirst($currentState);
 		$args = $this->$argFunction();
 
+		if ($location === 'deck')
+			$cardId = $args['possibleIdsDraw'][0];
+		$this->debug("\n\nTEST TEST TEST\nactDraw: cardId=$cardId\n\n");
+
 		// Fail the draw if: Draw is not in the arg's possibleActions, the given location is wrong, or the given cardId is wrong
 		// It might seem silly to check if actDraw is in possibleActions array since we already verified it is allowed by the state. 
 		// This lets us to control at what point the player can do each subaction (managing the order of operations for multistep actions like bucket)
@@ -795,7 +799,8 @@ class Game extends \Table
 		
 		if ($flag)
 		{
-			$args['possibleIdsDraw'] = [0];
+			$topCard = $this->water->getCardOnTop('deck');
+			$args['possibleIdsDraw'] = [intval($topCard['id'])];
 			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->getActivePlayerId()));
 		}
 		else

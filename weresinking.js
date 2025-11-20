@@ -317,6 +317,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			const gapBetweenCannonsAndBreaches = (gamedatas.globals.permanentBreaches > 0) ? 30 : 20;
 
 			this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, gamedatas.deckCount.water);
+			this.waterDeck.onCardClick = (card) => {this.onCardClick('deck', card);};
 			
 			this.waterDiscard = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('waterDiscardPile'), {
 			});
@@ -332,10 +333,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				autoPlace: card => card.location === 'hand' && card.location_arg === this.player_id,
 				//fanShaped: true,
 			});
-			this.playerHand.onCardClick = (card) => {
-				this.onCardClick('myHand', card);
-			};
-
+			this.playerHand.onCardClick = (card) => {this.onCardClick('myHand', card);};
 
 			//this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);	
 			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager, this.bigCardGap);
@@ -639,16 +637,24 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(`Clicked card of type ${parentDiv}`);	
 			if (!this.current_player_is_active)
 				return;
-		
+	
+
 			// Active player is attempting to take their turn
 			// We need to verify that this move is allowed and then hand it off to backend
-			const constants = this.gamedatas.constants;
-			const possibleActions = this.gamedatas.gamestate.args.possibleActions;
-			if (possibleActions.includes('Draw') && parentDiv === this.gamedatas.gamestate.args.location)
+			const args = this.gamedatas.gamestate.args;
+
+			// Intervene for deck, there is only one option of what that card could be
+//			if (parentDiv === 'deck')
+//				card = {'id': args.possibleIdsDraw[0], 'type': 'backside'};
+//			console.log('printing the card:');
+//			console.log(card);
+
+			if (args.possibleActions.includes('Draw') && parentDiv === args.location)
 				this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv,});
-			else if (possibleActions.includes('Discard') && parentDiv === 'myHand')
+			else if (args.possibleActions.includes('Discard') && parentDiv === 'myHand')
 				this.bgaPerformAction('actDiscard', {cardId: card.id});
 
+//			const constants = this.gamedatas.constants;
 //			switch (this.gamedatas.gamestate.id)
 //			{
 //				case constants.STATE_RESOLVE_BUCKET:
