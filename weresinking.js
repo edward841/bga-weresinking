@@ -470,20 +470,27 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             
             switch( stateName )
             {
-            
-            /* Example:
-            
-            case 'myGameState':
-            
-                // Hide the HTML block we are displaying only during this game state
-                dojo.style( 'my_html_block_id', 'display', 'none' );
-                
-                break;
-           */
-           
-           
-            case 'dummy':
-                break;
+				// Reset dials for a new round
+				case 'upkeep':
+					var dialId = `dial_${this.player_id}`;
+					var currentPlayersValue = null; 
+					for (var dial in this.gamedatas.dials)
+					{
+						if (this.gamedatas.dials[dial].id === this.player_id + '')
+						{
+							currentPlayersValue = this.gamedatas.dials[dial].dial_value;
+							break;
+						}
+					}
+
+					dojo.query('.dial').forEach(dojo.destroy);
+					dojo.create('div', {
+						'id': dialId, 
+						'class': 'dial',
+						'data-value': currentPlayersValue, 
+						'data-color': this.gamedatas.players[this.player_id].color,
+					}, 'myCharacterItemsWrapper');
+					break;
             }               
         }, 
 
@@ -856,8 +863,17 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			
 			// Move the temp dial into the column
 			// Mobile, targetColumn, duration, delay
-			await this.slideToObjectAndDestroy(tempId, dialId, 3000, 500).promise;
+			await this.slideToObjectAndDestroy(tempId, dialId, 2000).promise;
 			dojo.removeClass(dialId, 'hide');
+		},
+
+		// TODO This will need more attention when I finish declaring dials in frontend
+		notif_revealDials: function(notif)
+		{
+			console.log('notif_revealDials');
+			console.log(notif);
+			for (var player in notif.dials)
+				dojo.attr(`dial_${player}`, 'data-value', notif.dials[player]['dial_value']);
 		},
 
 		notif_actDraw: function(notif)

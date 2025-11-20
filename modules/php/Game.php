@@ -293,15 +293,15 @@ class Game extends \Table
 
 	public function stRevealDial()
 	{
-		// Set the dial's location to match its value (honest pirates will already match, this corrects the location of the liars)
-		$this->DbQuery('UPDATE `player` SET `dial_location`=`dial_value`');
+		// Location: where the dial was placed initially
+		// Value: the dial's proper home for that round
 
 		// Correct the turn order to align with the current turn order and dial locations
 		// Determine proper order
-		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `dial_location` FROM `player` ORDER BY `custom_order`', true);
+		$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `dial_location`, `dial_value` FROM `player` ORDER BY `custom_order`');
 		$sorted = ['bucket' => [], 'plunder' => [], 'patch' => [], 'fire' =>[]];	
-		foreach ($playerInfo as $playerId => $location)
-			$sorted[$location][] = $playerId;
+		foreach ($playerInfo as $playerId => $details)
+			$sorted[$details['dial_value']][] = $playerId;
 		$sorted = array_merge($sorted['bucket'], $sorted['plunder'], $sorted['patch'], $sorted['fire']);
 
 		// Update the database to reflect new order
@@ -310,6 +310,13 @@ class Game extends \Table
 			$updateString .= "WHEN $playerId THEN " . $order+1 . ' ';
 		$this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_id` $updateString END");
 		$this->globals->set('PREVIOUS_PLAYER', 'none');
+	
+		// Notify the front end
+		$this->notify->all('revealDials', '', array(
+			'new_turn_order' => $sorted,
+			'dials' => $playerInfo,
+		));
+
 		$this->gamestate->nextState('resolveBucketHelper');
 	}
 
@@ -477,13 +484,15 @@ class Game extends \Table
 		{
 			// If you are below 2 cards, you must draw cards from the Water Deck until you have 2 cards
 			if ($nbr < 2)
-				$this->water->pickCards(2 - $nbr, 'deck', $playerId);
+				$this->notifyForCardsDrawn($playerId, $this->water->pickCards(2 - $nbr, 'deck', $playerId));
 
 			// If you have over 10 cards, you must randomly discard cards until you have 10 cards
 			else if ($nbr > 10)
 			{
+				$discards = [];
 				while ($nbr-- > 10)
-					$this->discard($this->getRandomCardFrom($playerId));
+					$discards[] = $this->discard($this->getRandomCardFrom($playerId));
+				$this->notifyForCardsDiscarded($playerId, $discards);
 			}
 		}
 
@@ -577,34 +586,13 @@ class Game extends \Table
 
 		// Proceed now that all input has been verified: Move the indicated card to the active player's hand
 		$card = $this->water->getCard($cardId);
+		$this->notifyForCardsDrawn(intval($playerId), array($card));
+
 		if ($location === 'deck')
 			$this->water->pickCard('deck', $this->getActivePlayerId());
 		else
 			$this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
 
-		// Obfuscated version for the other players
-		$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
-		$cardDescriptionObfuscated = $cardDescription;
-		$cardObfuscated = $card;
-		// If the card was face-down, obfuscate the details for the other players
-		// If it was already facep-up (treasure column card or revealed clear water), then there is no need to obfuscate
-		if (intval($this->getUniqueValueFromDB("SELECT `card_face_up` FROM `water` WHERE `card_id`='$cardId'")) == 0)
-		{
-			$cardObfuscated['type'] = 'backside';
-			$cardObfuscated['type_arg'] = 0;
-			$cardDescriptionObfuscated = clienttranslate('an unknown card');
-		}
-
-		$this->notify->all('actDraw', clienttranslate('${player_name} drew ${card_description}'), array(
-			'player_id' => $playerId,
-			'card_description' => $cardDescriptionObfuscated,
-			'player_name' => $this->getActivePlayerName(),
-			'card' => $cardObfuscated,	
-		));	
-		$this->notify->player(intval($playerId), 'actDrawPrivate', clienttranslate('You drew ${card_description}'), array(
-			'card_description' => $cardDescription,
-			'card' => $card,
-		));
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
 		if ($this->globals->inc('COUNTER', -1) <= 0)
@@ -661,24 +649,9 @@ class Game extends \Table
 		// Proceed now that all input has been verified: Move the indicated card to the discard pile
 		$playerId = $this->getActivePlayerId();
 		$card = $this->water->getCard($cardId);
-		$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
+		$this->notifyForCardsDiscarded(intval($playerId), array($card));
 		$this->discard($cardId);
 		
-		// Obfuscated version for the other players
-		$cardObfuscated = $card;
-		$cardObfuscated['type'] = 'backside';
-		$cardObfuscated['type_arg'] = 0;
-
-		$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
-			'player_id' => $playerId,
-			'player_name' => $this->getActivePlayerName(),
-			'card' => $cardObfuscated,	
-		));	
-		$this->notify->player(intval($playerId), 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
-			'card_description' => $cardDescription,
-			'card' => $card,
-		));
-
 		// Handles specific states
 		if ($this->getStateName() === 'resolveBucket')
 		{
@@ -974,7 +947,7 @@ class Game extends \Table
 		{
 			$stateId = $this->gamestate->getCurrentMainStateId();
 			
-			// Handle current player correctly: Always show the value, except show the backside after they declared and before it is revealed
+			// Handle current player correctly: Always show the value, except only show backside after they declared and before it is revealed
 			if ($id == $currentPlayerId)
 			{
 				$dial = ['id' => $details['id'], 'dial_location' => $details['dial_location'], 'dial_value' => $details['dial_value']];
@@ -988,14 +961,10 @@ class Game extends \Table
 			}
 			// If we have not revealed dials yet, hide the value of the other players' dials
 			else if ($stateId < STATE_REVEAL_DIAL)
-			{
 				$dials[] = ['id' => $details['id'], 'dial_location' => $details['dial_location'], 'dial_value' => 'backside'];	
-			}
 			// Else reveal all info (we are either currently in or past STATE_REVEAL_DIAL, so dial values and locations are all known at this point
 			else 
-			{
 				$dials[] = ['id' => $details['id'], 'dial_location' => $details['dial_location'], 'dial_value' => $details['dial_value']];
-			}
 		}
 		$result['dials'] = $dials;
 		
@@ -1477,13 +1446,15 @@ class Game extends \Table
 			$this->discard((int) $this->water->getCardOnTop('waterColumn')['id']);
 	}
 
-	public function discard(int $cardId): void
+	public function discard(int $cardId): array
 	{
 		$this->water->playCard($cardId);
 		if ($this->globals->get('KRAKEN_ANGERED'))
 		{
+			// TODO Implement Kraken angered!
 			$this->debug('KrakenAngered here...');
 		}
+		return $this->water->getCard($cardId);
 	}
 
 	public function addToCannonsColumn(int $cardId)
@@ -1586,6 +1557,62 @@ class Game extends \Table
 		$activatedCannons = (array) $this->globals->get('LIST');
 		array_push($activatedCannons, $cannonId);
 		$this->globals->set('LIST', $activatedCannons);
+	}
+
+	public function notifyForCardsDrawn(int $playerId, array $cards)
+	{
+		foreach ($cards as $card)
+		{	
+			// Obfuscated version for the other players
+			$cardId = $card['id'];
+			$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
+			$cardDescriptionObfuscated = $cardDescription;
+			$cardObfuscated = $card;
+
+			// If the card was face-down, obfuscate the details for the other players
+			// If it was already facep-up (treasure column card or revealed clear water), then there is no need to obfuscate
+			if (intval($this->getUniqueValueFromDB("SELECT `card_face_up` FROM `water` WHERE `card_id`='$cardId'")) == 0)
+			{
+				$cardObfuscated['type'] = 'backside';
+				$cardObfuscated['type_arg'] = 0;
+				$cardDescriptionObfuscated = clienttranslate('an unknown card');
+			}
+
+			$this->notify->all('actDraw', clienttranslate('${player_name} drew ${card_description}'), array(
+				'player_id' => $playerId,
+				'card_description' => $cardDescriptionObfuscated,
+				'player_name' => $this->getPlayerNameById($playerId),
+				'card' => $cardObfuscated,	
+			));	
+			$this->notify->player(intval($playerId), 'actDrawPrivate', clienttranslate('You drew ${card_description}'), array(
+				'card_description' => $cardDescription,
+				'card' => $card,
+			));
+		}
+	}
+
+	// In all cases, the card discarded is unknown to everyone except for $playerId
+	// Therefore all sensitive info must be obfuscated from everyone else	
+	public function notifyForCardsDiscarded(int $playerId, array $cards)
+	{
+		foreach ($cards as $card)
+		{
+			// Make an obfuscated version for the other players
+			$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
+			$cardObfuscated = $card;
+			$cardObfuscated['type'] = 'backside';
+			$cardObfuscated['type_arg'] = 0;
+
+			$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
+				'player_id' => $playerId,
+				'player_name' => $this->getPlayerNameById($playerId),
+				'card' => $cardObfuscated,	
+			));	
+			$this->notify->player($playerId, 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
+				'card_description' => $cardDescription,
+				'card' => $card,
+			));
+		}
 	}
 
 //	define('RED', 'ff5165');
