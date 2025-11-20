@@ -148,6 +148,7 @@ class Game extends \Table
 		// (since the default value of card_face_up is true, the waters we find will have the proper card_face_up value by default)
 		$remainingTreasures = (int) $thresholdPanelInfo['treasure'];
 		$clearWaterNbr = 0;
+		$faceupCardIds = [];
 		while ($remainingTreasures > 0)
 		{
 			$card = $this->water->getCardOnTop('deck');
@@ -158,15 +159,20 @@ class Game extends \Table
 			if ($card['type'] === 'clearWater')
 			{
 				$this->water->insertCardOnExtremePosition($card['id'], 'waterColumn', COLUMN_BOTTOM);
+				$faceupCardIds[] = $card['id'];
 				$clearWaterNbr++;
 			}
 			else
 			{
 				$this->addToTreasureColumn((int) $card['id']);
+				$faceupCardIds[] = $card['id'];
 				$remainingTreasures--;
 			}
 		}
-		
+
+		$sqlData = implode(',', $faceupCardIds);	
+		$this->DbQuery("UPDATE `water` SET `card_face_up`=TRUE WHERE `card_id` IN ($sqlData)");
+
 		$this->notify->all('dealWaterAndTreasure', clienttranslate('Dealt ${waterNbr} cards to Water Column. Dealt ${treasureNbr} Treasures. Dealt ${clearWaterNbr} additional Clear Waters.'), array(
 			'waterNbr' => $thresholdPanelInfo['water'],
 			'treasureNbr' => $thresholdPanelInfo['treasure'],
@@ -378,7 +384,20 @@ class Game extends \Table
 					//    (no need for player states, just move on to the next helper state
 					if ($plunderingPlayersNbr == 1)
 					{
+						// We need the cards in question (in card format for the notifications)
+						$cardsDrawn = $this->water->getCardsInLocation('treasureColumn');
+
+						// Move the cards to the player's hand
 						$this->water->moveAllCardsInLocation('treasureColumn', 'hand', null, $nextPlayer);
+
+						// Notify the frontend of the cards drawn
+						$this->notifyForCardsDrawn($nextPlayer, $cardsDrawn);
+					
+						// Update the database so that those cards are facedown (minor but keeps the obfuscation right)
+						// Must occur AFTER the notifications. Since they were faceup, the cards drawn are not obfuscated from other players
+						$implodedCards = implode(',', array_column($cardsDrawn, 'id'));
+						$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id` IN ($implodedCards)");
+
 						$moveOnToNextAction = true;
 					}
 					// 2. Several plunderers with enough to go around
@@ -588,9 +607,10 @@ class Game extends \Table
 		if ($message !== '')
 			throw new \BgaSystemException("actDraw: cardId: '$cardId', location: '$location' not allowed in state {$this->getStateName()}\n($message)");
 
-		// Proceed now that all input has been verified: Move the indicated card to the active player's hand
+		// Proceed now that all input has been verified: Move the indicated card to the active player's hand, notify frontend, and mark the card as facedown
 		$card = $this->water->getCard($cardId);
 		$this->notifyForCardsDrawn(intval($playerId), array($card));
+		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id`='$cardId'");
 
 		if ($location === 'deck')
 			$this->water->pickCard('deck', $this->getActivePlayerId());
@@ -1138,7 +1158,8 @@ class Game extends \Table
 		$this->globals->set('FLAG', true);
 		$this->globals->set('LIST', []); 
 		
-		// Lingering enemy effects are currently in effect iff their value is true
+		// Lingering enemy effects are currently in effect iff their value is true (nonzero)
+		// Ones with multiplicity are indicated by their value (double angered would be KRAKEN_ANGERED: 2)
 		// Kraken's Angered (corresponds to resolveKrakenAttack2)
 		$this->globals->set('KRAKEN_ANGERED', 0);
 
@@ -1217,15 +1238,16 @@ class Game extends \Table
 		// Because the clear waters were set aside in their own buffer deck and player hands are done, 
 		// the regular deck only has gems, basic items, unused character items, and enemy items. 
 		// Exactly what we need for the treasure column!
+		// (and mark them as faceup for information control/obfuscation later)
 		$this->water->shuffle('deck');
 		$this->water->pickCardsForLocation(2, 'deck', 'treasureColumn');
+		$this->DbQuery("UPDATE `water` SET `card_face_up`=TRUE WHERE `card_location`='treasureColumn'");
 
 		// STEP I, J: Assemble waterDeck and water column
 		// Now we just need to add the clear waters back into the deck, shuffle, and put one in the water column.
 		$this->water->moveAllCardsInLocation('clearWaterDeck', 'deck');
 		$this->water->shuffle('deck');
 		$this->water->pickCardForLocation('deck', 'waterColumn');
-		$this->DbQuery("UPDATE `water` SET `card_face_up`='0' WHERE `card_location`='waterColumn'");
 
 		// Now create the breaches deck ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// STEP K: Create the breaches deck and place one minor breah in the breaches column
@@ -1448,7 +1470,7 @@ class Game extends \Table
 	{
 		$this->water->insertCardOnExtremePosition($cardId, 'treasureColumn', COLUMN_BOTTOM);
 		if ($this->water->countCardInLocation('treasureColumn') > 5)
-			$this->discard((int) $this->water->getCardOnTop('waterColumn')['id']);
+			$this->discard((int) $this->water->getCardOnTop('treasureColumn')['id']);
 	}
 
 	public function discard(int $cardId): array

@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS `water` (
   `card_type_arg` int(11) NOT NULL,
   `card_location` varchar(16) NOT NULL,
   `card_location_arg` int(11) NOT NULL,
-  `card_face_up` boolean NOT NULL DEFAULT TRUE,
+  `card_face_up` boolean NOT NULL DEFAULT FALSE,
   PRIMARY KEY (`card_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
