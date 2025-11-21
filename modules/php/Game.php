@@ -1493,7 +1493,7 @@ class Game extends \Table
 	{
 		$topCannon = $this->cannons->getCardOnTop('cannonsColumn');
 		if ($topCannon == null)
-			return 0;
+			return -1;
 
 		$topCannonId = (int) $topCannon['id'];
 		$this->debug("Top cannon id: $topCannonId;");
@@ -1685,10 +1685,14 @@ class Game extends \Table
 	public function resolveBasicCannon(): void
 	{
 		$this->debug("\nResolving basic cannon...\n");
-		$this->removeFromCannonsColumn();
-		$this->notify->all('resolveBasicCannon', 'Resolved basic cannon die result', array(
-			'ids' => [],
-		));
+		if ($this->cannons->countCardsInLocation('cannonsColumn') == 0)
+		{
+			$this->notify->all('resolveBasicCannonFailed', clienttranslate('Resolved basic cannon die result (no cannons in cannon column)'), array()); 
+			return;
+		}
+
+		$id = $this->removeFromCannonsColumn();
+		$this->notify->all('resolveBasicCannon', clienttranslate('Resolved basic cannon die result'), ['id' => $id,]);
 	}
 
 	// Special Enemy Dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

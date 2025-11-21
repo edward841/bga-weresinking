@@ -818,7 +818,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_resolveBasicCannon');
 			console.log(notif);
 
-			this.bustedCannons.addCard(notif.ids[0], {fromStock: this.cannons}, true);
+			this.bustedCannons.addCard(notif.id, {fromStock: this.cannons}, true);
 			this.correctGapUnderBoard();
 		},
 
