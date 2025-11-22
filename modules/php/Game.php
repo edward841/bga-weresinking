@@ -1695,6 +1695,196 @@ class Game extends \Table
 		$this->notify->all('resolveBasicCannon', clienttranslate('Resolved basic cannon die result'), ['id' => $id,]);
 	}
 
+	// Items!?!
+	// All items with actual effects (not just points), in alphabetical order.
+	// I'll slowly fill in the logic for each... sounds like fun!
+	public function itemsDoStuffIGuess($item)
+	{
+		switch ($item)
+		{
+			case 'boneClub':
+				break;
+
+			case 'bottleORum':
+				break;
+
+			case 'captainsKey':
+				break;
+
+			case 'cheekyChum':
+				break;
+
+			case 'crackedCompass':
+				break;
+
+			case 'cutlass':
+				break;
+
+			case 'decoyCannon':
+				break;
+
+			case 'fishingNet':
+				break;
+
+			case 'fishingRod':
+				break;
+
+			case 'fishyBait':
+				break;
+
+			case 'flintPistol':
+				break;
+
+			case 'gemSifter':
+				break;
+
+			case 'grabbyCrabby':
+				break;
+
+			case 'grenado':
+				break;
+
+			case 'harpoon':
+				break;
+
+			case 'hurdyGurdy':
+				break;
+
+			case 'metalMallet':
+				break;
+
+			case 'moldyMop':
+				break;
+
+			case 'silverDoubloon':
+				break;
+
+			case 'sirenShiner':
+				break;
+
+			case 'sirenSilencers':
+				break;
+
+			case 'smellySponge':
+				break;
+
+			case 'spareBarrel':
+				break;
+
+			case 'spyGlass':
+				break;
+
+			case 'stickyStarfish':
+				break;
+
+			case 'trustyCarrot':
+				break;
+
+			case 'warDrum':
+				break;
+
+			case 'waterPistol':
+				break;
+
+			case 'woodenMallet':
+				break;
+		}
+	}
+
+// Well just save that there in case we need that later... maybe for setting up their args? or a helper function?
+//	public function itemsDoStuffIGuess($item)
+//	{
+//		switch ($item)
+//		{
+//			case 'boneClub':
+//				break;
+//
+//			case 'bottleORum':
+//				break;
+//
+//			case 'captainsKey':
+//				break;
+//
+//			case 'cheekyChum':
+//				break;
+//
+//			case 'crackedCompass':
+//				break;
+//
+//			case 'cutlass':
+//				break;
+//
+//			case 'decoyCannon':
+//				break;
+//
+//			case 'fishingNet':
+//				break;
+//
+//			case 'fishingRod':
+//				break;
+//
+//			case 'fishyBait':
+//				break;
+//
+//			case 'flintPistol':
+//				break;
+//
+//			case 'gemSifter':
+//				break;
+//
+//			case 'grabbyCrabby':
+//				break;
+//
+//			case 'grenado':
+//				break;
+//
+//			case 'harpoon':
+//				break;
+//
+//			case 'hurdyGurdy':
+//				break;
+//
+//			case 'metalMallet':
+//				break;
+//
+//			case 'moldyMop':
+//				break;
+//
+//			case 'silverDoubloon':
+//				break;
+//
+//			case 'sirenShiner':
+//				break;
+//
+//			case 'sirenSilencers':
+//				break;
+//
+//			case 'smellySponge':
+//				break;
+//
+//			case 'spareBarrel':
+//				break;
+//
+//			case 'spyGlass':
+//				break;
+//
+//			case 'stickyStarfish':
+//				break;
+//
+//			case 'trustyCarrot':
+//				break;
+//
+//			case 'warDrum':
+//				break;
+//
+//			case 'waterPistol':
+//				break;
+//
+//			case 'woodenMallet':
+//				break;
+//		}
+//	}
+
 	// Special Enemy Dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// The Kraken	
 	// Splash: Place the top card in the Treasure Column face-down into the Water Column.
