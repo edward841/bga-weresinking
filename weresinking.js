@@ -809,7 +809,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_resolveBasicBreach');
 			console.log(notif);
 
-			this.breaches.addCard(notif.ids[0], {fromStock: this.breachesDeck}, true);
+			this.breaches.addCard(notif.id, {fromStock: this.breachesDeck}, true);
 			this.correctGapUnderBoard();
 		},
 
