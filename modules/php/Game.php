@@ -523,6 +523,13 @@ class Game extends \Table
 		$this->globals->set('FLAG', true);
 		$this->globals->set('COUNTER', 0);
 
+		// Enemy items	
+		$this->globals->set('KRAKEN_ANGERED', 0);
+		$this->globals->set('SHARK_CHOMP_CHOMP', 0);
+		$this->globals->set('SHARK_SUBMERGED', 0);
+		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+		$this->globals->set('SIRENS_SCREECH', 0);
+
 		$this->gamestate->nextState();
 	}
 	
@@ -1126,10 +1133,14 @@ class Game extends \Table
 		$this->globals->set('FLAG', true);
 		$this->globals->set('LIST', []); 
 		
-		// Lingering enemy effects are currently in effect iff their value is true (nonzero)
+		// Lingering enemy effects are currently in effect iff their value is positive 
 		// Ones with multiplicity are indicated by their value (double angered would be KRAKEN_ANGERED: 2)
-		// Kraken's Angered (corresponds to resolveKrakenAttack2)
+		// Items that can ignore lingering effects simply adjust the global value (by decrementing)
 		$this->globals->set('KRAKEN_ANGERED', 0);
+		$this->globals->set('SHARK_CHOMP_CHOMP', 0);
+		$this->globals->set('SHARK_SUBMERGED', 0);
+		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+		$this->globals->set('SIRENS_SCREECH', 0);
 
 		$this->populateDatabase();
 
@@ -1702,6 +1713,7 @@ class Game extends \Table
 				break;
 
 			case 'cheekyChum':
+				$this->globals->inc('SHARK_SUBMERGED', -2);
 				break;
 
 			case 'crackedCompass':
@@ -1738,6 +1750,7 @@ class Game extends \Table
 				break;
 
 			case 'hurdyGurdy':
+				$this->globals->inc('KRAKEN_ANGERED', -1);
 				break;
 
 			case 'metalMallet':
@@ -1750,9 +1763,19 @@ class Game extends \Table
 				break;
 
 			case 'sirenShiner':
+				$dice = $this->getCollectionFromDB("SELECT `die_id`, `value` FROM `dice` WHERE `type`='basic'", true);
+				$updateString = '';
+				foreach (array_keys($dice) as $id)
+				{
+					$dice[$id] = 7 - intval($dice[$id]);
+					$updateString .= "WHEN $id THEN {$dice[$id]} ";
+				}
+				$ids = implode(',', $array_keys($dice));
+				$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` IN ($ids)");
 				break;
 
 			case 'sirenSilencers':
+				$this->globals->inc('SIREN_SCREECH', -2);
 				break;
 
 			case 'smellySponge':
@@ -1771,6 +1794,7 @@ class Game extends \Table
 				break;
 
 			case 'warDrum':
+				$this->globals->set('FLAG', true);
 				break;
 
 			case 'waterPistol':
