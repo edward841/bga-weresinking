@@ -160,10 +160,7 @@ class Game extends \Table
 				$remainingTreasures--;
 			}
 		}
-		
-		$sqlData = implode(',', $faceupCardIds);	
-		$this->DbQuery("UPDATE `water` SET `card_face_up`=TRUE WHERE `card_id` IN ($sqlData)");
-
+		$this->setCardsOrientation($faceupCardIds, true);
 		$this->notify->all('dealWaterAndTreasure', clienttranslate('Dealt ${waterNbr} cards to Water Column. Dealt ${treasureNbr} Treasures. Dealt ${clearWaterNbr} additional Clear Waters.'), array(
 			'waterNbr' => $thresholdPanelInfo['water'],
 			'treasureNbr' => $thresholdPanelInfo['treasure'],
@@ -386,8 +383,7 @@ class Game extends \Table
 					
 						// Update the database so that those cards are facedown (minor but keeps the obfuscation right)
 						// Must occur AFTER the notifications. Since they were faceup, the cards drawn are not obfuscated from other players
-						$implodedCards = implode(',', array_column($cardsDrawn, 'id'));
-						$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id` IN ($implodedCards)");
+						$this->setCardsOrientation($cardsDrawn, true);
 
 						$moveOnToNextAction = true;
 					}
@@ -601,7 +597,7 @@ class Game extends \Table
 		// Proceed now that all input has been verified: Move the indicated card to the active player's hand, notify frontend, and mark the card as facedown
 		$card = $this->water->getCard($cardId);
 		$this->notifyForCardsDrawn(intval($playerId), array($card));
-		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id`='$cardId'");
+		$this->setCardOrientation($cardId, false);
 
 		// Deck has to be a separate case because $cardId is a dummy value if the location is the deck!
 		if ($location === 'deck')
@@ -975,6 +971,7 @@ class Game extends \Table
 			$discardDeck[] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
 		$result['discardDeck'] = $discardDeck;
 
+		// NOTE: I had to reverse the cards sent to columns to get the proper order! Keep an eye on this...
 		// Cards in the waterColumn, either 'backside' or a clear water
 		// It is important we only tell the client backside or face up clear water. Anything more would be revealing more info than we should,
 		// telling them information hidden to the players (known to the backend of course)
@@ -988,20 +985,24 @@ class Game extends \Table
 			else
 				$waterColumn[$id] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
 		}
-		$result['waterColumn'] = $waterColumn;
+		$result['waterColumn'] = array_reverse(array_values($waterColumn));
 
 		// We can tell the client all details of the treasureColumn, breachColumn, and cannonsColumn
 		// since all cards in these locations are known. We are not revealing any info the players should not have.
 
 		// Treasure column
-		$result['treasureColumn'] = $this->water->getCardsInLocation('treasureColumn');
+		$result['treasureColumn'] = array_reverse($this->water->getCardsInLocation('treasureColumn', null, 'location_arg'));
 
 		// Breaches
-		$result['breaches'] = $this->breaches->getCardsInLocation('breachesColumn');
+		$result['breaches'] = array_reverse($this->breaches->getCardsInLocation('breachesColumn', null, 'location_arg'));
 
 		// Cannons
-		$result['bustedCannons'] = $this->cannons->getCardsInLocation('breachesColumn');
-		$result['operationalCannons'] = $this->cannons->getCardsInLocation('cannonsColumn');
+		$cannons = [
+			'busted' => $this->cannons->getCardsInLocation('breachesColumn', null, 'location_arg'),
+			'operational' => $this->cannons->getCardsInLocation('cannonsColumn', null, 'location_arg'),
+		];
+		$result['bustedCannons'] = array_reverse($cannons['busted']);
+		$result['operationalCannons'] = array_reverse($cannons['operational']);
 		
 		// This player's hand
 		$result['hand'] = $this->water->getPlayerHand($currentPlayerId);
@@ -1018,9 +1019,9 @@ class Game extends \Table
 		foreach (['busted', 'operational'] as $cannonType)
 		{
 			$dice = [];
-			foreach (array_keys($result[$cannonType . 'Cannons']) as $id)
+			foreach ($cannons[$cannonType] as $card)
 			{
-				$dice[] = ['id' => $id, 'color' => 'Cannon' . $diceInfo[$id]['type'], 'face' => $diceInfo[$id]['value']];
+				$dice[] = ['id' => $card['id'], 'color' => 'Cannon' . $diceInfo[$card['id']]['type'], 'face' => $diceInfo[$card['id']]['value']];
 			}
 			$result[$cannonType . 'Dice'] = $dice;
 		}
@@ -1363,6 +1364,11 @@ class Game extends \Table
 		));
 	}
 
+	public function testAddToColumn($column)
+	{
+		$this->addToColumn($column);
+	}
+
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public function getStateName()
 	{
@@ -1447,6 +1453,17 @@ class Game extends \Table
 		if ($cardId == null)
 			$cardId = $component->getCardOnTop($column)['id'];
 		return $cardId;
+	}
+
+	public function setCardOrientation(int $cardId, bool $faceUp)
+	{
+		$this->DbQuery("UPDATE `water` SET `card_face_up`='$faceUp' WHERE `card_id`='$cardId'");
+	}
+
+	public function setCardsOrientation(array $cardIds)
+	{
+		$sqlData = implode(',', $cardIds);	
+		$this->DbQuery("UPDATE `water` SET `card_face_up`=TRUE WHERE `card_id` IN ($sqlData)");
 	}
 	
 	public function pickCardsForWaterColumn(int $number): array
