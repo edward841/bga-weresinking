@@ -382,8 +382,8 @@ class Game extends \Table
 						$this->notifyForCardsDrawn($nextPlayer, $cardsDrawn);
 					
 						// Update the database so that those cards are facedown (minor but keeps the obfuscation right)
-						// Must occur AFTER the notifications. Since they were faceup, the cards drawn are not obfuscated from other players
-						$this->setCardsOrientation($cardsDrawn, true);
+						// Must occur AFTER the notification: since they were faceup, the cards drawn are not obfuscated from other players
+						$this->setCardsOrientation(array_column($cardsDrawn, 'id'), false);
 
 						$moveOnToNextAction = true;
 					}
@@ -604,7 +604,7 @@ class Game extends \Table
 		// Proceed now that all input has been verified: Move the indicated card to the active player's hand, notify frontend, and mark the card as facedown
 		$card = $this->water->getCard($cardId);
 		$this->notifyForCardsDrawn(intval($playerId), array($card));
-		$this->setCardOrientation($cardId, false);
+		$this->setCardOrientation(intval($cardId), false);
 
 		// Deck has to be a separate case because $cardId is a dummy value if the location is the deck!
 		if ($location === 'deck')
@@ -1466,15 +1466,17 @@ class Game extends \Table
 		return $cardId;
 	}
 
-	public function setCardOrientation(int $cardId, bool $faceUp)
+	public function setCardOrientation(int $cardId, bool $faceUp = false)
 	{
+		$faceUp = $faceUp ? 1 : 0;
 		$this->DbQuery("UPDATE `water` SET `card_face_up`='$faceUp' WHERE `card_id`='$cardId'");
 	}
 
-	public function setCardsOrientation(array $cardIds)
+	public function setCardsOrientation(array $cardIds, bool $faceUp = false)
 	{
+		$faceUp = $faceUp ? 1 : 0;
 		$sqlData = implode(',', $cardIds);	
-		$this->DbQuery("UPDATE `water` SET `card_face_up`=TRUE WHERE `card_id` IN ($sqlData)");
+		$this->DbQuery("UPDATE `water` SET `card_face_up`='$faceUp' WHERE `card_id` IN ($sqlData)");
 	}
 	
 	public function pickCardsForWaterColumn(int $number): array
@@ -1643,6 +1645,7 @@ class Game extends \Table
 		$card = $this->breaches->getCard($id);
 		$this->notify->all('resolveBasicBreach', clienttranslate('Resolved breach die result: Dealt a ${type} to the Breaches Column'), array(
 			'id' => $id,
+			'card' => $card,
 			'type' => $this->tokens['breaches'][$card['type']]['name'],
 		));
 	}
@@ -1905,7 +1908,13 @@ class Game extends \Table
 	public function resolveKrakenAttack1(): void
 	{
 		$this->debug("\nResolving Kraken's special attack #1!\n");
-		$this->addToColumn('waterColumn', null, $this->water->getCardOnTop('treasureColumn')['id']);
+		$card = $this->water->getCardOnTop('treasureColumn');
+		$this->addToColumn('waterColumn', null, $card['id']);
+		$this->setCardOrientation($card['id'], false);
+		$this->notify->all('resolveKrakenSplash', clienttranslate('Resolved Splash die result: Moved ${cardType} from the Treasure Column to the Water Column'), array(
+			'id' => $card['id'],
+			'card_description' => $this->tokens['waterDeck'][$card['type']]['name'],
+		));
 	}
 	
 	// Angered: When a card is added to the discard pile this round, immediately roll and resolve 1 Basic Attack Die. (Place this die on the discard pile as a reminder.)
@@ -1913,6 +1922,7 @@ class Game extends \Table
 	{
 		$this->debug("\nResolving Kraken's special attack #2!\n");
 		$this->globals->inc('KRAKEN_ANGERED', 1);
+		$this->notify->all('resolveKrakenAngered', clienttranslate('Resolved Angered die result: Each card discarded results in rolling and resolving a basic die'), array());
 	}
 
 	public function theKrakenReactsToDamage(): void { return; }
