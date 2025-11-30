@@ -741,7 +741,7 @@ class Game extends \Table
 		$this->discard($cardId);
 		if (!$this->fireCannons([$cannonId]))
 			// If it was a miss, mark that the cannon was activated (if successful, it was marked as activated by fireCannons)
-			$this->addToActivatedCannons($cannonId);
+			$this->addToLIST($cannonId);
 	}
 
 	public function actPass()
@@ -1522,7 +1522,7 @@ class Game extends \Table
 			{
 				$success = true;
 				$this->damageEnemy();
-				$this->addToActivatedCannons($id);
+				$this->addToLIST($id);
 			}
 		}
 		return $success;
@@ -1563,13 +1563,6 @@ class Game extends \Table
 			$reaction = "the{$enemy}ReactsToDamage";
 			$this->$reaction();
 		}
-	}
-
-	public function addToActivatedCannons(int $cannonId)
-	{
-		$activatedCannons = (array) $this->globals->get('LIST');
-		array_push($activatedCannons, $cannonId);
-		$this->globals->set('LIST', $activatedCannons);
 	}
 
 	public function notifyForCardsDrawn(int $playerId, array $cards)
@@ -1626,6 +1619,22 @@ class Game extends \Table
 				'card' => $card,
 			));
 		}
+	}
+
+	public function addToLIST($element)
+	{
+		$list = (array) $this->globals->get('LIST');
+		$list[] = $element;
+		$this->globals->set('LIST', $list);
+	}
+
+	public function removeFromLIST($element)
+	{
+		$list = (array) $this->globals->get('LIST');
+
+
+
+		$this->globals->set('LIST', $list);
 	}
 
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1726,6 +1735,7 @@ class Game extends \Table
 				break;
 
 			case 'decoyCannon':
+				$this->addToLIST('ignoreCannon');
 				break;
 
 			case 'fishingNet':
@@ -1791,6 +1801,7 @@ class Game extends \Table
 				break;
 
 			case 'stickyStarfish':
+				$this->addToLIST('ignoreBreach');
 				break;
 
 			case 'trustyCarrot':
