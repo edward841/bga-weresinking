@@ -1628,13 +1628,15 @@ class Game extends \Table
 		$this->globals->set('LIST', $list);
 	}
 
-	public function removeFromLIST($element)
+	public function removeFromLIST($element): bool
 	{
 		$list = (array) $this->globals->get('LIST');
-
-
-
+		$key = array_search($element, $list);
+		if ($key === false)
+			return false;
+		unset($list[$key]);
 		$this->globals->set('LIST', $list);
+		return true;
 	}
 
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1649,6 +1651,11 @@ class Game extends \Table
 
 	public function resolveBasicBreach(): void
 	{
+		if ($this->removeFromLIST('ignoreBreach'))
+		{
+			$this->notify->all('resolveBasicBreach', clienttranslate('Successfully ignored 1 breach die roll', array());
+			return;
+		}
 		$this->debug("\nResolving basic breach...\n");
 		$id = $this->addToColumn('breachesColumn', $this->breaches);
 		$card = $this->breaches->getCard($id);
@@ -1662,17 +1669,18 @@ class Game extends \Table
 	public function resolveBasicCannon(): void
 	{
 		$this->debug("\nResolving basic cannon...\n");
-		if ($this->cannons->countCardsInLocation('cannonsColumn') == 0)
-		{
+		if ($this->removeFromLIST('ignoreCannon'))
+			$this->notify->all('resolveBasicCannonFailed', clienttranslate('Sucessfully ignored one cannon die roll'), array());	
+		else if ($this->cannons->countCardsInLocation('cannonsColumn') == 0)
 			$this->notify->all('resolveBasicCannonFailed', clienttranslate('Resolved basic cannon die result (no cannons in cannon column)'), array()); 
-			return;
+		else
+		{
+			$id = $this->removeFromColumn('cannonsColumn');
+			$this->notify->all('resolveBasicCannon', clienttranslate('Resolved basic cannon die result: a ${type} was damaged'), array(
+				'id' => $id, 
+				'type' => $this->tokens['cannons'][$this->cannons->getCard($id)['type']],
+			));
 		}
-
-		$id = $this->removeFromColumn('cannonsColumn');
-		$this->notify->all('resolveBasicCannon', clienttranslate('Resolved basic cannon die result: a ${type} was damaged'), array(
-			'id' => $id, 
-			'type' => $this->tokens['cannons'][$this->cannons->getCard($id)['type']],
-		));
 	}
 
 	// Items!?!
