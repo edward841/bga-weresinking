@@ -1436,10 +1436,39 @@ class Game extends \Table
 	public function discard(int $cardId): array
 	{
 		$this->water->playCard($cardId);
-		if ($this->globals->get('KRAKEN_ANGERED'))
+		if ($this->globals->get('KRAKEN_ANGERED') > 0)
 		{
-			// TODO Implement Kraken angered!
-			$this->debug('KrakenAngered here...');
+			$this->debug('KrakenAngered!');
+			$dice = array_slice(array_keys($this->getCollectionFromDB("SELECT `die_id` FROM `dice` WHERE `type`='basic'")), 0, $this->globals->get('KRAKEN_ANGERED'));
+			$sqlFilter = implode(',', $dice); 
+			$diceRollMapping = []; $cases = ''; $attacks = [];
+			while (count($dice) > 0)
+			{
+				$die = array_pop($dice);
+				$roll = \bga_rand(1,6);
+				$diceRollMapping[$die] = $roll;
+				$cases .= "WHEN $die THEN $roll ";
+				$attacks[$die] = $this->tokens['diceMappings']['basic'][$roll] ?? clienttranslate('Blank');
+			}
+			$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $cases END WHERE `die_id` IN ($sqlFilter)"); 
+			$this->notify->all('rollEnemyDice', clienttranslate('Rolled ${rollResult}'), array(
+				'rollResult' => implode(', ', array_values($attacks)),
+				'diceRollMapping' => $diceRollMapping,
+			));
+
+			// TODO somehow the player should have a way to ignore a result if they have the right item (stickyStarfish or decoyCannon)
+			// It would prompt them here: after the dice rolled notif, but before it is resolved
+			// Probably we need to break and give the player a chance to give input, and then resolve somehow after their input is given
+
+			// Now actually resolve the rolls!
+			foreach ($attacks as $id => $result)
+			{
+				if ($result !== 'Blank')
+				{
+					$attack = "resolveBasic$result";
+					$this->$attack();
+				}
+			}
 		}
 		return $this->water->getCard($cardId);
 	}
@@ -1653,7 +1682,7 @@ class Game extends \Table
 	{
 		if ($this->removeFromLIST('ignoreBreach'))
 		{
-			$this->notify->all('resolveBasicBreach', clienttranslate('Successfully ignored 1 breach die roll', array());
+			$this->notify->all('resolveBasicBreach', clienttranslate('Successfully ignored 1 breach die roll'), array());
 			return;
 		}
 		$this->debug("\nResolving basic breach...\n");

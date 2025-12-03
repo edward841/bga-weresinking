@@ -790,7 +790,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 		
 			// Get the enemy dice, update their face values to match the new values from the notif, and play the die rolling animation
-			const dice = this.enemyDice.getDice();
+			// Now the dice looks complicated because we roll only the dice which are specified in the notif, filtering out the rest
+			var dice = this.enemyDice.getDice().map((die) => notif.diceRollMapping.hasOwnProperty(die.id) ? die : null);
+			dice = dice.filter(die => die != null);
 			dice.forEach(die => die.face = notif.diceRollMapping[die.id]);
 			this.enemyDice.rollDice(dice, {duration: [800, 1200]});
 		},
