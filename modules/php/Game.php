@@ -1375,11 +1375,6 @@ class Game extends \Table
 		));
 	}
 
-	public function testAddToColumn($column)
-	{
-		$this->addToColumn($column);
-	}
-
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public function getStateName()
 	{
@@ -1435,10 +1430,11 @@ class Game extends \Table
 	
 	public function discard(int $cardId): array
 	{
-		$this->water->playCard($cardId);
 		if ($this->globals->get('KRAKEN_ANGERED') > 0)
 		{
 			$this->debug('KrakenAngered!');
+			// The card does properly discard, but then it triggers basic die rolling and resolving
+			$this->water->playCard($cardId);
 			$dice = array_slice(array_keys($this->getCollectionFromDB("SELECT `die_id` FROM `dice` WHERE `type`='basic'")), 0, $this->globals->get('KRAKEN_ANGERED'));
 			$sqlFilter = implode(',', $dice); 
 			$diceRollMapping = []; $cases = ''; $attacks = [];
@@ -1470,6 +1466,14 @@ class Game extends \Table
 				}
 			}
 		}
+		else if ($this->globals->get('SHARK_CHOMP_CHOMP') > 0)
+		{
+			$this->water->insertCardOnExtremePosition($cardId, 'sharksBelly', true);
+			$this->notify->all('sharkChompChomp', clienttranslate('A card was discarded into the Shark\'s Belly.'), array());
+		}
+		else
+			$this->water->playCard($cardId);
+
 		return $this->water->getCard($cardId);
 	}
 
@@ -1589,8 +1593,12 @@ class Game extends \Table
 			}
 
 			// Enemy reaction
-			$reaction = "the{$enemy}ReactsToDamage";
-			$this->$reaction();
+			// If this enemy has triggers (meaning it has an effect that can be triggered by taking damage) and its triggers contains $hp, then the enemy reacts to damage!
+			if (array_key_exists('triggers', $this->tokens['enemyInfo'][$enemy]) === true && array_search($hp, $this->tokens['enemyInfo'][$enemy]['triggers']) !== false)
+			{
+				$reaction = "the{$enemy}ReactsToDamage";
+				$this->$reaction();
+			}
 		}
 	}
 
@@ -1958,8 +1966,8 @@ class Game extends \Table
 		$this->debug("\nResolving Kraken's special attack #1!\n");
 		$card = $this->water->getCardOnTop('treasureColumn');
 		$this->addToColumn('waterColumn', null, $card['id']);
-		$this->setCardOrientation($card['id'], false);
-		$this->notify->all('resolveKrakenSplash', clienttranslate('Resolved Splash die result: Moved ${cardType} from the Treasure Column to the Water Column'), array(
+		$this->setCardOrientation((int) $card['id'], false);
+		$this->notify->all('resolveKrakenSplash', clienttranslate('Resolved Splash die result: Moved ${card_description} from the top of the Treasure Column face-down into the Water Column'), array(
 			'id' => $card['id'],
 			'card_description' => $this->tokens['waterDeck'][$card['type']]['name'],
 		));
@@ -1970,20 +1978,50 @@ class Game extends \Table
 	{
 		$this->debug("\nResolving Kraken's special attack #2!\n");
 		$this->globals->inc('KRAKEN_ANGERED', 1);
-		$this->notify->all('resolveKrakenAngered', clienttranslate('Resolved Angered die result: Each card discarded results in rolling and resolving a basic die'), array());
+		// TODO put something in the notif to indicate the multiplicity of the attack (are there one or two angered attacks this round?)
+		// I'm thinking where it says "roll and resolve 1 Basic Attack Die", replace the 1 with multiplicity?
+		$this->notify->all('resolveKrakenAngered', clienttranslate('Resolved Angered die result: ${explanation}'), array(
+			'explanation' => $this->tokens['enemySheets']['Kraken']['specialAttack2']['effect'],
+		));
 	}
-
-	public function theKrakenReactsToDamage(): void { return; }
 	
 	// The Shark!
-	public function resolveSharkAttack1(): void {}
-	public function resolveSharkAttack2(): void {}
-	public function theSharkReactsToDamage(): void { return; }
+	// Chomp, Chomp!: All cards discarded this round go to the Shark's Belly face-down
+	public function resolveSharkAttack1(): void 
+	{
+		$result = $this->globals->inc('SHARK_CHOMP_CHOMP', 1);	
+		if ($result == 1)
+			$this->notify->all('resolveSharkChompChomp', clienttranslate('Resolved Chomp, Chomp! die result: ${explanation}'), array(
+				'explanation' => $this->tokens['enemySheets']['Shark']['specialAttack1']['effect'],
+			));
+	}
+
+	// Submerged: When firing at the Shark this round, only Double-shot and Triple-Shot cannons can deal damage
+	public function resolveSharkAttack2(): void 
+	{
+		$result = $this->globals->inc('SHARK_SUBMERGED', 1);	
+		if ($result == 1)
+			$this->notify->all('resolveSharkSubmerged', clienttranslate('Resolved Submerged die result: ${explanation}'), array(
+				'explanation' => $this->tokens['enemySheets']['Shark']['specialAttack2']['effect'],
+			));
+	}
+
+	// When the shark receives damage and there is an *, the shark reacts to taking damage by moving all cards from the shark's belly to the water column
+	public function theSharkReactsToDamage(): void 
+	{
+		$sharksBelly = $this->water->getCardsInLocation('sharksBelly', null, 'location_arg');	
+		$this->notify->all('theSharkReactsToDamage', clienttranslate('${explanation} Moved ${nbr} cards to the Water Column.'), array(
+			'explanation' => $this->tokens['enemySheets']['Shark']['reactToDamage'],
+			'nbr' => count($sharksBelly),
+		));
+		foreach ($sharksBelly as $card)
+			$this->addToColumn('waterColumn', null, $card['id']);
+	}
+
 
 	// The Sirens!
 	public function resolveSirensAttack1(): void {}
 	public function resolveSirensAttack2(): void {}
-	public function theSirensReactsToDamage(): void { return; }
 
 	// The Skullsairs!	
 	public function resolveSkullsairsAttack1(): void {}
