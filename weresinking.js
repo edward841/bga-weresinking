@@ -319,8 +319,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, gamedatas.deckCount.water);
 			this.waterDeck.onCardClick = (card) => {this.onCardClick('deck', card);};
 			
-			this.waterDiscard = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('waterDiscardPile'), {
-			});
+			this.waterDiscard = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('waterDiscardPile'), {});
 			this.waterDiscard.addCards(gamedatas.discardDeck);
 
 			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager);
@@ -436,26 +435,17 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         // onEnteringState: this method is called each time we are entering into a new game state.
         //                  You can use this method to perform some user interface changes at this moment.
         //
-        onEnteringState: function( stateName, args )
+        onEnteringState: function(stateName, args)
         {
-            console.log( 'Entering state: '+stateName, args );
+            console.log('Entering state: ' + stateName, args);
+			console.log('Possible ids discard: ' + args.args.possibleIdsDiscard);
             
-            switch( stateName )
+            switch(stateName)
             {
-            
-            /* Example:
-            
-            case 'myGameState':
-            
-                // Show some HTML block at this game state
-                dojo.style( 'my_html_block_id', 'display', 'block' );
-                
-                break;
-           */
-           
-           
-            case 'dummy':
-                break;
+				case 'resolveFire':
+//					selectableCards = [];
+//					args.args.possibleIdsDiscard.forEach((id) => selectableCards.push({'id': id, 'type': 'trustyCarrot', 'type_arg':0}));
+					this.playerHand.setSelectionMode('single', args.args.possibleIdsDiscard);
             }
         },
 
@@ -466,8 +456,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         {
             console.log( 'Leaving state: '+stateName );
             
-            switch( stateName )
+            switch(stateName)
             {
+				case 'resolveFire':
+					this.playerHand.setSelectionMode('none');
+
 				// Reset dials for a new round
 				case 'upkeep':
 					var dialId = `dial_${this.player_id}`;
@@ -518,6 +511,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						this.statusBar.addActionButton(_('Plunder'), () => this.bgaPerformAction("actDeclareDial", {value: 'plunder', location: 'plunder'}));
 						this.statusBar.addActionButton(_('Patch'), () => this.bgaPerformAction("actDeclareDial", {value: 'patch', location: 'patch'}));
 						this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actDeclareDial", {value: 'fire', location: 'fire'}));
+						break;
+
+					case 'resolveFire':
+						const possibleActions = args.possibleActions;
+						console.log(possibleActions);
+						if (possibleActions.includes("Fire"))
+							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actFire"), { color: 'primary'});
+						if (possibleActions.includes("Pass"))
+							this.statusBar.addActionButton(_('Pass'), () => this.bgaPerformAction("actPass"), { color: 'secondary' }); 
 						break;
 
 //					case 'resolveBucket':
@@ -653,6 +655,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv,});
 			else if (args.possibleActions.includes('Discard') && parentDiv === 'myHand')
 				this.bgaPerformAction('actDiscard', {cardId: card.id});
+//			else if (args.possibleActions.includes('ShootYeTreasure') && parentDiv === 'myHand' && card.id)
+//				this.bgaPerformAction('actShootYeTreasure', {cardId: card.id});
 
 //			const constants = this.gamedatas.constants;
 //			switch (this.gamedatas.gamestate.id)
@@ -795,6 +799,17 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			dice = dice.filter(die => die != null);
 			dice.forEach(die => die.face = notif.diceRollMapping[die.id]);
 			this.enemyDice.rollDice(dice, {duration: [800, 1200]});
+		},
+
+		notif_firedCannons: function(notif)
+		{
+			console.log('notif_firedCannons');
+			console.log(notif);
+			
+			var dice = this.operationalDice.getDice().map((die) => notif.rolls.hasOwnProperty(die.id) ? die : null);
+			dice = dice.filter(die => die != null);
+			dice.forEach(die => die.face = notif.rolls[die.id].value);
+			this.operationalDice.rollDice(dice, {duration: [800, 1200]});
 		},
 
 		notif_resolveBasicWater: function(notif)

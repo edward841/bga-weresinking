@@ -1545,7 +1545,8 @@ class Game extends \Table
 	
 		// Deal a damage to the enemy for each successful hit!
 		$rolls = $this->getNonEmptyCollectionFromDB("SELECT `die_id`, `type`, `value` FROM `dice` WHERE `die_id` in ('" . implode("','", $cannonIds) . "')"); 
-		$success = false;
+		$successes = 0;
+
 		foreach ($rolls as $id => $details) 
 		{
 			// A single shot cannon succeeds when the value is 1, A double shot
@@ -1553,12 +1554,17 @@ class Game extends \Table
 			// succeeds when the value is a 1, 2, or 3
 			if ((int) $details['value'] <= (int) $details['type'])
 			{
-				$success = true;
+				$successes++;
 				$this->damageEnemy();
 				$this->addToLIST($id);
 			}
 		}
-		return $success;
+		$this->notify->all('firedCannons', clienttranslate('Fired ${totalNbr} cannons, ${hitNbr} enemy hits'), array(
+			'totalNbr' => count($cannonIds),
+			'hitNbr' => $successes,
+			'rolls' => $rolls,
+		));
+		return $successes > 0;
 	}
 	
 	public function damageEnemy()
