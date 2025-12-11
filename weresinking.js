@@ -341,6 +341,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				dojo.style('breaches', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCannonsAndBreaches}px`); 
 				dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); 
 			};
+			this.bustedCannons.setSort((a, b) => a.type - b.type);
 			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager, this.bigCardGap);
 			this.operationalCannons.onCardCountChange = (cardCount) => {dojo.style('cannonsColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCardsAndDials}px`)};
 			this.operationalCannons.onSelectionChange = (selection, lastChange) => this.updatePageTitle();
@@ -419,6 +420,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				direction: "column",
 				gap: (this.bigCardGap - this.diceWidth)+'px',
 				perspective: diePerspective,
+				sort: (a, b) => parseInt(a.color.slice(-1)) - parseInt(b.color.slice(-1)),
 			});
 			this.operationalDice = new BgaDice.LineStock(this.diceManager, document.getElementById('operationalDice'), {
 				direction: "column",
@@ -513,8 +515,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					case 'declareDial':
 						this.statusBar.addActionButton(_('Bucket'), () => this.bgaPerformAction("actDeclareDial", {value: 'bucket', location: 'bucket'}));
 						this.statusBar.addActionButton(_('Plunder'), () => this.bgaPerformAction("actDeclareDial", {value: 'plunder', location: 'plunder'}));
-						this.statusBar.addActionButton(_('Patch'), () => this.bgaPerformAction("actDeclareDial", {value: 'patch', location: 'patch'}));
-						this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actDeclareDial", {value: 'fire', location: 'fire'}));
+						if (args.possibleActions.includes('patch'))
+							this.statusBar.addActionButton(_('Patch'), () => this.bgaPerformAction("actDeclareDial", {value: 'patch', location: 'patch'}));
+						if (args.possibleActions.includes('fire'))
+							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actDeclareDial", {value: 'fire', location: 'fire'}));
 						break;
 
 					case 'resolveFire':
@@ -850,8 +854,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_resolveBasicCannon');
 			console.log(notif);
-
-			this.bustedCannons.addCard(notif.id, {fromStock: this.cannons}, true);
+		
+			this.bustedCannons.addCard(notif.card, {fromStock: this.cannons});
+			this.bustedDice.addDie({'id': notif.card.id, 'color': 'Cannon' + notif.card.type});
 			this.correctGapUnderBoard();
 		},
 

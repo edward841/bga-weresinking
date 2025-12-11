@@ -1493,15 +1493,6 @@ class Game extends \Table
 		return (int) $cardId;
 	}
 
-	public function removeFromColumn(string $column, \Deck $component = null, int $cardId = null)
-	{
-		if ($component == null)
-			$component = ($column === 'waterColumn' || $column === 'treasureColumn') ? $this->water : $this->cannons;
-		if ($cardId == null)
-			$cardId = $component->getCardOnTop($column)['id'];
-		return $cardId;
-	}
-
 	public function setCardOrientation(int $cardId, bool $faceUp = false)
 	{
 		$faceUp = $faceUp ? 1 : 0;
@@ -1721,10 +1712,13 @@ class Game extends \Table
 			$this->notify->all('resolveBasicCannonFailed', clienttranslate('Resolved basic cannon die result (no cannons in cannon column)'), array()); 
 		else
 		{
-			$id = $this->removeFromColumn('cannonsColumn');
+			$card = $this->cannons->getCardOnTop('cannonsColumn');
+			$id = (int) $card['id'];
+			$this->cannons->moveCard($id, 'breachesColumn');
 			$this->notify->all('resolveBasicCannon', clienttranslate('Resolved basic cannon die result: a ${type} was damaged'), array(
-				'id' => $id, 
 				'type' => $this->tokens['cannons'][$this->cannons->getCard($id)['type']],
+				'card' => $card,
+				'dieValue' => $this->getUniqueValueFromDB("SELECT `value` FROM `dice` WHERE `die_id`='$id'"),
 			));
 		}
 	}
