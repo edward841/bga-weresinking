@@ -333,6 +333,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				//fanShaped: true,
 			});
 			this.playerHand.onCardClick = (card) => {this.onCardClick('myHand', card);};
+			this.playerHand.onSelectionChange = (selection, lastChange) => this.updatePageTitle();
 
 			//this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);	
 			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager, this.bigCardGap);
@@ -342,6 +343,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			};
 			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager, this.bigCardGap);
 			this.operationalCannons.onCardCountChange = (cardCount) => {dojo.style('cannonsColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCardsAndDials}px`)};
+			this.operationalCannons.onSelectionChange = (selection, lastChange) => this.updatePageTitle();
 
 			this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, gamedatas.deckCount.breaches);
 			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager, this.bigCardGap);
@@ -437,15 +439,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         //
         onEnteringState: function(stateName, args)
         {
-            console.log('Entering state: ' + stateName, args);
-			console.log('Possible ids discard: ' + args.args.possibleIdsDiscard);
-            
             switch(stateName)
             {
 				case 'resolveFire':
-//					selectableCards = [];
-//					args.args.possibleIdsDiscard.forEach((id) => selectableCards.push({'id': id, 'type': 'trustyCarrot', 'type_arg':0}));
-					this.playerHand.setSelectionMode('single', args.args.possibleIdsDiscard);
+					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('ShootYeTreasure'))
+					{
+						this.playerHand.setSelectionMode('single', args.args.possibleDiscard);
+						this.operationalCannons.setSelectionMode('single', args.args.possibleToFireCannons);
+					}
+					break;
             }
         },
 
@@ -460,6 +462,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             {
 				case 'resolveFire':
 					this.playerHand.setSelectionMode('none');
+					this.operationalCannons.setSelectionMode('none');	
+					break;
 
 				// Reset dials for a new round
 				case 'upkeep':
@@ -518,6 +522,18 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						console.log(possibleActions);
 						if (possibleActions.includes("Fire"))
 							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actFire"), { color: 'primary'});
+						if (possibleActions.includes("ShootYeTreasure"))
+						{
+							//actShootYeTreasure(int $cardId, int $cannonId)
+							this.statusBar.addActionButton(_('Shoot Ye Treasure'), () => {
+								this.bgaPerformAction("actShootYeTreasure", {
+									'cardId': this.playerHand.getSelection()[0].id,
+									'cannonId': this.operationalCannons.getSelection()[0].id,
+									});
+								this.operationalCannons.unselectAll();
+								this.playerHand.unselectAll();
+							}, {color: 'primary', disabled: this.operationalCannons.getSelection().length != 1 || this.playerHand.getSelection().length != 1}); 
+						}
 						if (possibleActions.includes("Pass"))
 							this.statusBar.addActionButton(_('Pass'), () => this.bgaPerformAction("actPass"), { color: 'secondary' }); 
 						break;

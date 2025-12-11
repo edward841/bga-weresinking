@@ -725,9 +725,9 @@ class Game extends \Table
 			$possibleActions = implode(',', $args['possibleActions']);
 			$message = "ShootYeTreasure not in possibleActions: <$possibleActions>";
 		}
-		else if (!in_array((int) $cardId, $args['possibleIdsDiscard'], true))
+		else if (!in_array($cardId . '', array_column($args['possibleDiscard'], 'id'), true))
 		{
-			$possibleIds = implode(',', $args['possibleIdsDiscard']);
+			$possibleIds = implode(',', array_column($args['possibleDiscard'], 'id'));
 			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
 		}
 		else if (!in_array($cannonId, $args['operableCannons']))
@@ -830,7 +830,8 @@ class Game extends \Table
 		$args = [];
 		$flag = $this->globals->get('FLAG');
 		
-		$args['operableCannons'] = array_keys($this->getNonEmptyCollectionFromDB("SELECT dice.die_id FROM `dice` INNER JOIN `cannon` ON dice.die_id = cannon.card_id WHERE cannon.card_location = 'cannonsColumn'"));
+		$operableCannons = $this->getNonEmptyCollectionFromDB("SELECT dice.die_id id, cannon.card_type, cannon.card_type_arg FROM `dice` INNER JOIN `cannon` ON dice.die_id = cannon.card_id WHERE cannon.card_location = 'cannonsColumn'");
+		$args['operableCannons'] = array_keys($operableCannons);
 
 		if ($flag)
 		{
@@ -839,21 +840,23 @@ class Game extends \Table
 		}
 		else
 		{
-			$ivePlayer = $this->getActivePlayerId();
-			$treasure = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `water` WHERE `card_location`='hand' AND `card_location_arg`='$ivePlayer' AND `card_type` != 'clearWater'"));
+			$activePlayer = $this->getActivePlayerId();
+			$treasure = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `water` WHERE `card_location`='hand' AND `card_location_arg`='$activePlayer' AND `card_type` != 'clearWater'"));
 			$alreadyActivated = (array) $this->globals->get('LIST');
 			
 			// nbr indicates how many more times the player can shoot their treasure
 			// This is either the number of treasure cards they have or the number of ive cannons they haven't re-rolled yet, whichever is less
-			$treasureNbr = count($treasure);
-			$operableCannonsNbr = count($args['operableCannons']);
-			
-			$alreadyActivatedNbr = count($alreadyActivated);
-
 			$nbr = min(count($treasure), count($args['operableCannons']) - count($alreadyActivated));
-
+			$notYetActivated = [];
+			if ($nbr > 0)
+			{
+				foreach (array_diff(array_keys($operableCannons), $alreadyActivated) as $id)
+					$notYetActivated[] = $operableCannons[$id];
+			}
+			
 			$args['possibleActions'] = $nbr > 0 ? ['ShootYeTreasure', 'Pass'] : ['Pass'];
-			$args['possibleIdsDiscard'] = $treasure;
+			$args['possibleDiscard'] = array_values($this->water->getCards($treasure));
+			$args['possibleToFireCannons'] = $notYetActivated;
 			$args['instruction'] = $nbr > 0 ? clienttranslate("may shoot ye treasure up to $nbr times") : clienttranslate('must pass');
 		}
 
