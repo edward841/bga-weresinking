@@ -178,7 +178,7 @@ $machinestates = [
 		'type' => 'activeplayer',
 		'possibleactions' => ['actDraw', 'actDiscard'],
 		'args' => 'argResolveBucket',
-		'transitions' => ['next' => STATE_RESOLVE_BUCKET_HELPER],
+		'transitions' => ['next' => STATE_RESOLVE_BUCKET_HELPER, 'again' => STATE_RESOLVE_BUCKET],
 	), 
 
 	STATE_RESOLVE_PLUNDER_HELPER => array(
@@ -244,7 +244,7 @@ $machinestates = [
 		'type' => 'activeplayer',
 		'possibleactions' => ['actFire', 'actShootYeTreasure', 'actPass'],
 		'args' => 'argResolveFire',
-		'transitions' => ['next' => STATE_RESOLVE_FIRE_HELPER],
+		'transitions' => ['next' => STATE_RESOLVE_FIRE_HELPER, 'again' => STATE_RESOLVE_FIRE],
 	),
 
 	STATE_UPKEEP => array(

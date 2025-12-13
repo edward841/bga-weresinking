@@ -572,6 +572,8 @@ class Game extends \Table
 	public function actDraw(string $cardId, string $location)
 	{
 		// Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
+		// It might seem odd to have different arg functions, but this simple draw is an allowed action in 3 of the 4 different dial actions (bucket, plunder, patch)
+		// 	and they all work the same at their core but have access to different cards and have little details to control flow
 		$playerId = $this->getActivePlayerId();
 		$currentState = $this->getStateName();
 		$argFunction = 'arg' . ucfirst($currentState);
@@ -579,7 +581,6 @@ class Game extends \Table
 
 		if ($location === 'deck')
 			$cardId = $args['possibleIdsDraw'][0];
-		$this->debug("\n\nTEST TEST TEST\nactDraw: cardId=$cardId\n\n");
 
 		// Fail the draw if: Draw is not in the arg's possibleActions, the given location is wrong, or the given cardId is wrong
 		// It might seem silly to check if actDraw is in possibleActions array since we already verified it is allowed by the state. 
@@ -614,31 +615,34 @@ class Game extends \Table
 
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
+		$again = false;
 		if ($this->globals->inc('COUNTER', -1) <= 0)
 		{
-			// These two states have two steps to their actions so we need to update FLAG to indicate the first part is done (e.g. draw or discard, then patch)
-			if ($currentState === 'resolveBucket' || $currentState === 'resolvePatch')
-				$this->globals->set('FLAG', false);
-
 			if ($currentState === 'resolveBucket')
 			{
 				// Determine how many cards need to be discarded (lastPersonToBucket ? 2 : 1)
 				$nextPlayer = $this->getNextPlayer();
 				$scale = ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket') ? 1 : 2;
 				$this->globals->set('COUNTER', $scale);
-			}
-			else if ($currentState === 'resolvePlunder')
-			{
-				$this->gamestate->nextState('next');
+
+				// Indicates that the first part of the multi-part action is done
+				$this->globals->set('FLAG', false);
+				$again = true;
 			}
 			else if ($currentState === 'resolvePatch')
 			{
 				// TODO Temp fix. THIS CLAUSE WILL NEED DELETED WHEN PATCH IS FULLY IMPLEMENTED.
 				// Moves on to the next player after the draw. Will have to remove it and implement the patching action later
-				$this->gamestate->nextState('next');
 				$this->globals->set('FLAG', true);
 			}
 		}
+		else
+			// The player still needs to draw COUNTER > 0 more cards! Draw another!
+			$again = true;
+
+		// If $again == true, then the player is not done completing this action yet. They may need to draw another card, discard card(s), or fix something!
+		// Otherwise, safely move on to the next action
+		($again) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 
 	}
 
@@ -672,24 +676,27 @@ class Game extends \Table
 		$this->discard($cardId);
 		
 		// Handles specific states
+		$again = false;
 		if ($this->getStateName() === 'resolveBucket')
 		{
-			if($this->globals->inc('COUNTER', -1) == 0)
+			if($this->globals->inc('COUNTER', -1) <= 0)
 			{
 				// Done with this player's turn!
 				// Update FLAG to get it ready for the next helper state
+				// TODO when do i really need to reset the FLAG for a new state? Can this be done in the game state that handles player changes?
 				$this->globals->set('FLAG', true);
-				$this->gamestate->nextState('next');
 			}
+			else
+				$again = true;
 		}
 		else if ($this->getStateName() === 'resolvePatch')
 		{
-			// TODO This should actually be false just a temp fix for now
+			// TODO These flags are temporarily backwards to skip the fixing part of patch actions 
 			//$this->globals->set('FLAG', false);
+			//$again = true; 
 			$this->globals->set('FLAG', true);
-			$this->gamestate->nextState('next');
 		}
-
+		$again ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
 
 	public function actPatch()
@@ -711,6 +718,7 @@ class Game extends \Table
 
 		$this->fireCannons($args['operableCannons']);
 		$this->globals->set('FLAG', false);		
+		$this->gamestate->nextState('again');
 	}
 
 	public function actShootYeTreasure(int $cardId, int $cannonId)
@@ -738,10 +746,14 @@ class Game extends \Table
 		if ($message !== '')
 			throw new \BgaSystemException("ShootYeTreasure: cardId: '$cardId' not allowed in state {$this->getStateName()}\n($message)");
 
+		// Actually execute the action now that we have verified the input
+		// If it was a miss, mark that the cannon was activated (if successful, it was marked as activated by fireCannons)
+		$this->notifyForCardsDiscarded(intval($this->getActivePlayerId()), array($this->water->getCard($cardId)));
 		$this->discard($cardId);
-		if (!$this->fireCannons([$cannonId]))
-			// If it was a miss, mark that the cannon was activated (if successful, it was marked as activated by fireCannons)
+		if (!$this->fireCannons(array($cannonId)))
 			$this->addToLIST($cannonId);
+
+		$this->gamestate->nextState('again');
 	}
 
 	public function actPass()
