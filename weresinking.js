@@ -666,26 +666,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			const args = this.gamedatas.gamestate.args;
 
 			// Intervene for deck, there is only one option of what that card could be
-//			if (parentDiv === 'deck')
-//				card = {'id': args.possibleIdsDraw[0], 'type': 'backside'};
-//			console.log('printing the card:');
-//			console.log(card);
+			if (parentDiv === 'deck')
+				card = {'id': args.possibleIdsDraw[0], 'type': 'backside', 'type_arg': '0'};
+			console.log('printing the card:');
+			console.log(card);
 
 			if (args.possibleActions.includes('Draw') && parentDiv === args.location)
 				this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv,});
 			else if (args.possibleActions.includes('Discard') && parentDiv === 'myHand')
 				this.bgaPerformAction('actDiscard', {cardId: card.id});
-//			else if (args.possibleActions.includes('ShootYeTreasure') && parentDiv === 'myHand' && card.id)
-//				this.bgaPerformAction('actShootYeTreasure', {cardId: card.id});
-
-//			const constants = this.gamedatas.constants;
-//			switch (this.gamedatas.gamestate.id)
-//			{
-//				case constants.STATE_RESOLVE_BUCKET:
-//					if (possibleActions.includes('Draw') && parentDiv === 'waterColumn')
-//						this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv});
-//					break;
-//			}
 		},
 
         

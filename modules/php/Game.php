@@ -434,15 +434,13 @@ class Game extends \Table
 	{
 		$nextPlayer = $this->getNextPlayer();
 		$nextAction = 'upkeep';
-		//var_dump('nextPlayer', $nextPlayer);
 		
 		if ($nextPlayer > 0)
 		{
 			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
 			if ($nextAction === 'patch')
 			{
-				// Update active player
-				$this->gamestate->changeActivePlayer($nextPlayer);
+				// Dont update active player (because its a multiactiveplayer state now)
 				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
 
 				// Set FLAG to true (indicates that the player needs to draw now)
@@ -454,6 +452,10 @@ class Game extends \Table
 		// If the next player is doing a Patch action, the prepwork is done and this moves to STATE_RESOLVE_PATCH
 		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
 		// If there is not another player, goes to STATE_UPKEEP
+		if ($nextAction === 'patch')
+		{
+			$this->gamestate->setPlayersMultiactive(array($nextPlayer), 'resolvePatch', true);
+		}
 		$this->gamestate->nextState($nextAction);
 	}
 
@@ -574,7 +576,7 @@ class Game extends \Table
 		// Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
 		// It might seem odd to have different arg functions, but this simple draw is an allowed action in 3 of the 4 different dial actions (bucket, plunder, patch)
 		// 	and they all work the same at their core but have access to different cards and have little details to control flow
-		$playerId = $this->getActivePlayerId();
+		$playerId = $this->gamestate->getActivePlayerList()[0];
 		$currentState = $this->getStateName();
 		$argFunction = 'arg' . ucfirst($currentState);
 		$args = $this->$argFunction();
@@ -609,9 +611,9 @@ class Game extends \Table
 
 		// Deck has to be a separate case because $cardId is a dummy value if the location is the deck!
 		if ($location === 'deck')
-			$this->water->pickCard('deck', $this->getActivePlayerId());
+			$this->water->pickCard('deck', $playerId);
 		else
-			$this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
+			$this->water->moveCard($cardId, 'hand', $playerId);
 
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
@@ -670,7 +672,7 @@ class Game extends \Table
 			throw new \BgaSystemException("actDiscard: cardId: '$cardId' not allowed in state {$this->getStateName()}\n($message)");
 		
 		// Proceed now that all input has been verified: Move the indicated card to the discard pile
-		$playerId = $this->getActivePlayerId();
+		$playerId = $this->gamestate->getActivePlayerList()[0];
 		$card = $this->water->getCard($cardId);
 		$this->notifyForCardsDiscarded(intval($playerId), array($card));
 		$this->discard($cardId);
@@ -828,7 +830,7 @@ class Game extends \Table
 		{
 			$topCard = $this->water->getCardOnTop('deck');
 			$args['possibleIdsDraw'] = [intval($topCard['id'])];
-			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->getActivePlayerId()));
+			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->gamestate->getActivePlayerList()[0]));
 		}
 		else
 			$args['possibleIdsPatch'] = [];
