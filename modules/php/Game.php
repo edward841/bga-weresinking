@@ -633,9 +633,8 @@ class Game extends \Table
 			}
 			else if ($currentState === 'resolvePatch')
 			{
-				// TODO Temp fix. THIS CLAUSE WILL NEED DELETED WHEN PATCH IS FULLY IMPLEMENTED.
-				// Moves on to the next player after the draw. Will have to remove it and implement the patching action later
-				$this->globals->set('FLAG', true);
+				$this->globals->set('FLAG', false);
+				$again = true;
 			}
 		}
 		else
@@ -693,16 +692,56 @@ class Game extends \Table
 		}
 		else if ($this->getStateName() === 'resolvePatch')
 		{
-			// TODO These flags are temporarily backwards to skip the fixing part of patch actions 
-			//$this->globals->set('FLAG', false);
-			//$again = true; 
-			$this->globals->set('FLAG', true);
+			$this->globals->set('FLAG', false);
+			$again = true; 
 		}
 		$again ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
 
-	public function actPatch()
+	public function actPatch(int $cardId, string $type)
 	{
+		// Safety checks first!
+		$args = $this->argResolvePatch();
+		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$message = '';
+		if (!in_array('Patch', $args['possibleActions']))
+			$message = 'Patch is not in the possible actions';
+		else if (count($args['possibleToPatch']['cannons']) + count($args['possibleToPatch']['breaches']) == 0)
+			$message = 'There is nothing broken right now that can be patched!';
+		else if (!in_array($cardId . '', array_column($args['possibleToPatch']['cannons'], 'id'), true) && !in_array($cardId . '', array_column($args['possibleToPatch']['cannons'], 'id'), true))
+		{
+			$possibleCannonIds = implode(',', array_column($args['possibleToPatch']['cannons'], 'id', true));
+			$possibleBreachIds = implode(',', array_column($args['possibleToPatch']['breaches'], 'id', true));
+			$message = "Unexpected cardId of $cardId, expected to be one of <$possibleCannonIds> or <$possibleBreachIds>";
+		}
+
+		if ($message !== '')
+			throw new \BgaSystemException("Patch not allowed in state {$this->getStateName()}\n($message)");
+
+		// Handle different types of problems differently (cannon vs breach vs TODO chest)
+		// Cannons
+		$again = false;
+		if (strlen($type) == 1)
+		{
+			// All cannons can be fixed with one hammer!
+			$this->addToColumn('cannonsColumn', null, $cardId);
+			$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${type}'), array(
+				'player_name' => $this->getPlayerNameById($playerId),
+				'player_id' => $playerId,
+				'type' => $this->tokens['cannons'][$type], 
+				'card' => $this->cannons->getCard($cardId),
+			));
+		}	
+		// Breaches
+		else
+		{
+
+		}
+	
+		if (!$again)
+			$this->gamestate->setAllPlayersNonMultiactive('next');
+		else
+			$this->gamestate->nextState('again');
 	}
 
 	public function actFire()
@@ -833,7 +872,11 @@ class Game extends \Table
 			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->gamestate->getActivePlayerList()[0]));
 		}
 		else
-			$args['possibleIdsPatch'] = [];
+		{
+			$cannons = array_values($this->cannons->getCardsInLocation('breachesColumn'));
+			$breaches = array_values($this->breaches->getCardsInLocation('breachesColumn'));
+			$args['possibleToPatch'] = ['cannons' => $cannons, 'breaches' => $breaches];
+		}
 
 		$args['actiondescription'] = $flag ? clienttranslate('draw a card from the Water Deck or Discard a card from your hand') : clienttranslate('use your hammer to Patch');
 		return $args;

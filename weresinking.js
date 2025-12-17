@@ -350,6 +350,18 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager, this.bigCardGap);
 			this.breaches.onCardCountChange = (cardCount) => {dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); };
 
+			// Set it up so you cannot select a cannon and breach at the same time
+			this.breaches.onSelectionChange = (selection, lastChanged) => {
+				if (selection.length > 0) 
+					this.bustedCannons.unselectAll();
+				this.updatePageTitle();
+			};
+			this.bustedCannons.onSelectionChange = (selection, lastChanged) => {
+				if (selection.length > 0) 
+					this.breaches.unselectAll();
+				this.updatePageTitle();
+			};
+
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
 			this.populateStock(this.playerHand, gamedatas.hand);
@@ -443,6 +455,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         {
             switch(stateName)
             {
+				case 'resolvePatch':
+					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Patch'))
+					{
+						this.bustedCannons.setSelectionMode('single', args.args.possibleToPatch.cannons);	
+						this.breaches.setSelectionMode('single', args.args.possibleToPatch.breaches);
+					}
+					break;
+
 				case 'resolveFire':
 					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('ShootYeTreasure'))
 					{
@@ -462,6 +482,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             
             switch(stateName)
             {
+				case 'resolvePatch': 
+					this.bustedCannons.setSelectionMode('none');
+					this.breaches.setSelectionMode('none');
+					break;
+
 				case 'resolveFire':
 					this.playerHand.setSelectionMode('none');
 					this.operationalCannons.setSelectionMode('none');	
@@ -521,6 +546,19 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actDeclareDial", {value: 'fire', location: 'fire'}));
 						break;
 
+					case 'resolvePatch':
+						if (args.possibleActions.includes('Patch'))
+							this.statusBar.addActionButton(_('Patch'), () => {
+								card = this.bustedCannons.getSelection().concat(this.breaches.getSelection())[0];
+								this.bgaPerformAction("actPatch", {
+									'cardId': card.id,
+									'type': card.type,
+								});
+								this.bustedCannons.unselectAll();
+								this.breaches.unselectAll();
+							}, {color: 'primary', disabled: this.bustedCannons.getSelection().length != 1 && this.breaches.getSelection().length != 1});
+						break;
+
 					case 'resolveFire':
 						const possibleActions = args.possibleActions;
 						console.log(possibleActions);
@@ -528,7 +566,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actFire"), { color: 'primary'});
 						if (possibleActions.includes("ShootYeTreasure"))
 						{
-							//actShootYeTreasure(int $cardId, int $cannonId)
 							this.statusBar.addActionButton(_('Shoot Ye Treasure'), () => {
 								this.bgaPerformAction("actShootYeTreasure", {
 									'cardId': this.playerHand.getSelection()[0].id,
@@ -970,6 +1007,24 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
 			this.waterDiscard.addCard(card);
 			this.waterDiscard.setCardVisible(card, false);
+		},
+
+		notif_actPatch: function(notif)
+		{
+			console.log('notif_actPatch');
+			console.log(notif);
+		
+			// Cannon
+			if (card.type.length == 1)
+			{
+				this.operationalCannons.addCard(notif.args.card);
+			}
+			// Breach
+			else
+			{
+
+			}
+			
 		},
    });             
 });
