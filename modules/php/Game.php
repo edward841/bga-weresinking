@@ -725,17 +725,34 @@ class Game extends \Table
 		{
 			// All cannons can be fixed with one hammer!
 			$this->addToColumn('cannonsColumn', null, $cardId);
-			$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${type}'), array(
+			$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problem}'), array(
 				'player_name' => $this->getPlayerNameById($playerId),
 				'player_id' => $playerId,
-				'type' => $this->tokens['cannons'][$type], 
+				'problem' => $this->tokens['cannons'][$type], 
 				'card' => $this->cannons->getCard($cardId),
 			));
 		}	
 		// Breaches
 		else
 		{
+			// If the breach requires multiple hammers to patch, we need to give other players a chance to assist
+			$scale = $this->tokens['breaches'][$type]['scale'];
+			if ($scale == 1)
+			{
+				// Good news! We can fix it with just one mallet!
+				$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
+				$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problem}'), array(
+					'player_name' => $this->getPlayerNameById($playerId),
+					'player_id' => $playerId,
+					'problem' => $this->tokens['breaches'][$type]['name'],
+					'card' => $this->cannons->getCard($cardId),
+				));
+			}
+			else
+			{
+				$again = true;
 
+			}
 		}
 	
 		if (!$again)
