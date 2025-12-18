@@ -445,6 +445,14 @@ class Game extends \Table
 
 				// Set FLAG to true (indicates that the player needs to draw now)
 				$this->globals->set('FLAG', true);
+
+				// If this is the first patching player, set up the LIST to contain a list of all hammers
+				if (count($this->globals->get('LIST')) == 0)
+				{
+					$patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
+					foreach ($patchingPlayers as $playerId)
+						$this->addToLIST($playerId);
+				}
 			}
 		}	
 
@@ -633,8 +641,12 @@ class Game extends \Table
 			}
 			else if ($currentState === 'resolvePatch')
 			{
-				$this->globals->set('FLAG', false);
-				$again = true;
+				// Only give the player a chance to patch if they have a hammer left!
+				if (in_array($playerId, $this->globals->get('LIST')))
+				{
+					$this->globals->set('FLAG', false);
+					$again = true;
+				}
 			}
 		}
 		else
@@ -692,8 +704,12 @@ class Game extends \Table
 		}
 		else if ($this->getStateName() === 'resolvePatch')
 		{
-			$this->globals->set('FLAG', false);
-			$again = true; 
+			// Only give the player a chance to patch if they have a hammer left!
+			if (in_array($playerId, $this->globals->get('LIST')))
+			{
+				$this->globals->set('FLAG', false);
+				$again = true; 
+			}
 		}
 		$again ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
@@ -756,15 +772,41 @@ class Game extends \Table
 				{
 					// If the breach requires multiple hammers to patch, we need to give other players a chance to assist
 					$again = true;
-
+					
 				}
 				break;
 		}
 	
 		if (!$again)
+		{
 			$this->gamestate->setAllPlayersNonMultiactive('next');
+			$this->removeFromLIST($playerId);
+		}
 		else
 			$this->gamestate->nextState('again');
+	}
+
+	public function actContributeHammer(bool $contribute)
+	{
+		// Safety checks
+		$args = $this->argResolvePatch();
+		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$message = '';
+		if (!in_array('ContributeHammer', $args['possibleActions']))
+			$message = 'ContributeHammer is not in the possible actions';
+
+		if ($message !== '')
+			throw new \BgaSystemException("Patch not allowed in state {$this->getStateName()}\n($message)");
+
+		// Get info
+
+		// Contribute hammmer if applicable
+		if ($contribute)
+		{
+
+		}
+
+		// Progress games state either way
 	}
 
 	public function actFire()
@@ -885,7 +927,14 @@ class Game extends \Table
 		$flag = $this->globals->get('FLAG'); 
 
 		$args = [];
-		$args['possibleActions'] = $flag ? ['Draw', 'Discard'] : ['Patch'];
+		$args['possibleActions'] = [];
+		if ($flag)
+			$args['possibleActions'] = ['Draw', 'Discard'];
+		else if (true)
+			$args['possibleActions'] = ['Patch'];
+		else
+			$args['possibleActions'] = ['ContributeHammer'];
+
 		$args['location'] = $flag ? 'deck' : 'breachesColumn';
 		
 		if ($flag)
@@ -896,9 +945,13 @@ class Game extends \Table
 		}
 		else
 		{
-			$cannons = array_values($this->cannons->getCardsInLocation('breachesColumn'));
-			$breaches = array_values($this->breaches->getCardsInLocation('breachesColumn'));
-			$args['possibleToPatch'] = ['cannon' => $cannons, 'breach' => $breaches];
+			// If Patch is allowed right now (we aren't currently pledging hammers for a big breach)
+			if (in_array('Patch', $args['possibleActions']))
+			{
+				$cannons = array_values($this->cannons->getCardsInLocation('breachesColumn'));
+				$breaches = array_values($this->breaches->getCardsInLocation('breachesColumn'));
+				$args['possibleToPatch'] = ['cannon' => $cannons, 'breach' => $breaches];
+			}
 		}
 
 		$args['actiondescription'] = $flag ? clienttranslate('draw a card from the Water Deck or Discard a card from your hand') : clienttranslate('use your hammer to Patch');
@@ -1751,7 +1804,7 @@ class Game extends \Table
 		$key = array_search($element, $list);
 		if ($key === false)
 			return false;
-		unset($list[$key]);
+		array_splice($list, $key, 1);
 		$this->globals->set('LIST', $list);
 		return true;
 	}
