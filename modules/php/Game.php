@@ -698,61 +698,67 @@ class Game extends \Table
 		$again ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
 
+	// Handle different types of problems differently (cannon vs breach vs TODO chest)
 	public function actPatch(int $cardId, string $type)
 	{
+		$this->debug("\n\nactPatch: cardId: $cardId, type: $type\n\n");
+		$problem = 'cannon';
+		if (strlen($type) > 1)
+			$problem = 'breach';
+
 		// Safety checks first!
 		$args = $this->argResolvePatch();
 		$playerId = $this->gamestate->getActivePlayerList()[0];
 		$message = '';
 		if (!in_array('Patch', $args['possibleActions']))
 			$message = 'Patch is not in the possible actions';
-		else if (count($args['possibleToPatch']['cannons']) + count($args['possibleToPatch']['breaches']) == 0)
+		else if (count($args['possibleToPatch']['cannon']) + count($args['possibleToPatch']['breach']) == 0)
 			$message = 'There is nothing broken right now that can be patched!';
-		else if (!in_array($cardId . '', array_column($args['possibleToPatch']['cannons'], 'id'), true) && !in_array($cardId . '', array_column($args['possibleToPatch']['cannons'], 'id'), true))
+		else if (!in_array($cardId, ($possibleToPatch = array_column($args['possibleToPatch'][$problem], 'id'))))
 		{
-			$possibleCannonIds = implode(',', array_column($args['possibleToPatch']['cannons'], 'id', true));
-			$possibleBreachIds = implode(',', array_column($args['possibleToPatch']['breaches'], 'id', true));
-			$message = "Unexpected cardId of $cardId, expected to be one of <$possibleCannonIds> or <$possibleBreachIds>";
+			$possibleIds = implode(',', $possibleToPatch);
+			$message = "Problem: $problem, Actual cardId: $cardId, Expected to be one of <$possibleIds>";
 		}
 
 		if ($message !== '')
 			throw new \BgaSystemException("Patch not allowed in state {$this->getStateName()}\n($message)");
 
-		// Handle different types of problems differently (cannon vs breach vs TODO chest)
-		// Cannons
 		$again = false;
-		if (strlen($type) == 1)
+		switch ($problem)
 		{
-			// All cannons can be fixed with one hammer!
-			$this->addToColumn('cannonsColumn', null, $cardId);
-			$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problem}'), array(
-				'player_name' => $this->getPlayerNameById($playerId),
-				'player_id' => $playerId,
-				'problem' => $this->tokens['cannons'][$type], 
-				'card' => $this->cannons->getCard($cardId),
-			));
-		}	
-		// Breaches
-		else
-		{
-			// If the breach requires multiple hammers to patch, we need to give other players a chance to assist
-			$scale = $this->tokens['breaches'][$type]['scale'];
-			if ($scale == 1)
-			{
-				// Good news! We can fix it with just one mallet!
-				$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
+			case 'cannon':
+				// All cannons can be fixed with one hammer!
+				$this->addToColumn('cannonsColumn', null, $cardId);
 				$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problem}'), array(
 					'player_name' => $this->getPlayerNameById($playerId),
 					'player_id' => $playerId,
-					'problem' => $this->tokens['breaches'][$type]['name'],
+					'problem' => $this->tokens['cannons'][$type], 
 					'card' => $this->cannons->getCard($cardId),
+					'problem' => $problem,
 				));
-			}
-			else
-			{
-				$again = true;
+				break;
+			
+			case 'breach':
+				$scale = $this->tokens['breaches'][$type]['scale'];
+				if ($scale == 1)
+				{
+					// Good news! We can fix it with just one mallet!
+					$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
+					$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problem}'), array(
+						'player_name' => $this->getPlayerNameById($playerId),
+						'player_id' => $playerId,
+						'problem' => $this->tokens['breaches'][$type]['name'],
+						'card' => $this->breaches->getCard($cardId),
+						'problem' => $problem,
+					));
+				}
+				else
+				{
+					// If the breach requires multiple hammers to patch, we need to give other players a chance to assist
+					$again = true;
 
-			}
+				}
+				break;
 		}
 	
 		if (!$again)
@@ -892,7 +898,7 @@ class Game extends \Table
 		{
 			$cannons = array_values($this->cannons->getCardsInLocation('breachesColumn'));
 			$breaches = array_values($this->breaches->getCardsInLocation('breachesColumn'));
-			$args['possibleToPatch'] = ['cannons' => $cannons, 'breaches' => $breaches];
+			$args['possibleToPatch'] = ['cannon' => $cannons, 'breach' => $breaches];
 		}
 
 		$args['actiondescription'] = $flag ? clienttranslate('draw a card from the Water Deck or Discard a card from your hand') : clienttranslate('use your hammer to Patch');

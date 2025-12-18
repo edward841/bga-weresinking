@@ -45,7 +45,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.waterDiscard = null;
 			this.waterColumn = null;
 			this.treasureColumn = null;
-			this.breachDeck = null;
+			this.breachesDeck = null;
 			this.breaches = null;
 			this.operationalCannons = null;
 			this.bustedCannons = null;
@@ -458,8 +458,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				case 'resolvePatch':
 					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Patch'))
 					{
-						this.bustedCannons.setSelectionMode('single', args.args.possibleToPatch.cannons);	
-						this.breaches.setSelectionMode('single', args.args.possibleToPatch.breaches);
+						this.bustedCannons.setSelectionMode('single', args.args.possibleToPatch.cannon);	
+						this.breaches.setSelectionMode('single', args.args.possibleToPatch.breach);
 					}
 					break;
 
@@ -1013,16 +1013,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_actPatch');
 			console.log(notif);
-		
-			if (card.type.length == 1)
+			
+			switch (notif.problem)
 			{
-				// Cannon
-				this.operationalCannons.addCard(notif.card);
-			}
-			else
-			{
-				// Breach
-				this.breachDeck.addCard(notif.card);
+				case 'cannon':
+					this.operationalCannons.addCard(notif.card);
+					break;
+
+				case 'breach':
+					this.breachesDeck.addCard(notif.card);
+					break;
 			}
 			
 		},
