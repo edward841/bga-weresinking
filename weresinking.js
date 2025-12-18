@@ -1014,15 +1014,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_actPatch');
 			console.log(notif);
 		
-			// Cannon
 			if (card.type.length == 1)
 			{
-				this.operationalCannons.addCard(notif.args.card);
+				// Cannon
+				this.operationalCannons.addCard(notif.card);
 			}
-			// Breach
 			else
 			{
-
+				// Breach
+				this.breachDeck.addCard(notif.card);
 			}
 			
 		},
