@@ -557,6 +557,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 								this.bustedCannons.unselectAll();
 								this.breaches.unselectAll();
 							}, {color: 'primary', disabled: this.bustedCannons.getSelection().length != 1 && this.breaches.getSelection().length != 1});
+						else if (args.possibleActions.includes('ContributeHammer'))
+						{
+							this.statusBar.addActionButton(_('Yes'), () => {
+								this.bgaPerformAction('actContributeHammer', {'contribute': true});
+							}, {color: 'primary'});
+							this.statusBar.addActionButton(_('No'), () => {
+								this.bgaPerformAction('actContributeHammer', {'contribute': false});
+							}, {color: 'secondary'});
+						}
 						break;
 
 					case 'resolveFire':

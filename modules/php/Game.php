@@ -450,8 +450,8 @@ class Game extends \Table
 				if (count($this->globals->get('LIST')) == 0)
 				{
 					$patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
-					foreach ($patchingPlayers as $playerId)
-						$this->addToLIST($playerId);
+					$list = ['availableHammers' => $patchingPlayers,];
+					$this->globals->set('LIST', $list);
 				}
 			}
 		}	
@@ -642,7 +642,7 @@ class Game extends \Table
 			else if ($currentState === 'resolvePatch')
 			{
 				// Only give the player a chance to patch if they have a hammer left!
-				if (in_array($playerId, $this->globals->get('LIST')))
+				if (in_array($playerId, $this->globals->get('LIST')['availableHammers']))
 				{
 					$this->globals->set('FLAG', false);
 					$again = true;
@@ -705,7 +705,7 @@ class Game extends \Table
 		else if ($this->getStateName() === 'resolvePatch')
 		{
 			// Only give the player a chance to patch if they have a hammer left!
-			if (in_array($playerId, $this->globals->get('LIST')))
+			if (in_array($playerId, $this->globals->get('LIST')['availableHammers']))
 			{
 				$this->globals->set('FLAG', false);
 				$again = true; 
@@ -745,10 +745,10 @@ class Game extends \Table
 			case 'cannon':
 				// All cannons can be fixed with one hammer!
 				$this->addToColumn('cannonsColumn', null, $cardId);
-				$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problem}'), array(
+				$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problemName}'), array(
 					'player_name' => $this->getPlayerNameById($playerId),
 					'player_id' => $playerId,
-					'problem' => $this->tokens['cannons'][$type], 
+					'problemName' => $this->tokens['cannons'][$type], 
 					'card' => $this->cannons->getCard($cardId),
 					'problem' => $problem,
 				));
@@ -760,10 +760,10 @@ class Game extends \Table
 				{
 					// Good news! We can fix it with just one mallet!
 					$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
-					$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problem}'), array(
+					$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problemName}'), array(
 						'player_name' => $this->getPlayerNameById($playerId),
 						'player_id' => $playerId,
-						'problem' => $this->tokens['breaches'][$type]['name'],
+						'problemName' => $this->tokens['breaches'][$type]['name'],
 						'card' => $this->breaches->getCard($cardId),
 						'problem' => $problem,
 					));
@@ -772,7 +772,17 @@ class Game extends \Table
 				{
 					// If the breach requires multiple hammers to patch, we need to give other players a chance to assist
 					$again = true;
-					
+
+					// breachInProgress: id of the breach card
+					// pledgeHammers: a list of hammers pledged (indicated by player id)
+					// pledgeIndex: the index of hammer to seek a pledge from next (indexing availableHammers)
+					$list = (array) $this->globals->get('LIST');
+					$list['breachInProgress'] = $cardId;
+					$list['pledgedHammers'] = [$playerId];
+					$list['pledgeIndex'] = 1;
+					$this->globals->set('LIST', $list);
+
+					$this->gamestate->setPlayersMultiactive(array($list['availableHammers'][$list['pledgeIndex']]), null, true);
 				}
 				break;
 		}
@@ -780,7 +790,11 @@ class Game extends \Table
 		if (!$again)
 		{
 			$this->gamestate->setAllPlayersNonMultiactive('next');
-			$this->removeFromLIST($playerId);
+
+			// REMOVE FROM LIST
+			$list = (array) $this->globals->get('LIST');
+			array_splice($list['availableHammers'], array_search($playerId, $list['availableHammers']), 1);
+			$this->globals->set('LIST', $list);
 		}
 		else
 			$this->gamestate->nextState('again');
@@ -798,15 +812,57 @@ class Game extends \Table
 		if ($message !== '')
 			throw new \BgaSystemException("Patch not allowed in state {$this->getStateName()}\n($message)");
 
-		// Get info
-
-		// Contribute hammmer if applicable
+		// Get info and contribute
+		$list = (array) $this->globals->get('LIST');
+		$again = true;
 		if ($contribute)
 		{
+			$list['pledgedHammers'][] = $playerId;
+			$card = $this->breaches->getCard($list['breachInProgress']);
+			$scale = $this->tokens['breaches'][$card['type']]['scale'];	
 
+			if (count($list['pledgedHammers']) == $scale)
+			{
+				// Yay! We can fix the breach!
+				$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
+
+				// Give credit to all players who contributed!
+				$notifArgs = array(
+					'problemName' => $this->tokens['breaches'][$type]['name'],
+					'card' => $card, 
+					'problem' => 'breach',
+				);
+				$x = 1;
+				$placeholderList = array();
+				foreach ($list['pledgedHammers'] as $id)
+				{
+					$notifArgs["player_id$x"] = $id;
+					$notifArgs["player_$x"] = $this->getPlayerNameById($id);
+					$placeholderList[] = "{player_name$x}";
+					$x++;
+				}
+				$placeholders = implode(' and ', $placeholderList);
+
+				$this->notify->all('actPatch', clienttranslate($placeholders . 'repaired a ${problemName}'), $notifArgs);
+
+				// Adjust list
+				// Remove all the hammers that went towards this breach from availableHammers
+				// Remove the LIST elements that pertain to the big breach
+				$list['availableHammers'] = array_diff($list['availableHammers'], $list['pledgeHammers']);
+				unset($list['breachInProgress']);
+				unset($list['pledgedHammers']);
+				unset($list['pledgeIndex']);
+			}
+		}
+		else
+		{
+			// Determine if it is possible to fix the breach without this hammer
 		}
 
-		// Progress games state either way
+		// Progress game state either way
+		$this->globals->set('LIST', $list);
+		if ($again)
+				$this->gamestate->setPlayersMultiactive(array($list['availableHammers'][++$list['pledgeIndex']]), null, true);
 	}
 
 	public function actFire()
@@ -925,36 +981,37 @@ class Game extends \Table
 	{
 		// Indicates which action the player needs to do right now (True for draw/discard 1, false for patch)
 		$flag = $this->globals->get('FLAG'); 
+		$list = (array) $this->globals->get('LIST');
 
 		$args = [];
 		$args['possibleActions'] = [];
 		if ($flag)
-			$args['possibleActions'] = ['Draw', 'Discard'];
-		else if (true)
-			$args['possibleActions'] = ['Patch'];
-		else
-			$args['possibleActions'] = ['ContributeHammer'];
-
-		$args['location'] = $flag ? 'deck' : 'breachesColumn';
-		
-		if ($flag)
 		{
+			$args['possibleActions'] = ['Draw', 'Discard'];
+			$args['actiondescription'] = clienttranslate('draw a card from the Water Deck or Discard a card from your hand');
+			
 			$topCard = $this->water->getCardOnTop('deck');
 			$args['possibleIdsDraw'] = [intval($topCard['id'])];
 			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->gamestate->getActivePlayerList()[0]));
 		}
+		else if (!array_key_exists('breachInProgress', $list))
+		{
+			$args['possibleActions'] = ['Patch'];
+			// TODO come up with something better for this actiondescription...
+			$args['actiondescription'] = clienttranslate('use your hammer to Patch');
+			
+			$cannons = array_values($this->cannons->getCardsInLocation('breachesColumn'));
+			$breaches = array_values($this->breaches->getCardsInLocation('breachesColumn'));
+			$args['possibleToPatch'] = ['cannon' => $cannons, 'breach' => $breaches];
+		}
 		else
 		{
-			// If Patch is allowed right now (we aren't currently pledging hammers for a big breach)
-			if (in_array('Patch', $args['possibleActions']))
-			{
-				$cannons = array_values($this->cannons->getCardsInLocation('breachesColumn'));
-				$breaches = array_values($this->breaches->getCardsInLocation('breachesColumn'));
-				$args['possibleToPatch'] = ['cannon' => $cannons, 'breach' => $breaches];
-			}
+			$args['possibleActions'] = ['ContributeHammer'];
+			$args['actiondescription'] = clienttranslate('Do you want to use your hammer to help fix this breach?');
 		}
 
-		$args['actiondescription'] = $flag ? clienttranslate('draw a card from the Water Deck or Discard a card from your hand') : clienttranslate('use your hammer to Patch');
+		$args['location'] = $flag ? 'deck' : 'breachesColumn';
+		
 		return $args;
 	}
 
