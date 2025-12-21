@@ -434,19 +434,33 @@ class Game extends \Table
 	{
 		$nextPlayer = $this->getNextPlayer();
 		$nextAction = 'upkeep';
-		//var_dump('nextPlayer', $nextPlayer);
 		
 		if ($nextPlayer > 0)
 		{
 			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
 			if ($nextAction === 'patch')
 			{
-				// Update active player
-				$this->gamestate->changeActivePlayer($nextPlayer);
+				// Dont update active player (because its a multiactiveplayer state now)
 				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
 
 				// Set FLAG to true (indicates that the player needs to draw now)
 				$this->globals->set('FLAG', true);
+
+				// If this is the first patching player, set up the LIST to contain a list of all hammers
+				// failedBreaches should reset at the beginning of each patching player's turn 
+				// 		(maybe someone said no during someone elses turn because they want to do it on their turn?)
+				$list = (array) $this->globals->get('LIST');
+				$list['failedBreaches'] = array();
+				if (!array_key_exists('availableHammers', $list))
+				{
+					$patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
+					$list['availableHammers'] = array_values($patchingPlayers);
+					$this->globals->set('LIST', $list);
+				}
+			}
+			else 
+			{
+				$this->globals->set('LIST', array());
 			}
 		}	
 
@@ -454,6 +468,10 @@ class Game extends \Table
 		// If the next player is doing a Patch action, the prepwork is done and this moves to STATE_RESOLVE_PATCH
 		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
 		// If there is not another player, goes to STATE_UPKEEP
+		if ($nextAction === 'patch')
+		{
+			$this->gamestate->setPlayersMultiactive(array($nextPlayer), 'resolvePatch', true);
+		}
 		$this->gamestate->nextState($nextAction);
 	}
 
@@ -522,6 +540,7 @@ class Game extends \Table
 		$this->globals->set('PREVIOUS_PLAYER', 'none');
 		$this->globals->set('FLAG', true);
 		$this->globals->set('COUNTER', 0);
+		$this->globals->set('LIST', []);
 
 		// Enemy items	
 		$this->globals->set('KRAKEN_ANGERED', 0);
@@ -574,7 +593,7 @@ class Game extends \Table
 		// Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
 		// It might seem odd to have different arg functions, but this simple draw is an allowed action in 3 of the 4 different dial actions (bucket, plunder, patch)
 		// 	and they all work the same at their core but have access to different cards and have little details to control flow
-		$playerId = $this->getActivePlayerId();
+		$playerId = $this->gamestate->getActivePlayerList()[0];
 		$currentState = $this->getStateName();
 		$argFunction = 'arg' . ucfirst($currentState);
 		$args = $this->$argFunction();
@@ -609,9 +628,9 @@ class Game extends \Table
 
 		// Deck has to be a separate case because $cardId is a dummy value if the location is the deck!
 		if ($location === 'deck')
-			$this->water->pickCard('deck', $this->getActivePlayerId());
+			$this->water->pickCard('deck', $playerId);
 		else
-			$this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
+			$this->water->moveCard($cardId, 'hand', $playerId);
 
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
@@ -631,9 +650,19 @@ class Game extends \Table
 			}
 			else if ($currentState === 'resolvePatch')
 			{
-				// TODO Temp fix. THIS CLAUSE WILL NEED DELETED WHEN PATCH IS FULLY IMPLEMENTED.
-				// Moves on to the next player after the draw. Will have to remove it and implement the patching action later
-				$this->globals->set('FLAG', true);
+				// Only give the player a chance to patch if they have a hammer left!
+				if (in_array($playerId, $this->globals->get('LIST')['availableHammers']))
+				{
+					$this->globals->set('FLAG', false);
+					$again = true;
+				}
+				else
+				{
+					$this->notify->all('patchMessage', clienttranslate('${player_name} already used their hammer(s)'), array(
+						'player_id' => $playerId,
+						'player_name' => $this->getPlayerNameById($playerId),
+					));
+				}
 			}
 		}
 		else
@@ -670,7 +699,7 @@ class Game extends \Table
 			throw new \BgaSystemException("actDiscard: cardId: '$cardId' not allowed in state {$this->getStateName()}\n($message)");
 		
 		// Proceed now that all input has been verified: Move the indicated card to the discard pile
-		$playerId = $this->getActivePlayerId();
+		$playerId = $this->gamestate->getActivePlayerList()[0];
 		$card = $this->water->getCard($cardId);
 		$this->notifyForCardsDiscarded(intval($playerId), array($card));
 		$this->discard($cardId);
@@ -691,16 +720,208 @@ class Game extends \Table
 		}
 		else if ($this->getStateName() === 'resolvePatch')
 		{
-			// TODO These flags are temporarily backwards to skip the fixing part of patch actions 
-			//$this->globals->set('FLAG', false);
-			//$again = true; 
-			$this->globals->set('FLAG', true);
+			// Only give the player a chance to patch if they have a hammer left!
+			if (in_array($playerId, $this->globals->get('LIST')['availableHammers']))
+			{
+				$this->globals->set('FLAG', false);
+				$again = true; 
+			}
+			else
+			{
+				$this->notify->all('patchMessage', clienttranslate('${player_name} already used their hammer(s)'), array(
+					'player_id' => $playerId,
+					'player_name' => $this->getPlayerNameById($playerId),
+				));
+			}
 		}
 		$again ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
 
-	public function actPatch()
+	// Handle different types of problems differently (cannon vs breach vs TODO chest)
+	public function actPatch(int $cardId, string $type)
 	{
+		$this->debug("\n\nactPatch: cardId: $cardId, type: $type\n\n");
+		$problem = 'cannon';
+		if (strlen($type) > 1)
+			$problem = 'breach';
+
+		// Safety checks first!
+		$args = $this->argResolvePatch();
+		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$message = '';
+		if (!in_array('Patch', $args['possibleActions']))
+			$message = 'Patch is not in the possible actions';
+		else if (count($args['possibleToPatch']['cannon']) + count($args['possibleToPatch']['breach']) == 0)
+			$message = 'There is nothing broken right now that can be patched!';
+		else if (!in_array($cardId, ($possibleToPatch = array_column($args['possibleToPatch'][$problem], 'id'))))
+		{
+			$possibleIds = implode(',', $possibleToPatch);
+			$message = "Problem: $problem, Actual cardId: $cardId, Expected to be one of <$possibleIds>";
+		}
+
+		if ($message !== '')
+			throw new \BgaSystemException("Patch not allowed in state {$this->getStateName()}\n($message)");
+
+		$again = false;
+		switch ($problem)
+		{
+			case 'cannon':
+				// All cannons can be fixed with one hammer!
+				$this->addToColumn('cannonsColumn', null, $cardId);
+				$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problemName}'), array(
+					'player_name' => $this->getPlayerNameById($playerId),
+					'player_id' => $playerId,
+					'problemName' => $this->tokens['cannons'][$type], 
+					'card' => $this->cannons->getCard($cardId),
+					'problem' => $problem,
+				));
+				break;
+			
+			case 'breach':
+				$scale = $this->tokens['breaches'][$type]['scale'];
+				if ($scale == 1)
+				{
+					// Good news! We can fix it with just one mallet!
+					$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
+					$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problemName}'), array(
+						'player_name' => $this->getPlayerNameById($playerId),
+						'player_id' => $playerId,
+						'problemName' => $this->tokens['breaches'][$type]['name'],
+						'card' => $this->breaches->getCard($cardId),
+						'problem' => $problem,
+					));
+				}
+				else
+				{
+					// If the breach requires multiple hammers to patch, we need to give other players a chance to assist
+					$again = true;
+
+					// breachInProgress: id of the breach card
+					// pledgeHammers: a list of hammers pledged (indicated by player id)
+					// pledgeIndex: the index of hammer to seek a pledge from next (indexing availableHammers)
+					$list = (array) $this->globals->get('LIST');
+					$list['breachInProgress'] = $cardId;
+					$list['pledgedHammers'] = [$playerId];
+					$list['pledgeIndex'] = 1;
+					$this->globals->set('LIST', $list);
+
+					$this->notify->all('actPatchMessage', clienttranslate('${player_name} requests assistance to repair the ${problemName}'), array(
+						'player_id' => $playerId,
+						'player_name' => $this->getPlayerNameById($playerId),
+						'problemName' => $this->tokens['breaches'][$this->breaches->getCard($cardId)['type']]['name'],
+					));
+
+					$this->gamestate->setPlayersMultiactive(array($list['availableHammers'][$list['pledgeIndex']]), null, true);
+				}
+				break;
+		}
+	
+		if (!$again)
+		{
+			$list = (array) $this->globals->get('LIST');
+			array_splice($list['availableHammers'], array_search($playerId, $list['availableHammers']), 1);
+			$this->globals->set('LIST', $list);
+			
+			$this->gamestate->setAllPlayersNonMultiactive('next');
+		}
+		else
+			$this->gamestate->nextState('again');
+	}
+
+	public function actContributeHammer(bool $contribute)
+	{
+		// Safety checks
+		$args = $this->argResolvePatch();
+		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$message = '';
+		if (!in_array('ContributeHammer', $args['possibleActions']))
+			$message = 'ContributeHammer is not in the possible actions';
+
+		if ($message !== '')
+			throw new \BgaSystemException("Patch not allowed in state {$this->getStateName()}\n($message)");
+
+		$list = (array) $this->globals->get('LIST');
+		$card = $this->breaches->getCard($list['breachInProgress']);
+		$scale = $this->tokens['breaches'][$card['type']]['scale'];	
+		$problemName = $this->tokens['breaches'][$card['type']]['name'];
+
+		$this->notify->all('actPatchMessage', clienttranslate('${player_name} ${response} contribute their dial towards the ${problemName}'), array(
+			'player_id' => $playerId,
+			'player_name' => $this->getPlayerNameById($playerId),
+			'response' => $contribute ? clienttranslate('will') : clienttranslate('will not'),
+			'problemName' => $problemName,
+		));
+
+		// Adjust accordingly
+		$again = true;
+		$letTheNextPlayerContribute = true;
+		if ($contribute)
+		{
+			$list['pledgedHammers'][] = $playerId;
+
+			if (count($list['pledgedHammers']) == $scale)
+			{
+				// Yay! We can fix the breach!
+				$this->breaches->insertCardOnExtremePosition($card['id'], 'deck', false);
+				$card['location'] = 'deck'; // Without this the card doesn't flip to the backside in the animation
+				$again = false;
+				$letTheNextPlayerContribute = false;
+
+				// Indicate we succeeded and give credit to all players who contributed!
+				$this->notify->all('actPatch', clienttranslate('We repaired a ${problemName}'), array(
+					'problemName' => $problemName,
+					'card' => $card, 
+					'problem' => 'breach',
+				));
+				foreach ($list['pledgedHammers'] as $id)
+				{
+					$this->notify->all('actPatchMessage', clienttranslate('${player_name} helped fix the ${problemName}'), array(
+						'problemName' => $problemName,
+						'player_id' => $id,
+						'player_name' => $this->getPlayerNameById($id),
+					));
+				}
+
+				// Adjust list
+				// Remove all the hammers that went towards this breach from availableHammers
+				// Remove the LIST elements that pertain to the big breach
+				$list['availableHammers'] = array_diff($list['availableHammers'], $list['pledgedHammers']);
+				unset($list['breachInProgress']);
+				unset($list['pledgedHammers']);
+				unset($list['pledgeIndex']);
+			}
+		}
+		// If it is impossible to repair with the remaining available hammers, then indicate patching the breach failed and give the original player another chance
+		// The -1 is because pledgeIndex is zero-indexed, if it were one-indexed it wouldn't need the -1
+		else if (count($list['pledgedHammers']) + count($list['availableHammers']) - $list['pledgeIndex'] - 1 < $scale)
+		{
+			$originalPlayerId = $list['availableHammers'][0];
+			$this->notify->all('actPatchMessage', clienttranslate('Patching the ${problemName} failed, {player_name} gets a chance to Patch something else.'), array(
+				'problemName' => $problemName, 
+				'player_id' => $originalPlayerId,
+				'player_name' => $this->getPlayerNameById($originalPlayerId),
+			));
+
+			// Adjust LIST
+			$list['failedBreaches'][] = $card['id'];
+			unset($list['breachInProgress']);
+			unset($list['pledgedHammers']);
+			unset($list['pledgeIndex']);
+			
+			$letTheNextPlayerContribute = false;
+		}
+
+		// letTheNextPlayerContribute is nearly the same thing as again but not quite:
+		// again controls the FSM flow 
+		// letTheNextPlayerContribute is a flag for active player control, again isnt quite enough on its own
+		if ($letTheNextPlayerContribute)
+			$this->gamestate->setPlayersMultiactive(array($list['availableHammers'][++$list['pledgeIndex']]), null, true);
+		else if ($again)
+			$this->gamestate->setPlayersMultiactive(array($originalPlayerId), null, true);
+
+		// Progress game state either way
+		$this->globals->set('LIST', $list);
+		$again ? $this->gamestate->nextState('again') : $this->gamestate->setAllPlayersNonMultiactive('next');
 	}
 
 	public function actFire()
@@ -819,21 +1040,45 @@ class Game extends \Table
 	{
 		// Indicates which action the player needs to do right now (True for draw/discard 1, false for patch)
 		$flag = $this->globals->get('FLAG'); 
+		$list = (array) $this->globals->get('LIST');
 
 		$args = [];
-		$args['possibleActions'] = $flag ? ['Draw', 'Discard'] : ['Patch'];
-		$args['location'] = $flag ? 'deck' : 'breachesColumn';
-		
+		$args['possibleActions'] = [];
 		if ($flag)
 		{
+			$args['possibleActions'] = ['Draw', 'Discard'];
+			$args['actiondescription'] = clienttranslate('draw a card from the Water Deck or Discard a card from your hand');
+			
 			$topCard = $this->water->getCardOnTop('deck');
 			$args['possibleIdsDraw'] = [intval($topCard['id'])];
-			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->getActivePlayerId()));
+			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->gamestate->getActivePlayerList()[0]));
+		}
+		else if (!array_key_exists('breachInProgress', $list))
+		{
+			$args['possibleActions'] = ['Patch'];
+			// TODO come up with something better for this actiondescription...
+			$args['actiondescription'] = clienttranslate('use your hammer to Patch');
+			
+			$cannons = array_values($this->cannons->getCardsInLocation('breachesColumn'));
+			$breaches = array_values($this->breaches->getCardsInLocation('breachesColumn'));
+
+			// Filter out the breaches that have failed or are too big for the current number of hammers
+			$breaches = array_values(array_filter($breaches, function($card, $key) {
+				return !in_array($card['id'], $this->globals->get('LIST')['failedBreaches']) &&
+					$this->tokens['breaches'][$card['type']]['scale'] <= count($this->globals->get('LIST')['availableHammers']); 
+			}, ARRAY_FILTER_USE_BOTH));
+
+			$args['possibleToPatch'] = ['cannon' => $cannons, 'breach' => $breaches];
 		}
 		else
-			$args['possibleIdsPatch'] = [];
+		{
+			$args['possibleActions'] = ['ContributeHammer'];
+			$args['card'] = $this->cannons->getCard($this->globals->get('LIST')['breachInProgress']);
+			$args['actiondescription'] = clienttranslate('Do you want to use your hammer to help fix this breach?');
+		}
 
-		$args['actiondescription'] = $flag ? clienttranslate('draw a card from the Water Deck or Discard a card from your hand') : clienttranslate('use your hammer to Patch');
+		$args['location'] = $flag ? 'deck' : 'breachesColumn';
+		
 		return $args;
 	}
 
@@ -1683,7 +1928,7 @@ class Game extends \Table
 		$key = array_search($element, $list);
 		if ($key === false)
 			return false;
-		unset($list[$key]);
+		array_splice($list, $key, 1);
 		$this->globals->set('LIST', $list);
 		return true;
 	}

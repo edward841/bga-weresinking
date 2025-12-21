@@ -45,7 +45,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.waterDiscard = null;
 			this.waterColumn = null;
 			this.treasureColumn = null;
-			this.breachDeck = null;
+			this.breachesDeck = null;
 			this.breaches = null;
 			this.operationalCannons = null;
 			this.bustedCannons = null;
@@ -350,6 +350,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager, this.bigCardGap);
 			this.breaches.onCardCountChange = (cardCount) => {dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); };
 
+			// Set it up so you cannot select a cannon and breach at the same time
+			this.resetBreachesSelection();
+			this.bustedCannons.onSelectionChange = (selection, lastChanged) => {
+				if (selection.length > 0) 
+					this.breaches.unselectAll();
+				this.updatePageTitle();
+			};
+
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
 			this.populateStock(this.playerHand, gamedatas.hand);
@@ -443,6 +451,22 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         {
             switch(stateName)
             {
+				case 'resolvePatch':
+					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Patch'))
+					{
+						this.bustedCannons.setSelectionMode('single', args.args.possibleToPatch.cannon);	
+						this.breaches.setSelectionMode('single', args.args.possibleToPatch.breach);
+					}
+					else if (args.args.possibleActions.includes('ContributeHammer'))
+					{
+						// Select the breach in question, forcefully disable deselecting the card, and mark everything else as not selectable
+						this.breaches.setSelectionMode('single', [args.args.card]);	
+						this.breaches.selectCard(args.args.card);
+						this.breaches.onSelectionChange = (selection, lastChange) => {if (selection.length == 0) this.breaches.selectCard(args.args.card)};
+						this.bustedCannons.setSelectionMode('single', []);
+					}
+					break;
+
 				case 'resolveFire':
 					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('ShootYeTreasure'))
 					{
@@ -462,6 +486,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             
             switch(stateName)
             {
+				case 'resolvePatch': 
+					this.resetBreachesSelection();
+					this.bustedCannons.setSelectionMode('none');
+					this.breaches.setSelectionMode('none');
+					break;
+
 				case 'resolveFire':
 					this.playerHand.setSelectionMode('none');
 					this.operationalCannons.setSelectionMode('none');	
@@ -521,6 +551,28 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actDeclareDial", {value: 'fire', location: 'fire'}));
 						break;
 
+					case 'resolvePatch':
+						if (args.possibleActions.includes('Patch'))
+							this.statusBar.addActionButton(_('Patch'), () => {
+								card = this.bustedCannons.getSelection().concat(this.breaches.getSelection())[0];
+								this.bgaPerformAction("actPatch", {
+									'cardId': card.id,
+									'type': card.type,
+								});
+								this.bustedCannons.unselectAll();
+								this.breaches.unselectAll();
+							}, {color: 'primary', disabled: this.bustedCannons.getSelection().length != 1 && this.breaches.getSelection().length != 1});
+						else if (args.possibleActions.includes('ContributeHammer'))
+						{
+							this.statusBar.addActionButton(_('Yes'), () => {
+								this.bgaPerformAction('actContributeHammer', {'contribute': true});
+							}, {color: 'primary'});
+							this.statusBar.addActionButton(_('No'), () => {
+								this.bgaPerformAction('actContributeHammer', {'contribute': false});
+							}, {color: 'secondary'});
+						}
+						break;
+
 					case 'resolveFire':
 						const possibleActions = args.possibleActions;
 						console.log(possibleActions);
@@ -528,7 +580,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actFire"), { color: 'primary'});
 						if (possibleActions.includes("ShootYeTreasure"))
 						{
-							//actShootYeTreasure(int $cardId, int $cannonId)
 							this.statusBar.addActionButton(_('Shoot Ye Treasure'), () => {
 								this.bgaPerformAction("actShootYeTreasure", {
 									'cardId': this.playerHand.getSelection()[0].id,
@@ -641,6 +692,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			return actionToColumnMapping[action];
 		},
 
+		resetBreachesSelection: function()
+		{
+			this.breaches.onSelectionChange = (selection, lastChanged) => {
+				if (selection.length > 0) 
+					this.bustedCannons.unselectAll();
+				this.updatePageTitle();
+			};
+			this.breaches.unselectAll();
+		},
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -666,27 +727,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			const args = this.gamedatas.gamestate.args;
 
 			// Intervene for deck, there is only one option of what that card could be
-//			if (parentDiv === 'deck')
-//				card = {'id': args.possibleIdsDraw[0], 'type': 'backside'};
-//			console.log('printing the card:');
-//			console.log(card);
+			if (parentDiv === 'deck')
+				card = {'id': args.possibleIdsDraw[0], 'type': 'backside', 'type_arg': '0'};
+			console.log('printing the card:');
+			console.log(card);
 
 			// TODO Consider keeping these additional safety checks in the final version? Would make troubleshooting harder right now tho
 			if (args.possibleActions.includes('Draw') && parentDiv === args.location) //&& args.possibleIdsDraw.includes(parseInt(card.id)))
 				this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv,});
 			else if (args.possibleActions.includes('Discard') && parentDiv === 'myHand') //&& args.possibleIdsDiscard.includes(parseInt(card.id)))
 				this.bgaPerformAction('actDiscard', {cardId: card.id});
-//			else if (args.possibleActions.includes('ShootYeTreasure') && parentDiv === 'myHand' && card.id)
-//				this.bgaPerformAction('actShootYeTreasure', {cardId: card.id});
-
-//			const constants = this.gamedatas.constants;
-//			switch (this.gamedatas.gamestate.id)
-//			{
-//				case constants.STATE_RESOLVE_BUCKET:
-//					if (possibleActions.includes('Draw') && parentDiv === 'waterColumn')
-//						this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv});
-//					break;
-//			}
 		},
 
         
@@ -981,6 +1031,26 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
 			this.waterDiscard.addCard(card);
 			this.waterDiscard.setCardVisible(card, false);
+		},
+
+		notif_actPatch: function(notif)
+		{
+			console.log('notif_actPatch');
+			console.log(notif);
+			
+			switch (notif.problem)
+			{
+				case 'cannon':
+					this.operationalCannons.addCard(notif.card);
+					break;
+
+				case 'breach':
+					// Fix breaches selection (since it may be forcefully selecting a multi-breach)
+					this.resetBreachesSelection();
+					this.breachesDeck.addCard(notif.card);
+					break;
+			}
+			
 		},
    });             
 });

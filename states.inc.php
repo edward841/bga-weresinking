@@ -220,10 +220,10 @@ $machinestates = [
 		'name' => 'resolvePatch',
 		'description' => clienttranslate('${actplayer} must Patch'),
 		'descriptionmyturn' => clienttranslate('${you} must ${actiondescription}'),
-		'type' => 'activeplayer',
-		'possibleactions' => ['actDraw', 'actDiscard', 'actPatch'],
+		'type' => 'multipleactiveplayer',
+		'possibleactions' => ['actDraw', 'actDiscard', 'actPatch', 'actContributeHammer'],
 		'args' => 'argResolvePatch',
-		'transitions' => ['next' => STATE_RESOLVE_PATCH_HELPER],
+		'transitions' => ['next' => STATE_RESOLVE_PATCH_HELPER, 'again' => STATE_RESOLVE_PATCH],
 	),
 
 	STATE_RESOLVE_FIRE_HELPER => array(

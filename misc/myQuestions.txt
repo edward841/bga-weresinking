@@ -1,42 +1,26 @@
 UNRESOLVED
 The remaining big questions. Approximately in order of priority.. 
 
--How exactly does the patching work with multiple people? Specifically what does the round structure look like for multiple people to team up on a big breach? What does it look like when people attempt and fail to repair a big breach (maybe someone lied about what action they were doing or maybe they said they would help with that monster breach and actually went for a chest)? 
-I'm thinking it goes in turn order, each person doing the secondary action (draw or discard) and then indicate where they would like to apply their hammer. After all patching players have done both, successfully patch everything that got enough hammers. The big mystery is if someone dipped and theres a massive breach with 2 hammers. Do those two people get another chance to reposition their hammers? Is it a multiactive or activeplayer state? Or is their hammer simply wasted?
 
 -I saw in a discord rules channel that Angered can be doubled??? Are there any other special attacks that can be doubled up? (Looking at you tempting tune and cursed search...)
--How should we handle the social elements well? Would the built in chat work or does it need something else?
--How would we enforce the siren's ability to shut down communication?
 -How do we want to handle people that speak different languages? Should we use language dependency to force a game to agree on a common language?
 
 -What is the precise meaning of the rule that prevents playing several cards with the same trigger event?  "A player can use multiple items in a round as long as they do not share the same condition. i.e. Declare, Reveal, Resolve, etc." -pg 8. Can you play two items in the same round with two different resolves? or two different declare? Or must they have different verbs?
--For the shark's sumberged attack, do the single cannons still fire even though they are ineffective? Or do they simply not fire? (I understand that they don't deal damage, but what does it look like from the players' perspective?)
 -Complexity, Luck, Strategy, Diplomacy rating (1-5?) Tags? Average game duration?
 -Any ideas for statistics?
 
--How do we want to style the cards? What about the other elementents (the dice, the panels, etc)?
+-How do we want to style the cards? What about the other elements (the dice, the panels, etc)?
 Should they have a border or no? If so what color/thickness?
 What is the look of the selected card vs the not selected cards? Or should we disable selection altogether and make everything pure reactions?
+
+For the wooden mallet: When exactly does the extra hammer occur in the turn order? Immediately after that player's normal one? After all the normal ones?
 
 
 MIGHT BE RESOLVED??
 Those questions which have been asked and require pondering... What is the meaning of life?
 
-When exactly do all of the triggers occur? 
-Answer: I think I figured this out but it wouldn't hurt to double check with Joseph... 
-I identified 10 distinct triggers:
-	declare dial, reveal dial, reveal plunder, reveal patch, reveal fire, resolve dial, resolve water, resolve patch, resolve fire, enemy dice rolled
-in order & condensed, they should be
-1. after enemy dice rolled but before they're resolved (some can modify the results)
-2. after a dial is declared (react to dial declared)
-3. after dials are revealed (react to Plunder revealed)
-4. after resolving any action (flint pistol)
-5. after a Bucket action
-6. after a Patch action
-7. after a Fire action
-
-When should the game stop and prompt players to play treasure cards actions? For every possible moment? or every moment someone has a card for?
-Answer: Probably every opportunity someone could actually play a card. If its possible, dont make it super obvious who it is but thats probably not viable....
+-How should we handle the social elements well? Would the built in chat work or does it need something else?
+Answer: For now, were going to give the built in elements a chance: the chat/voice chat. We will evaluate in Alpha/Beta testing how well these work. There are very similar games that make do with these methods, while others opt for an alternate means like a more specialized chat box the dev designed embedded in the game.
 
 RESOLVED: 
 Everything that has been resolved or clarified. Either by an improved understanding of the rules, a discussion with Joseph, the discord, etc.
@@ -62,9 +46,37 @@ Answer: It is very strict. Neither location nor value can correspond to an empty
 Is there an enforced maximum number of players that can take any given action? (say there are only 2 water in water column, could three people select bucket on their dial?
 Answer: No enforced maximum. It is a risk you take if you place your dial in a column where there may not be enough work to go around. In some columns like the Bucket and Patch, this may result in a less than exciting turn. In the Plunder column, it is by design because treasure is lost if too many players go for it at once! In the Fire column, any number of people can fire cannons as long as there is at least one operational cannon (see previous question). There may be times when it is unavoidable or likely to overselect a certain action (like during the siren's screech attack...)
 
+How would we enforce the siren's ability to shut down communication?
+Answer: I had ideas of disabling modes of communication, but in all practicality it is not possible to shut down all communication. This will probably look like the game called Sky Team. When communication is disabled, there is a banner on the screen that makes it clear. But it is not strictly enforced in any real way. Even if I disabled the chat, there is still the possibility of the built in voice chat, BGA messages outside the game, and external platforms like phone call or alternate communication means... so I could probably disable the chat but not really enforce in the long run and probably shouldn't mess with the chat.
+
+When exactly do all of the triggers occur? 
+Answer: I think I figured this out but it wouldn't hurt to double check with Joseph... 
+I identified 10 distinct triggers:
+	declare dial, reveal dial, reveal plunder, reveal patch, reveal fire, resolve dial, resolve water, resolve patch, resolve fire, enemy dice rolled
+in order & condensed, they should be
+1. after enemy dice rolled but before they're resolved (some can modify the results)
+2. after a dial is declared (react to dial declared)
+3. after dials are revealed (react to Plunder revealed)
+4. after resolving any action (flint pistol)
+5. after a Bucket action
+6. after a Patch action
+7. after a Fire action
+Answer 2.0: Yes these are all of the triggers. More specifically though, they all react to YOU doing that, not anyone. So to play a card with 'React to Bucket', you must first bucket and then choose to play the card. Of course the exception is enemy dice rolled because that is automatic. All the other ones occur after YOU do the specified trigger and choose to do so.
+
+When should the game stop and prompt players to play treasure cards actions? For every possible moment? or every moment someone has a card for?
+Answer: Probably every opportunity someone could actually play a card. If its possible, dont make it super obvious who it is but thats probably not viable....
+
+For the shark's sumberged attack, do the single cannons still fire even though they are ineffective? Or do they simply not fire? (I understand that they don't deal damage, but what does it look like from the players' perspective?)
+Answer: Yes they still fire, so the rolling animation will still occur. This will really drive home why the attack hurts, they will see all the hits that could have been and be motivated to fire more when it is not submerged! (In theory)
+
+-How exactly does the patching work with multiple people? Specifically what does the round structure look like for multiple people to team up on a big breach? What does it look like when people attempt and fail to repair a big breach (maybe someone lied about what action they were doing or maybe they said they would help with that monster breach and actually went for a chest)? 
+Answer: If someone chooses a multi-hammer breach, immediately prompt the other patching players (that still have hammers available of course) whether they wish to contribute or not. If they say yes, fix it if you have enough or ask the next person if you need more. If they say no, either give up if there arent enough hammers left without them or ask the next person. If too many people say no, then go back to the person that started it, disable that breach so they cant choose it again, and let them choose something else. Unquestionably correct, each person gets a chance to contribute, but the people higher in turn order get first dibs on the problems. Probably want a multiplayeractive state.
+
+
 CALLS NOTES:
 Tabletopia version for reference
 Tabletop simulator
 Does the first mate token need the bleed? The brown border needed for printing. What do other games on BGA do?
+Answer: Nope, it looks great with the no bleed version!
 
 
