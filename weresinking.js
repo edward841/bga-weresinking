@@ -671,9 +671,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //			console.log('printing the card:');
 //			console.log(card);
 
-			if (args.possibleActions.includes('Draw') && parentDiv === args.location)
+			// TODO Consider keeping these additional safety checks in the final version? Would make troubleshooting harder right now tho
+			if (args.possibleActions.includes('Draw') && parentDiv === args.location) //&& args.possibleIdsDraw.includes(parseInt(card.id)))
 				this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv,});
-			else if (args.possibleActions.includes('Discard') && parentDiv === 'myHand')
+			else if (args.possibleActions.includes('Discard') && parentDiv === 'myHand') //&& args.possibleIdsDiscard.includes(parseInt(card.id)))
 				this.bgaPerformAction('actDiscard', {cardId: card.id});
 //			else if (args.possibleActions.includes('ShootYeTreasure') && parentDiv === 'myHand' && card.id)
 //				this.bgaPerformAction('actShootYeTreasure', {cardId: card.id});
@@ -761,7 +762,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.correctGapUnderBoard();
 			
 			// Manage the breaches as well
-			if (this.breachesDeck.getCardCount() > 0)
+			if (this.breaches.getCardCount() > 0)
 			{
 				this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
 				dojo.create('div', {class: 'permanentBreach'}, 'permanentBreaches');
