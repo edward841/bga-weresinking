@@ -461,6 +461,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						this.bustedCannons.setSelectionMode('single', args.args.possibleToPatch.cannon);	
 						this.breaches.setSelectionMode('single', args.args.possibleToPatch.breach);
 					}
+					else if (args.args.possibleActions.includes('ContributeHammer'))
+					{
+						// Select the breach in question, forcefully disable deselecting the card, and mark everything else as not selectable
+						this.breaches.setSelectionMode('single', [args.args.card]);	
+						this.breaches.selectCard(args.args.card);
+						this.breaches.onSelectionChange = (selection, lastChange) => {if (selection.length == 0) this.breaches.selectCard(args.args.card)};
+						this.bustedCannons.setSelectionMode('single', []);
+					}
 					break;
 
 				case 'resolveFire':
@@ -483,6 +491,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             switch(stateName)
             {
 				case 'resolvePatch': 
+					this.breaches.onSelectionChange = (selection, lastChanged) => {
+						if (selection.length > 0) 
+							this.bustedCannons.unselectAll();
+						this.updatePageTitle();
+					};
+					this.breaches.unselectAll();
+
 					this.bustedCannons.setSelectionMode('none');
 					this.breaches.setSelectionMode('none');
 					break;
@@ -1030,7 +1045,17 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					break;
 
 				case 'breach':
-					this.breachesDeck.addCard(notif.card);
+					// Fix breaches selection
+					// I tried to fix this in onLeavingState but since the notif happens before the onLeavingState, the card was stuck selected on the breaches deck
+					this.breaches.onSelectionChange = (selection, lastChanged) => {
+						if (selection.length > 0) 
+							this.bustedCannons.unselectAll();
+						this.updatePageTitle();
+					};
+					this.breaches.unselectAll();
+
+					// TODO This still isnt working..., figure out why??
+					this.breachesDeck.addCard(notif.card, {finalSide: "back"});
 					break;
 			}
 			

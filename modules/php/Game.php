@@ -447,10 +447,14 @@ class Game extends \Table
 				$this->globals->set('FLAG', true);
 
 				// If this is the first patching player, set up the LIST to contain a list of all hammers
-				if (count($this->globals->get('LIST')) == 0)
+				// failedBreaches should reset at the beginning of each patching player's turn 
+				// 		(maybe someone said no during someone elses turn because they want to do it on their turn?)
+				$list = (array) $this->globals->get('LIST');
+				$list['failedBreaches'] = array();
+				if (!array_key_exists('availableHammers', $list))
 				{
 					$patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
-					$list = ['availableHammers' => $patchingPlayers, 'failedBreaches' => array()];
+					$list['availableHammers'] = $patchingPlayers;
 					$this->globals->set('LIST', $list);
 				}
 			}
@@ -651,6 +655,13 @@ class Game extends \Table
 					$this->globals->set('FLAG', false);
 					$again = true;
 				}
+				else
+				{
+					$this->notify->all('patchMessage', clienttranslate('${player_name} already used their hammer(s)'), array(
+						'player_id' => $playerId,
+						'player_name' => $this->getPlayerNameById($playerId),
+					));
+				}
 			}
 		}
 		else
@@ -786,6 +797,12 @@ class Game extends \Table
 					$list['pledgeIndex'] = 1;
 					$this->globals->set('LIST', $list);
 
+					$this->notify->all('actPatchMessage', clienttranslate('${player_name} requests assistance to repair the ${problemName}'), array(
+						'player_id' => $playerId,
+						'player_name' => $this->getPlayerNameById($playerId),
+						'problemName' => $this->tokens['breaches'][$this->breaches->getCard($cardId)['type']]['name'],
+					));
+
 					$this->gamestate->setPlayersMultiactive(array($list['availableHammers'][$list['pledgeIndex']]), null, true);
 				}
 				break;
@@ -793,12 +810,11 @@ class Game extends \Table
 	
 		if (!$again)
 		{
-			$this->gamestate->setAllPlayersNonMultiactive('next');
-
-			// REMOVE FROM LIST
 			$list = (array) $this->globals->get('LIST');
-			array_splice($list['availableHammers'], array_search($playerId, $list['availableHammers']), 1);
+			unset($list['availableHammers'][array_search($playerId, $list['availableHammers'])]);
 			$this->globals->set('LIST', $list);
+			
+			$this->gamestate->setAllPlayersNonMultiactive('next');
 		}
 		else
 			$this->gamestate->nextState('again');
@@ -835,36 +851,32 @@ class Game extends \Table
 		{
 			$list['pledgedHammers'][] = $playerId;
 
-			// TODO Something failed miserably here
 			if (count($list['pledgedHammers']) == $scale)
 			{
 				// Yay! We can fix the breach!
-				$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
+				$this->breaches->insertCardOnExtremePosition($card['id'], 'deck', false);
 				$again = false;
 				$letTheNextPlayerContribute = false;
 
-				// Give credit to all players who contributed!
-				$notifArgs = array(
+				// Indicate we succeeded and give credit to all players who contributed!
+				$this->notify->all('actPatch', clienttranslate('We repaired a ${problemName}'), array(
 					'problemName' => $problemName,
 					'card' => $card, 
 					'problem' => 'breach',
-				);
-				$x = 1;
-				$placeholderList = array();
+				));
 				foreach ($list['pledgedHammers'] as $id)
 				{
-					$notifArgs["player_id$x"] = $id;
-					$notifArgs["player_$x"] = $this->getPlayerNameById($id);
-					$placeholderList[] = "{player_name$x}";
-					$x++;
+					$this->notify->all('actPatchMessage', clienttranslate('${player_name} helped fix the ${problemName}'), array(
+						'problemName' => $problemName,
+						'player_id' => $id,
+						'player_name' => $this->getPlayerNameById($id),
+					));
 				}
-				$placeholders = implode(clienttranslate(' and '), $placeholderList);
-				$this->notify->all('actPatch', clienttranslate($placeholders . 'repaired a ${problemName}'), $notifArgs);
 
 				// Adjust list
 				// Remove all the hammers that went towards this breach from availableHammers
 				// Remove the LIST elements that pertain to the big breach
-				$list['availableHammers'] = array_diff($list['availableHammers'], $list['pledgeHammers']);
+				$list['availableHammers'] = array_diff($list['availableHammers'], $list['pledgedHammers']);
 				unset($list['breachInProgress']);
 				unset($list['pledgedHammers']);
 				unset($list['pledgeIndex']);
@@ -882,7 +894,7 @@ class Game extends \Table
 			));
 
 			// Adjust LIST
-			$list['failedBreaches'][] = $cardId;
+			$list['failedBreaches'][] = $card['id'];
 			unset($list['breachInProgress']);
 			unset($list['pledgedHammers']);
 			unset($list['pledgeIndex']);
@@ -900,7 +912,7 @@ class Game extends \Table
 
 		// Progress game state either way
 		$this->globals->set('LIST', $list);
-		$again ? $this->gamestate->nextState('again') : $this->setAllPlayersNonactive('next');
+		$again ? $this->gamestate->nextState('again') : $this->gamestate->setAllPlayersNonMultiactive('next');
 	}
 
 	public function actFire()
@@ -1040,11 +1052,19 @@ class Game extends \Table
 			
 			$cannons = array_values($this->cannons->getCardsInLocation('breachesColumn'));
 			$breaches = array_values($this->breaches->getCardsInLocation('breachesColumn'));
+
+			// Filter out the breaches that have failed or are too big for the current number of hammers
+			$breaches = array_values(array_filter($breaches, function($card, $key) {
+				return !in_array($card['id'], $this->globals->get('LIST')['failedBreaches']) &&
+					$this->tokens['breaches'][$card['type']]['scale'] <= count($this->globals->get('LIST')['availableHammers']); 
+			}, ARRAY_FILTER_USE_BOTH));
+
 			$args['possibleToPatch'] = ['cannon' => $cannons, 'breach' => $breaches];
 		}
 		else
 		{
 			$args['possibleActions'] = ['ContributeHammer'];
+			$args['card'] = $this->cannons->getCard($this->globals->get('LIST')['breachInProgress']);
 			$args['actiondescription'] = clienttranslate('Do you want to use your hammer to help fix this breach?');
 		}
 
