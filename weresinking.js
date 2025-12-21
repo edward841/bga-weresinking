@@ -351,11 +351,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.breaches.onCardCountChange = (cardCount) => {dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); };
 
 			// Set it up so you cannot select a cannon and breach at the same time
-			this.breaches.onSelectionChange = (selection, lastChanged) => {
-				if (selection.length > 0) 
-					this.bustedCannons.unselectAll();
-				this.updatePageTitle();
-			};
+			this.resetBreachesSelection();
 			this.bustedCannons.onSelectionChange = (selection, lastChanged) => {
 				if (selection.length > 0) 
 					this.breaches.unselectAll();
@@ -491,13 +487,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             switch(stateName)
             {
 				case 'resolvePatch': 
-					this.breaches.onSelectionChange = (selection, lastChanged) => {
-						if (selection.length > 0) 
-							this.bustedCannons.unselectAll();
-						this.updatePageTitle();
-					};
-					this.breaches.unselectAll();
-
+					this.resetBreachesSelection();
 					this.bustedCannons.setSelectionMode('none');
 					this.breaches.setSelectionMode('none');
 					break;
@@ -700,6 +690,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			const actionToColumnMapping = {'bucket': 'waterColumn', 'plunder': 'treasureColumn', 'patch': 'breachesColumn', 'fire': 'cannonsColumn'};
 			return actionToColumnMapping[action];
+		},
+
+		resetBreachesSelection: function()
+		{
+			this.breaches.onSelectionChange = (selection, lastChanged) => {
+				if (selection.length > 0) 
+					this.bustedCannons.unselectAll();
+				this.updatePageTitle();
+			};
+			this.breaches.unselectAll();
 		},
 
         ///////////////////////////////////////////////////
@@ -1044,17 +1044,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					break;
 
 				case 'breach':
-					// Fix breaches selection
-					// I tried to fix this in onLeavingState but since the notif happens before the onLeavingState, the card was stuck selected on the breaches deck
-					this.breaches.onSelectionChange = (selection, lastChanged) => {
-						if (selection.length > 0) 
-							this.bustedCannons.unselectAll();
-						this.updatePageTitle();
-					};
-					this.breaches.unselectAll();
-
-					// TODO This still isnt working..., figure out why??
-					this.breachesDeck.addCard(notif.card, {finalSide: "back"});
+					// Fix breaches selection (since it may be forcefully selecting a multi-breach)
+					this.resetBreachesSelection();
+					this.breachesDeck.addCard(notif.card);
 					break;
 			}
 			

@@ -454,7 +454,7 @@ class Game extends \Table
 				if (!array_key_exists('availableHammers', $list))
 				{
 					$patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
-					$list['availableHammers'] = $patchingPlayers;
+					$list['availableHammers'] = array_values($patchingPlayers);
 					$this->globals->set('LIST', $list);
 				}
 			}
@@ -540,6 +540,7 @@ class Game extends \Table
 		$this->globals->set('PREVIOUS_PLAYER', 'none');
 		$this->globals->set('FLAG', true);
 		$this->globals->set('COUNTER', 0);
+		$this->globals->set('LIST', []);
 
 		// Enemy items	
 		$this->globals->set('KRAKEN_ANGERED', 0);
@@ -725,6 +726,13 @@ class Game extends \Table
 				$this->globals->set('FLAG', false);
 				$again = true; 
 			}
+			else
+			{
+				$this->notify->all('patchMessage', clienttranslate('${player_name} already used their hammer(s)'), array(
+					'player_id' => $playerId,
+					'player_name' => $this->getPlayerNameById($playerId),
+				));
+			}
 		}
 		$again ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
@@ -811,7 +819,7 @@ class Game extends \Table
 		if (!$again)
 		{
 			$list = (array) $this->globals->get('LIST');
-			unset($list['availableHammers'][array_search($playerId, $list['availableHammers'])]);
+			array_splice($list['availableHammers'], array_search($playerId, $list['availableHammers']), 1);
 			$this->globals->set('LIST', $list);
 			
 			$this->gamestate->setAllPlayersNonMultiactive('next');
@@ -855,6 +863,7 @@ class Game extends \Table
 			{
 				// Yay! We can fix the breach!
 				$this->breaches->insertCardOnExtremePosition($card['id'], 'deck', false);
+				$card['location'] = 'deck'; // Without this the card doesn't flip to the backside in the animation
 				$again = false;
 				$letTheNextPlayerContribute = false;
 
