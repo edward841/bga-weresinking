@@ -450,9 +450,13 @@ class Game extends \Table
 				if (count($this->globals->get('LIST')) == 0)
 				{
 					$patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
-					$list = ['availableHammers' => $patchingPlayers,];
+					$list = ['availableHammers' => $patchingPlayers, 'failedBreaches' => array()];
 					$this->globals->set('LIST', $list);
 				}
+			}
+			else 
+			{
+				$this->globals->set('LIST', array());
 			}
 		}	
 
@@ -812,23 +816,36 @@ class Game extends \Table
 		if ($message !== '')
 			throw new \BgaSystemException("Patch not allowed in state {$this->getStateName()}\n($message)");
 
-		// Get info and contribute
 		$list = (array) $this->globals->get('LIST');
+		$card = $this->breaches->getCard($list['breachInProgress']);
+		$scale = $this->tokens['breaches'][$card['type']]['scale'];	
+		$problemName = $this->tokens['breaches'][$card['type']]['name'];
+
+		$this->notify->all('actPatchMessage', clienttranslate('${player_name} ${response} contribute their dial towards the ${problemName}'), array(
+			'player_id' => $playerId,
+			'player_name' => $this->getPlayerNameById($playerId),
+			'response' => $contribute ? clienttranslate('will') : clienttranslate('will not'),
+			'problemName' => $problemName,
+		));
+
+		// Adjust accordingly
 		$again = true;
+		$letTheNextPlayerContribute = true;
 		if ($contribute)
 		{
 			$list['pledgedHammers'][] = $playerId;
-			$card = $this->breaches->getCard($list['breachInProgress']);
-			$scale = $this->tokens['breaches'][$card['type']]['scale'];	
 
+			// TODO Something failed miserably here
 			if (count($list['pledgedHammers']) == $scale)
 			{
 				// Yay! We can fix the breach!
 				$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
+				$again = false;
+				$letTheNextPlayerContribute = false;
 
 				// Give credit to all players who contributed!
 				$notifArgs = array(
-					'problemName' => $this->tokens['breaches'][$type]['name'],
+					'problemName' => $problemName,
 					'card' => $card, 
 					'problem' => 'breach',
 				);
@@ -841,8 +858,7 @@ class Game extends \Table
 					$placeholderList[] = "{player_name$x}";
 					$x++;
 				}
-				$placeholders = implode(' and ', $placeholderList);
-
+				$placeholders = implode(clienttranslate(' and '), $placeholderList);
 				$this->notify->all('actPatch', clienttranslate($placeholders . 'repaired a ${problemName}'), $notifArgs);
 
 				// Adjust list
@@ -854,15 +870,37 @@ class Game extends \Table
 				unset($list['pledgeIndex']);
 			}
 		}
-		else
+		// If it is impossible to repair with the remaining available hammers, then indicate patching the breach failed and give the original player another chance
+		// The -1 is because pledgeIndex is zero-indexed, if it were one-indexed it wouldn't need the -1
+		else if (count($list['pledgedHammers']) + count($list['availableHammers']) - $list['pledgeIndex'] - 1 < $scale)
 		{
-			// Determine if it is possible to fix the breach without this hammer
+			$originalPlayerId = $list['availableHammers'][0];
+			$this->notify->all('actPatchMessage', clienttranslate('Patching the ${problemName} failed, {player_name} gets a chance to Patch something else.'), array(
+				'problemName' => $problemName, 
+				'player_id' => $originalPlayerId,
+				'player_name' => $this->getPlayerNameById($originalPlayerId),
+			));
+
+			// Adjust LIST
+			$list['failedBreaches'][] = $cardId;
+			unset($list['breachInProgress']);
+			unset($list['pledgedHammers']);
+			unset($list['pledgeIndex']);
+			
+			$letTheNextPlayerContribute = false;
 		}
+
+		// letTheNextPlayerContribute is nearly the same thing as again but not quite:
+		// again controls the FSM flow 
+		// letTheNextPlayerContribute is a flag for active player control, again isnt quite enough on its own
+		if ($letTheNextPlayerContribute)
+			$this->gamestate->setPlayersMultiactive(array($list['availableHammers'][++$list['pledgeIndex']]), null, true);
+		else if ($again)
+			$this->gamestate->setPlayersMultiactive(array($originalPlayerId), null, true);
 
 		// Progress game state either way
 		$this->globals->set('LIST', $list);
-		if ($again)
-				$this->gamestate->setPlayersMultiactive(array($list['availableHammers'][++$list['pledgeIndex']]), null, true);
+		$again ? $this->gamestate->nextState('again') : $this->setAllPlayersNonactive('next');
 	}
 
 	public function actFire()
