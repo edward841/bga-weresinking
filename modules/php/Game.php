@@ -1230,6 +1230,7 @@ class Game extends \Table
 		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
 		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
 		$globals['firstMate'] = $this->globals->get('FIRST_MATE');
+		$globals['specialLocation'] = $this->globals->get('SHARK_CHOMP_CHOMP');
 		$result['globals'] = $globals;
 
 		// Cards in the discard deck
@@ -2249,8 +2250,7 @@ class Game extends \Table
 	// Chomp, Chomp!: All cards discarded this round go to the Shark's Belly face-down
 	public function resolveSharkAttack1(): void 
 	{
-		$result = $this->globals->inc('SHARK_CHOMP_CHOMP', 1);	
-		if ($result == 1)
+		if ($this->globals->inc('SHARK_CHOMP_CHOMP', 1) == 1)
 			$this->notify->all('resolveSharkChompChomp', clienttranslate('Resolved Chomp, Chomp! die result: ${explanation}'), array(
 				'explanation' => $this->tokens['enemySheets']['Shark']['specialAttack1']['effect'],
 			));
@@ -2259,8 +2259,7 @@ class Game extends \Table
 	// Submerged: When firing at the Shark this round, only Double-shot and Triple-Shot cannons can deal damage
 	public function resolveSharkAttack2(): void 
 	{
-		$result = $this->globals->inc('SHARK_SUBMERGED', 1);	
-		if ($result == 1)
+		if ($this->globals->inc('SHARK_SUBMERGED', 1) == 1)
 			$this->notify->all('resolveSharkSubmerged', clienttranslate('Resolved Submerged die result: ${explanation}'), array(
 				'explanation' => $this->tokens['enemySheets']['Shark']['specialAttack2']['effect'],
 			));
@@ -2270,14 +2269,14 @@ class Game extends \Table
 	public function theSharkReactsToDamage(): void 
 	{
 		$sharksBelly = $this->water->getCardsInLocation('sharksBelly', null, 'location_arg');	
+		foreach ($sharksBelly as $card)
+			$this->addToColumn('waterColumn', null, $card['id']);
 		$this->notify->all('theSharkReactsToDamage', clienttranslate('${explanation} Moved ${nbr} cards to the Water Column.'), array(
 			'explanation' => $this->tokens['enemySheets']['Shark']['reactToDamage'],
 			'nbr' => count($sharksBelly),
+			'cardIds' => array_column($sharksBelly, 'id'),
 		));
-		foreach ($sharksBelly as $card)
-			$this->addToColumn('waterColumn', null, $card['id']);
 	}
-
 
 	// The Sirens!
 	public function resolveSirensAttack1(): void {}

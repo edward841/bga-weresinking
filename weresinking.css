@@ -148,6 +148,12 @@
 	margin-left: 376px;
 }
 
+#specialLocation {
+	position: absolute;
+	margin: 100px 10px 0px 0px;
+	background: gray
+}
+
 #columns {
 	position: relative;
 	height: 0px;

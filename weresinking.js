@@ -117,6 +117,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						<div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
 					</div>
 					<div id="enemyDice"></div>
+					<div id="specialLocation"></div>
 				</div>
 			</div>
 			<div id="myHandWrapper" class="whiteblock">
