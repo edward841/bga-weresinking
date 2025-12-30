@@ -149,9 +149,9 @@
 }
 
 #specialLocation {
-	position: absolute;
-	margin: 100px 10px 0px 0px;
-	background: gray
+	position: relative;
+	margin: 15px auto 0px auto; 
+	background-image: url('img/Locations.jpg');
 }
 
 #columns {
@@ -738,6 +738,15 @@
 	background-blend-mode: multiply;
 	mask: url('img/Dial.png');
 	-webkit-mask: url('img/Dial.png');
+}
+
+/* Special Locations! */
+#specialLocation[data-enemy="shark", data-side="front"] {
+	position-x: 120px;		
+}
+
+#specialLocation[data-enemy="shark", data-side="back"] {
+	position-x: 0px;		
 }
 
 /* Universal classes! Generally helpful and could go anywhere. And have priority over other classes for being at the bottom...*/

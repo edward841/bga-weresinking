@@ -117,7 +117,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						<div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
 					</div>
 					<div id="enemyDice"></div>
-					<div id="specialLocation"></div>
 				</div>
 			</div>
 			<div id="myHandWrapper" class="whiteblock">
@@ -179,6 +178,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 			// Controls the amount of space for cards (the height of the gap between the board and the player hand)
 			this.correctGapUnderBoard();
+			
+			// Adds the special location if we are playing the shark or skullsairs
+			if (true)
+			{
+				dojo.create('div', {'id': 'specialLocation', 'class': 'card', 'data-enemy': 'shark', 'data-side': 'front'}, 'enemySheetWrapper');
+			}
 
 			// Add character sheets for my crew
 			for (var player_id in gamedatas.players)

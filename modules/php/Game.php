@@ -1230,7 +1230,10 @@ class Game extends \Table
 		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
 		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
 		$globals['firstMate'] = $this->globals->get('FIRST_MATE');
-		$globals['specialLocation'] = $this->globals->get('SHARK_CHOMP_CHOMP');
+
+		if ($globals['enemy'] === 'shark')
+			$globals['specialLocation'] = $this->globals->get('SHARK_CHOMP_CHOMP');
+
 		$result['globals'] = $globals;
 
 		// Cards in the discard deck
