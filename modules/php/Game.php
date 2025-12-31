@@ -1231,8 +1231,10 @@ class Game extends \Table
 		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
 		$globals['firstMate'] = $this->globals->get('FIRST_MATE');
 
-		if ($globals['enemy'] === 'shark')
+		if ($globals['enemy'] === 'Shark')
 			$globals['specialLocation'] = $this->globals->get('SHARK_CHOMP_CHOMP');
+		else if ($globals['enemy'] === 'Skullsairs')
+			$globals['specialLocation'] = $this->water->getCardOnTop('SkullsairsStash'); // TODO make sure this makes sense when you do the Skullsairs Stash
 
 		$result['globals'] = $globals;
 
@@ -1734,6 +1736,12 @@ class Game extends \Table
 		{
 			$this->water->insertCardOnExtremePosition($cardId, 'sharksBelly', true);
 			$this->notify->all('sharkChompChomp', clienttranslate('A card was discarded into the Shark\'s Belly.'), array());
+			// So im thinking we indicate in the normal notif_actDiscard notification when the card is discarded to the discard deck or special location
+			// (something like notif.destination === 'specialLocation' in the notification handler) and that handler will display the animation to the proper place
+			// Then this notif would simply be message in the notification history to spell out in plain english what happened
+			// The difficulty is that the notif_actDiscard is split into a public and private one, and the notification is currently being sent before this function call... some refactoring incoming...
+			//
+			// The other option is I do set it up as its own notif and just move it from the discard pile to the special location? Or maybe a flag to indicate not to move it in the notif_actDiscard handler but then I might as well go with plan A...
 		}
 		else
 			$this->water->playCard($cardId);

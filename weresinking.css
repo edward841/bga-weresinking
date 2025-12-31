@@ -741,13 +741,22 @@
 }
 
 /* Special Locations! */
-#specialLocation[data-enemy="shark", data-side="front"] {
-	position-x: 120px;		
+#specialLocation.Shark { 
+	background-position-x: 360px;		
 }
 
-#specialLocation[data-enemy="shark", data-side="back"] {
-	position-x: 0px;		
+#specialLocation.Shark.back {
+	background-position-x: 0px;
 }
+
+#specialLocation.Skullsairs {
+	background-position-x: 120px;
+}
+
+#specialLocation.Skullsairs.back {
+	background-position-x: 240px;
+}
+
 
 /* Universal classes! Generally helpful and could go anywhere. And have priority over other classes for being at the bottom...*/
 /* Horizontal flex container: display children in a row, evenly spaced and centered */

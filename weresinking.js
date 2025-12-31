@@ -49,6 +49,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.breaches = null;
 			this.operationalCannons = null;
 			this.bustedCannons = null;
+			this.specialLocation = null;
 		
 			// This is the backbone of the getCardUniqueId for easily displaying any given item card.
 			// Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
@@ -74,7 +75,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			var playerCount = Object.values(gamedatas.players).length;
 			console.log( "Starting game setup" );
 			console.log( `Enemy is ${gamedatas.globals.enemy}.`);
-			console.log( `There are ${playerCount} players!`);
+			console.log(gamedatas);
 			const playerColor = gamedatas.players[gamedatas.currentPlayer].color;
 
 			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
@@ -135,8 +136,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			</div>
 			`);
 			
-			// Essential Setup: Managers, cards, dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			// create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
+			// Adds the special location if we are playing the shark or skullsairs
+			// (Yes this feels slightly out of place, but it has to be before setupCards call because it attaches a bga-cards object to the div)
+			if (gamedatas.globals.hasOwnProperty('specialLocation'))
+				dojo.create('div', {'id': 'specialLocation', 'class': 'card ' + gamedatas.globals.enemy + ' front'}, 'enemySheetWrapper');
+
+			// Essential Setup: Managers, cards, dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
 			this.animationManager = new BgaAnimations.Manager({
 				animationsActive: () => this.bgaAnimationsActive(),
 			});
@@ -179,12 +184,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			// Controls the amount of space for cards (the height of the gap between the board and the player hand)
 			this.correctGapUnderBoard();
 			
-			// Adds the special location if we are playing the shark or skullsairs
-			if (true)
-			{
-				dojo.create('div', {'id': 'specialLocation', 'class': 'card', 'data-enemy': 'shark', 'data-side': 'front'}, 'enemySheetWrapper');
-			}
-
 			// Add character sheets for my crew
 			for (var player_id in gamedatas.players)
 			{
@@ -363,6 +362,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					this.breaches.unselectAll();
 				this.updatePageTitle();
 			};
+
+			if (gamedatas.globals.enemy === 'Shark')
+				this.specialLocation = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('specialLocation'), {});
 
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
