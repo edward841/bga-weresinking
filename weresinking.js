@@ -364,7 +364,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			};
 
 			if (gamedatas.globals.enemy === 'Shark')
+			{
 				this.specialLocation = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('specialLocation'), {});
+				for (i = 0; i < gamedatas.globals.specialLocation; i++)
+					this.specialLocation.addCard({'id': -i, 'type': 'backside', 'type_arg': 0});
+			}
 
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);

@@ -1232,7 +1232,7 @@ class Game extends \Table
 		$globals['firstMate'] = $this->globals->get('FIRST_MATE');
 
 		if ($globals['enemy'] === 'Shark')
-			$globals['specialLocation'] = $this->globals->get('SHARK_CHOMP_CHOMP');
+			$globals['specialLocation'] = $this->water->countCardInLocation('sharksBelly'); 
 		else if ($globals['enemy'] === 'Skullsairs')
 			$globals['specialLocation'] = $this->water->getCardOnTop('SkullsairsStash'); // TODO make sure this makes sense when you do the Skullsairs Stash
 
