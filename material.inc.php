@@ -162,6 +162,10 @@ $this->tokens = [
 	// 'adjustBasicDice': indicates exactly when to add/remove basic dice. 
 	// 		Think of it as 'when the enemy is damaged and now has x HP, add y basic dice' for the entry x => y
 	// 	'triggers': at what HP levels does the enemy react with some secondary effect (the * at the bottom of the sheet)
+	//
+//			if (array_key_exists('triggers', $this->tokens['enemyInfo'][$enemy]) === true 
+//				&& array_search($hp, $this->tokens['enemyInfo'][$enemy]['triggers']) !== false)
+//
 	'enemyInfo' => [
 		'Kraken' => [
 			'basicDice' => 2,

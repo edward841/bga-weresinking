@@ -26,6 +26,8 @@ Implement all game rules, frontend is complete enough for the player to play the
 - [ ] That one JS error when the ship sinks? What is happening there anyways?
 - [ ] Translations are definitely waaaaay wrong... Should be fun to fix
 - [ ] There is definitely info being shared with players in notifications that they shouldn't have access to... (deck counts, normal little notifications not set up right, etc.)
+- [ ] The cannon dice are all a mess visually. They are displayed in the wrong order, don't update when the cannons change, etc. You have to refresh the page to put them in the proper columns, but that still doesn't put them in the correct order
+- [ ] All all animations will need quite a bit of work. Especially cards moving around, as they often go too fast to tell what is happening. The sinking procedures animation will need a total makeover, it goes so fast its hard to tell what happened. I want the cards slowed down, animaitons timed well, all the steps done sequentially in the proper order.
 
 ## Alpha:
 - [ ] Fix bugs

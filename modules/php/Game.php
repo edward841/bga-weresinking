@@ -1735,13 +1735,7 @@ class Game extends \Table
 		else if ($this->globals->get('SHARK_CHOMP_CHOMP') > 0)
 		{
 			$this->water->insertCardOnExtremePosition($cardId, 'sharksBelly', true);
-			$this->notify->all('sharkChompChomp', clienttranslate('A card was discarded into the Shark\'s Belly.'), array());
-			// So im thinking we indicate in the normal notif_actDiscard notification when the card is discarded to the discard deck or special location
-			// (something like notif.destination === 'specialLocation' in the notification handler) and that handler will display the animation to the proper place
-			// Then this notif would simply be message in the notification history to spell out in plain english what happened
-			// The difficulty is that the notif_actDiscard is split into a public and private one, and the notification is currently being sent before this function call... some refactoring incoming...
-			//
-			// The other option is I do set it up as its own notif and just move it from the discard pile to the special location? Or maybe a flag to indicate not to move it in the notif_actDiscard handler but then I might as well go with plan A...
+			$this->notify->all('sharkChompChompMessage', clienttranslate('A card was discarded into the Shark\'s Belly.'), array());
 		}
 		else
 			$this->water->playCard($cardId);
@@ -1812,20 +1806,27 @@ class Game extends \Table
 
 		foreach ($rolls as $id => $details) 
 		{
-			// A single shot cannon succeeds when the value is 1, A double shot
-			// cannon succeeds when the value is a 1 or 2, A triple shot cannon
-			// succeeds when the value is a 1, 2, or 3
+			// A single shot cannon succeeds when the value is 1, 
+			// A double shot cannon succeeds when the value is a 1 or 2, 
+			// A triple shot cannon succeeds when the value is a 1, 2, or 3,
+			// Except that Single shots always fail if the Shark is submerged.
 			if ((int) $details['value'] <= (int) $details['type'])
 			{
-				$successes++;
-				$this->damageEnemy();
-				$this->addToLIST($id);
+				if ($this->globals->get('SHARK_SUBMERGED') > 0 && (int) $details['type'] === 1)
+					$this->notify->all('sharkSubmergedMessage', clienttranslate('A single shot cannon missed because the Shark is submerged!'), array());
+				else
+				{
+					$successes++;
+					$this->damageEnemy();
+					$this->addToLIST($id);
+				}
 			}
 		}
 		$this->notify->all('firedCannons', clienttranslate('Fired ${totalNbr} cannons, ${hitNbr} enemy hits'), array(
 			'totalNbr' => count($cannonIds),
-			'hitNbr' => $successes,
 			'rolls' => $rolls,
+			'hitNbr' => $successes,
+			'newHp' => $this->globals->get('ENEMY_HP'),
 		));
 		return $successes > 0;
 	}
@@ -1863,8 +1864,13 @@ class Game extends \Table
 
 			// Enemy reaction
 			// If this enemy has triggers (meaning it has an effect that can be triggered by taking damage) and its triggers contains $hp, then the enemy reacts to damage!
-			if (array_key_exists('triggers', $this->tokens['enemyInfo'][$enemy]) === true && array_search($hp, $this->tokens['enemyInfo'][$enemy]['triggers']) !== false)
+			$enemyInfo = $this->tokens['enemyInfo'][$enemy];
+			$keyExists = array_key_exists('triggers', $enemyInfo);
+			$triggerExists = array_search($hp, $enemyInfo['triggers']) !== false;
+			$this->debug("keyExists: <$keyExists>, triggerExists: <$triggerExists>");
+			if ($keyExists && $triggerExists)
 			{
+				$this->debug('HELLLOOO OUT THERE??? TEST TEST TRIGGER BLOCK?\n\n');
 				$reaction = "the{$enemy}ReactsToDamage";
 				$this->$reaction();
 			}
@@ -1907,6 +1913,10 @@ class Game extends \Table
 	// Therefore all sensitive info must be obfuscated from everyone else	
 	public function notifyForCardsDiscarded(int $playerId, array $cards)
 	{
+		$location = 'discard';
+		if ($this->globals->get('SHARK_CHOMP_CHOMP') > 0)
+			$location = 'sharksBelly';
+
 		foreach ($cards as $card)
 		{
 			// Make an obfuscated version for the other players
@@ -1919,10 +1929,12 @@ class Game extends \Table
 				'player_id' => $playerId,
 				'player_name' => $this->getPlayerNameById($playerId),
 				'card' => $cardObfuscated,	
+				'location' => $location,
 			));	
 			$this->notify->player($playerId, 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
 				'card_description' => $cardDescription,
 				'card' => $card,
+				'location' => $location,
 			));
 		}
 	}

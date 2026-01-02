@@ -893,6 +893,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			dice = dice.filter(die => die != null);
 			dice.forEach(die => die.face = notif.rolls[die.id].value);
 			this.operationalDice.rollDice(dice, {duration: [800, 1200]});
+
+			if (notif.hitNbr > 0)
+				dojo.addClass('damageTokenSpaces', 'enemy' + notif.newHp + 'HP');
 		},
 
 		notif_resolveBasicWater: function(notif)
@@ -1032,7 +1035,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 			
 			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
-			this.waterDiscard.addCard(card);
+			if (notif.location === 'discard')
+				this.waterDiscard.addCard(card);
+			else if (notif.location === 'sharksBelly')
+				this.specialLocation.addCard(card);
 		},
 
 		notif_actDiscardPrivate: function(notif)
@@ -1041,7 +1047,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 	
 			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
-			this.waterDiscard.addCard(card);
+			if (notif.location === 'discard')
+				this.waterDiscard.addCard(card);
+			else if (notif.location === 'sharksBelly')
+				this.specialLocation.addCard(card);
 			this.waterDiscard.setCardVisible(card, false);
 		},
 
@@ -1063,6 +1072,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					break;
 			}
 			
+		},
+
+		// Move all cards from the Shark's Belly into the Water Column
+		notif_theSharkReactsToDamage: function(notif)
+		{
+			console.log('notif_theSharkReactsToDamage');
+			console.log(notif);
+
+			notif.cardIds.forEach((id) => this.waterColumn.addCard({'id': id, 'type': 'backside', 'type_arg': 0}));
 		},
    });             
 });
