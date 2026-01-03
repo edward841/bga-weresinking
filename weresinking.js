@@ -120,6 +120,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					<div id="enemyDice"></div>
 				</div>
 			</div>
+			<div id="sirensScreechDialsWrapper" class="whiteblock hide">
+				<b id="sirensScreechDialsLabel">${_('Declared Dials')}</b>
+				<div id="sirensScreechDials"></div>
+			</div>
 			<div id="myHandWrapper" class="whiteblock">
 				<b id="myHandLabel">${_('My hand')}</b>
 				<div id="myHand"></div>
@@ -133,6 +137,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			<div id="myCrewWrapper" class="whiteblock">
 				<b id="myCrewLabel">${_('My crew')}</b>
 				<div id="myCrew" class="flexRow"></div>
+			</div>
+			<div id="communicationBannerWrapper">
+				<div id="communicationBanner" class="red hide">
+					<h2 id="bannerMessage">
+						No communication 
+						<br>
+						No talking until after Dials are revealed
+					</h2>
+				</div>
 			</div>
 			`);
 			
@@ -157,6 +170,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.setupNotifications();
 
 			// Additional UI modifications to fine tune the look further ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			// Display the communication banner if playing against Sirens
+			if (gamedatas.globals.enemy === 'Sirens')
+				dojo.removeClass('communicationBanner', 'hide');
+
 			// Add permanent breaches
 			for (let i = 0; i < gamedatas.globals.permanentBreaches; i++)
 			{
@@ -167,17 +184,23 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			if (gamedatas.currentPlayer === gamedatas.globals.firstMate)
 				dojo.create("div", {class: "dutiesChecklist"}, "myCharacterItemsWrapper");
 
-			// Place dials if necessary
-			var parentElement = '';
+			// Place dials if necessary (handling the special case of the screech of course)
+			// Unhide the sirensScreechDialsWrapper if the Sirens Screech is currently active
+			if (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech && gamedatas.gamestate.id <= gamedatas.constants.STATE_DECLARE_DIAL)
+				dojo.removeClass('sirensScreechDialsWrapper', 'hide');
 			for (let i = 0; i < gamedatas.dials.length; i++)
 			{
+				var parentElement = (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech) ? 'sirensScreechDials' : '';
 				var dial = gamedatas.dials[i];
 				if (dial['dial_location'] !== 'player')
-					parentElement = this.actionToColumn([dial['dial_location']]) + 'Dials';
-				else if (dial['id'] === gamedatas.currentPlayer + '')
+				{
+					if (parentElement === '' || gamedatas.gamestate.id > gamedatas.constants.STATE_DECLARE_DIAL)
+						parentElement = this.actionToColumn([dial['dial_location']]) + 'Dials';
+				}
+				else if (dial['id'] === (gamedatas.currentPlayer + ''))
 					parentElement = 'myCharacterItemsWrapper';
 				else
-					continue;
+					continue; // For spectators when no dial should be displayed!
 				dojo.create("div", {id: `dial_${dial['id']}`, class: "dial", 'data-value': dial['dial_value'], 'data-color': gamedatas.players[dial['id']].color}, parentElement);
 			}
 
@@ -935,8 +958,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			var dialId = `dial_${notif.player_id}`;
 			var tempId = dialId + 'temp';
 			var color = this.gamedatas.players[Number(notif.player_id)].color;
-			var targetColumn = `${notif.dial_location}Dials`.replace(' ', '');
-			targetColumn = targetColumn.charAt(0).toLowerCase() + targetColumn.slice(1);
+
+			var targetLocation = 'sirensScreechDials';
+			if (!notif.screech)
+			{
+				targetLocation = `${notif.dial_location}Dials`.replace(' ', '');
+				targetLocation = targetLocation.charAt(0).toLowerCase() + targetLocation.slice(1);
+			}
 			
 			// Hide the dial icon in the corresponding player panel
 			//dojo.addClass(`dialIcon_${notif.player_id}`, 'hide');
@@ -966,13 +994,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				'class': 'dial hide',
 				'data-value': 'backside', 
 				'data-color': color,
-			}, targetColumn);
+			}, targetLocation);
 			
 			// Correct whitespace
 			this.correctGapUnderBoard();
 			
 			// Move the temp dial into the column
-			// Mobile, targetColumn, duration, delay
+			// Mobile, targetLocation, duration, delay
 			await this.slideToObjectAndDestroy(tempId, dialId, 2000).promise;
 			dojo.removeClass(dialId, 'hide');
 		},
@@ -982,8 +1010,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_revealDials');
 			console.log(notif);
+
 			for (var player in notif.dials)
+			{
 				dojo.attr(`dial_${player}`, 'data-value', notif.dials[player]['dial_value']);
+			}
+
+			if (notif.screech)
+				dojo.addClass('sirensScreechDials', 'hide');
 		},
 
 		notif_actDraw: function(notif)
@@ -1081,6 +1115,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 
 			notif.cardIds.forEach((id) => this.waterColumn.addCard({'id': id, 'type': 'backside', 'type_arg': 0}));
+		},
+
+		notif_resolveScreech: function(notif)
+		{
+			console.log('notif_resolveScreech');
+			console.log(notif);
+			
+			dojo.removeClass('sirensScreechDialsWrapper', 'hide');
 		},
    });             
 });

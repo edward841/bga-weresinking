@@ -309,6 +309,7 @@ class Game extends \Table
 		$this->notify->all('revealDials', '', array(
 			'new_turn_order' => $sorted,
 			'dials' => $playerInfo,
+			'screech' => $this->globals->get('SIRENS_SCREECH'),
 		));
 
 		$this->gamestate->nextState('resolveBucketHelper');
@@ -547,7 +548,7 @@ class Game extends \Table
 		$this->globals->set('SHARK_CHOMP_CHOMP', 0);
 		$this->globals->set('SHARK_SUBMERGED', 0);
 		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
-		$this->globals->set('SIRENS_SCREECH', 0);
+		$this->globals->set('SIRENS_SCREECH', false);
 
 		$this->gamestate->nextState();
 	}
@@ -575,6 +576,7 @@ class Game extends \Table
 				'player_id' => $activePlayer,
 				'player_name' => $this->getPlayerNameById($activePlayer),
 				'dial_location' => $actionToColumn[$location],
+				'screech' => $this->globals->get('SIRENS_SCREECH'),
 			));
 
 		$this->gamestate->nextState('next');
@@ -1235,6 +1237,8 @@ class Game extends \Table
 			$globals['specialLocation'] = $this->water->countCardInLocation('sharksBelly'); 
 		else if ($globals['enemy'] === 'Skullsairs')
 			$globals['specialLocation'] = $this->water->getCardOnTop('SkullsairsStash'); // TODO make sure this makes sense when you do the Skullsairs Stash
+		else if ($globals['enemy'] === 'Sirens')
+			$globals['screech'] = $this->globals->get('SIRENS_SCREECH');
 
 		$result['globals'] = $globals;
 
@@ -1406,7 +1410,7 @@ class Game extends \Table
 		$this->globals->set('SHARK_CHOMP_CHOMP', 0);
 		$this->globals->set('SHARK_SUBMERGED', 0);
 		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
-		$this->globals->set('SIRENS_SCREECH', 0);
+		$this->globals->set('SIRENS_SCREECH', false);
 
 		$this->populateDatabase();
 
@@ -1870,7 +1874,6 @@ class Game extends \Table
 			$this->debug("keyExists: <$keyExists>, triggerExists: <$triggerExists>");
 			if ($keyExists && $triggerExists)
 			{
-				$this->debug('HELLLOOO OUT THERE??? TEST TEST TRIGGER BLOCK?\n\n');
 				$reaction = "the{$enemy}ReactsToDamage";
 				$this->$reaction();
 			}
@@ -2302,8 +2305,24 @@ class Game extends \Table
 	}
 
 	// The Sirens!
-	public function resolveSirensAttack1(): void {}
-	public function resolveSirensAttack2(): void {}
+	// Tempting Tune: The last player to resolve a Plunder this round may also draw 2 cards from the Water Deck.
+	public function resolveSirensAttack1(): void
+	{
+		$this->globals->inc('SIRENS_TEMPTING_TUNE', 1);
+		$this->notify->all('resolveScreech', clienttranslate('Resolved Tempting Tune die result: ${explanation}'), array(
+			'explanation' => $this->tokens['enemySheets']['Sirens']['specialAttack1']['effect'],
+		));
+	}
+
+	// Screech! Players cannot talk until Dials are revealed. Players declare actions by placing their Dials in front of them instead of in columns. Once all Dials are revealed, place them in their matching columns in player order, starting with the First Mate.
+	public function resolveSirensAttack2(): void
+	{
+		$this->globals->set('SIRENS_SCREECH', true);
+		$this->notify->all('resolveScreech', clienttranslate('Resolved Screech! die result: ${explanation}'), array(
+			'explanation' => $this->tokens['enemySheets']['Sirens']['specialAttack2']['effect'],
+		));
+	}
+
 
 	// The Skullsairs!	
 	public function resolveSkullsairsAttack1(): void {}

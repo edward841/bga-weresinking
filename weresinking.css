@@ -574,6 +574,7 @@
 	height: 102px;
 	border-radius: 51px;
 	margin-top: 10px;
+	margin-right: 10px;
 	background-image: url('img/Dials.jpg');
 }
 
@@ -757,6 +758,42 @@
 	background-position-x: 240px;
 }
 
+#sirensScreechDials {
+	height: 112px;
+	display: flex;
+}
+
+#communicationBannerWrapper {
+	bottom: 0;
+	display: flex;
+	justify-content: center;
+	position: fixed;
+	width: 100%;
+	z-index: 2;
+}
+
+#communicationBanner {
+	align-items: center;
+	background-image: none;
+	border-radius: 10px 10px 0 0;
+	color: #fff;
+	display: flex;
+	flex-direction: column;
+	margin-bottom: 0;
+	padding: 0 10px;
+	position: relative;
+	text-align: center;
+	width: fit-content;
+}
+
+#communicationBanner.red {
+	background-color: #c13633;
+}
+
+#communicationBanner.green {
+	background-color: #97c355;
+}
+
 
 /* Universal classes! Generally helpful and could go anywhere. And have priority over other classes for being at the bottom...*/
 /* Horizontal flex container: display children in a row, evenly spaced and centered */
@@ -788,9 +825,11 @@
 	background-size: 48px 48px;
 }
 
-.hide {
+.hide, .hide > * {
+	display: none;
 	background-image: none;
 	background-color: transparent;
 	border: none;
+	padding: 0;
+	margin: 0;
 }
-
