@@ -138,15 +138,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				<b id="myCrewLabel">${_('My crew')}</b>
 				<div id="myCrew" class="flexRow"></div>
 			</div>
-			<div id="communicationBannerWrapper">
-				<div id="communicationBanner" class="red hide">
-					<h2 id="bannerMessage">
-						No communication 
-						<br>
-						No talking until after Dials are revealed
-					</h2>
-				</div>
-			</div>
 			`);
 			
 			// Adds the special location if we are playing the shark or skullsairs
@@ -169,11 +160,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
            	// Notificataions
 			this.setupNotifications();
 
-			// Additional UI modifications to fine tune the look further ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			// Display the communication banner if playing against Sirens
-			if (gamedatas.globals.enemy === 'Sirens')
-				dojo.removeClass('communicationBanner', 'hide');
+			this.bga.gameArea.addLastTurnBanner('No talking until dials are revealed!');
 
+			// Additional UI modifications to fine tune the look further ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			// Add permanent breaches
 			for (let i = 0; i < gamedatas.globals.permanentBreaches; i++)
 			{
