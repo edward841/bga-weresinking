@@ -1869,10 +1869,7 @@ class Game extends \Table
 			// Enemy reaction
 			// If this enemy has triggers (meaning it has an effect that can be triggered by taking damage) and its triggers contains $hp, then the enemy reacts to damage!
 			$enemyInfo = $this->tokens['enemyInfo'][$enemy];
-			$keyExists = array_key_exists('triggers', $enemyInfo);
-			$triggerExists = array_search($hp, $enemyInfo['triggers']) !== false;
-			$this->debug("keyExists: <$keyExists>, triggerExists: <$triggerExists>");
-			if ($keyExists && $triggerExists)
+			if (array_key_exists('triggers', $enemyInfo) && array_search($hp, $enemyInfo['triggers']) !== false)
 			{
 				$reaction = "the{$enemy}ReactsToDamage";
 				$this->$reaction();

@@ -160,9 +160,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
            	// Notificataions
 			this.setupNotifications();
 
-			this.bga.gameArea.addLastTurnBanner('No talking until dials are revealed!');
-
 			// Additional UI modifications to fine tune the look further ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			// Add no talking banner if we are currently declaring dials during a Screech attack!
+			if (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech && gamedatas.gamestate.id <= gamedatas.constants.STATE_DECLARE_DIAL)
+				this.addNoTalkingBanner();
+
 			// Add permanent breaches
 			for (let i = 0; i < gamedatas.globals.permanentBreaches; i++)
 			{
@@ -726,6 +728,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.breaches.unselectAll();
 		},
 
+		addNoTalkingBanner: function()
+		{
+			this.bga.gameArea.addLastTurnBanner('No talking until dials are revealed!');
+		},
+
+		removeNoTalkingBanner: function()
+		{
+			this.bga.gameArea.removeLastTurnBanner();
+		},
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -894,6 +906,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			dice = dice.filter(die => die != null);
 			dice.forEach(die => die.face = notif.diceRollMapping[die.id]);
 			this.enemyDice.rollDice(dice, {duration: [800, 1200]});
+
+
 		},
 
 		notif_firedCannons: function(notif)
@@ -1003,10 +1017,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			for (var player in notif.dials)
 			{
 				dojo.attr(`dial_${player}`, 'data-value', notif.dials[player]['dial_value']);
-			}
+			}	
 
 			if (notif.screech)
-				dojo.addClass('sirensScreechDials', 'hide');
+				this.removeNoTalkingBanner();
 		},
 
 		notif_actDraw: function(notif)
@@ -1111,7 +1125,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_resolveScreech');
 			console.log(notif);
 			
-			dojo.removeClass('sirensScreechDialsWrapper', 'hide');
+			this.addNoTalkingBanner();
 		},
    });             
 });
