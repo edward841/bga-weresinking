@@ -161,9 +161,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.setupNotifications();
 
 			// Additional UI modifications to fine tune the look further ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			// Add no talking banner if we are currently declaring dials during a Screech attack!
+			// Sirens Screech attack modifies UI slightly if we are currently declaring dials during a Screech attack!
 			if (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech && gamedatas.gamestate.id <= gamedatas.constants.STATE_DECLARE_DIAL)
-				this.addNoTalkingBanner();
+				this.addScreechEffect();
 
 			// Add permanent breaches
 			for (let i = 0; i < gamedatas.globals.permanentBreaches; i++)
@@ -176,9 +176,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				dojo.create("div", {class: "dutiesChecklist"}, "myCharacterItemsWrapper");
 
 			// Place dials if necessary (handling the special case of the screech of course)
-			// Unhide the sirensScreechDialsWrapper if the Sirens Screech is currently active
-			if (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech && gamedatas.gamestate.id <= gamedatas.constants.STATE_DECLARE_DIAL)
-				dojo.removeClass('sirensScreechDialsWrapper', 'hide');
 			for (let i = 0; i < gamedatas.dials.length; i++)
 			{
 				var parentElement = (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech) ? 'sirensScreechDials' : '';
@@ -728,13 +725,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.breaches.unselectAll();
 		},
 
-		addNoTalkingBanner: function()
+		addScreechEffect: function()
 		{
+			dojo.removeClass('sirensScreechDialsWrapper', 'hide');
 			this.bga.gameArea.addLastTurnBanner('No talking until dials are revealed!');
 		},
 
-		removeNoTalkingBanner: function()
+		removeScreechEffect: function()
 		{
+			dojo.addClass('sirensScreechDialsWrapper', 'hide');
 			this.bga.gameArea.removeLastTurnBanner();
 		},
 
@@ -1020,7 +1019,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			}	
 
 			if (notif.screech)
-				this.removeNoTalkingBanner();
+				this.removeScreechEffect();
 		},
 
 		notif_actDraw: function(notif)
@@ -1125,7 +1124,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_resolveScreech');
 			console.log(notif);
 			
-			this.addNoTalkingBanner();
+			this.addScreechEffect();
 		},
    });             
 });

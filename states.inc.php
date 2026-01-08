@@ -199,7 +199,7 @@ $machinestates = [
 		'description' => clienttranslate('${actplayer} must Plunder'),
 		'descriptionmyturn' => clienttranslate('Plunder: ${you} must choose 1 card from the Treasure Column'),
 		'type' => 'activeplayer',
-		'possibleactions' => ['actDraw'],
+		'possibleactions' => ['actDraw', 'actTemptingTune', 'actPass'],
 		'args' => 'argResolvePlunder',
 		'transitions' => ['next' => STATE_RESOLVE_PLUNDER_HELPER],
 	), 
