@@ -138,15 +138,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				<b id="myCrewLabel">${_('My crew')}</b>
 				<div id="myCrew" class="flexRow"></div>
 			</div>
-			<div id="communicationBannerWrapper">
-				<div id="communicationBanner" class="red hide">
-					<h2 id="bannerMessage">
-						No communication 
-						<br>
-						No talking until after Dials are revealed
-					</h2>
-				</div>
-			</div>
 			`);
 			
 			// Adds the special location if we are playing the shark or skullsairs
@@ -170,9 +161,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.setupNotifications();
 
 			// Additional UI modifications to fine tune the look further ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			// Display the communication banner if playing against Sirens
-			if (gamedatas.globals.enemy === 'Sirens')
-				dojo.removeClass('communicationBanner', 'hide');
+			// Sirens Screech attack modifies UI slightly if we are currently declaring dials during a Screech attack!
+			if (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech && gamedatas.gamestate.id <= gamedatas.constants.STATE_DECLARE_DIAL)
+				this.addScreechEffect();
 
 			// Add permanent breaches
 			for (let i = 0; i < gamedatas.globals.permanentBreaches; i++)
@@ -185,9 +176,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				dojo.create("div", {class: "dutiesChecklist"}, "myCharacterItemsWrapper");
 
 			// Place dials if necessary (handling the special case of the screech of course)
-			// Unhide the sirensScreechDialsWrapper if the Sirens Screech is currently active
-			if (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech && gamedatas.gamestate.id <= gamedatas.constants.STATE_DECLARE_DIAL)
-				dojo.removeClass('sirensScreechDialsWrapper', 'hide');
 			for (let i = 0; i < gamedatas.dials.length; i++)
 			{
 				var parentElement = (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech) ? 'sirensScreechDials' : '';
@@ -737,6 +725,18 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.breaches.unselectAll();
 		},
 
+		addScreechEffect: function()
+		{
+			dojo.removeClass('sirensScreechDialsWrapper', 'hide');
+			this.bga.gameArea.addLastTurnBanner('No talking until dials are revealed!');
+		},
+
+		removeScreechEffect: function()
+		{
+			dojo.addClass('sirensScreechDialsWrapper', 'hide');
+			this.bga.gameArea.removeLastTurnBanner();
+		},
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -905,6 +905,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			dice = dice.filter(die => die != null);
 			dice.forEach(die => die.face = notif.diceRollMapping[die.id]);
 			this.enemyDice.rollDice(dice, {duration: [800, 1200]});
+
+
 		},
 
 		notif_firedCannons: function(notif)
@@ -1014,10 +1016,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			for (var player in notif.dials)
 			{
 				dojo.attr(`dial_${player}`, 'data-value', notif.dials[player]['dial_value']);
-			}
+			}	
 
 			if (notif.screech)
-				dojo.addClass('sirensScreechDials', 'hide');
+				this.removeScreechEffect();
 		},
 
 		notif_actDraw: function(notif)
@@ -1122,7 +1124,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_resolveScreech');
 			console.log(notif);
 			
-			dojo.removeClass('sirensScreechDialsWrapper', 'hide');
+			this.addScreechEffect();
 		},
    });             
 });

@@ -650,6 +650,11 @@ class Game extends \Table
 				$this->globals->set('FLAG', false);
 				$again = true;
 			}
+			else if ($currentState === 'resolvePlunder')
+			{
+				if (in_array('TemptingTune', $args['possibleActions']))
+					$again = true;
+			}
 			else if ($currentState === 'resolvePatch')
 			{
 				// Only give the player a chance to patch if they have a hammer left!
@@ -673,8 +678,23 @@ class Game extends \Table
 
 		// If $again == true, then the player is not done completing this action yet. They may need to draw another card, discard card(s), or fix something!
 		// Otherwise, safely move on to the next action
-		($again) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
+		($this->globals->get('COUNTER') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
+	}
 
+	public function actTemptingTune()
+	{
+		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$args = $this->argResolvePlunder(); 
+		
+		if (!in_array('TemptingTune', $args['posibleActions']))
+			throw new \BgaSystemException("actTemptingTune: not allowed right now in state {$this->getStateName()}");
+
+		$cards = array_values($this->water->pickCards(2, 'deck', $playerId));
+		$this->notifyForCardsDrawn($playerId, $cards);
+
+		// Give the player a chance to do something if their turn is not done 
+		// (when they still need to do their Draw action or they have a second Tempting Tune to resolve)
+		($this->globals->get('COUNTER') > 0 || $this->globals->inc('SIRENS_TEMPTING_TUNE', -1) > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
 
 	public function actDiscard(int $cardId)
@@ -981,10 +1001,15 @@ class Game extends \Table
 
 	public function actPass()
 	{
-		$this->globals->set('FLAG', true);
-		$this->globals->set('COUNTER', 0);
-		$this->globals->set('LIST', []);
-		$this->gamestate->nextState('next');
+		$again = $this->globals->get('SIRENS_TEMPTING_TUNE') > 0 && $this->globals->get('COUNTER') > 0;
+		if (!$again)
+		{
+			$this->globals->set('FLAG', true);
+			$this->globals->set('COUNTER', 0);
+			$this->globals->set('LIST', []);
+			$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+		}
+		($again) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
 	
 	public function argDeclareDial()
@@ -1030,11 +1055,24 @@ class Game extends \Table
 
 	public function argResolvePlunder()
 	{
+		$activePlayer = $this->gamestate->getActivePlayerList()[0];
 		$args = [];
 		$args['possibleActions'] = ['Draw'];
 		$args['location'] = 'treasureColumn';
 		$args['possibleIdsDraw'] = array_keys($this->water->getCardsInLocation('treasureColumn'));
-			
+
+		// Determine if the player may Tempting Tune: (is Tempting Tune active and is this the last player to resolve a plunder action)
+		if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0)
+		{
+			$plunderers = array_keys($this->getCollectionFromDB("SELECT `player_id` FROM `player` WHERE `dial_value`='plunder' ORDER BY `custom_order`"));
+			$treasureNbr = $this->water->countCardInLocation('treasureColumn');
+			if (count($plunderers) === 1 || ($array_last($plunderers) === $activePlayer && // There arent enough treasures left for another go around?))
+			{
+				$args['possibleActions'][] = 'TemptingTune';
+				$args['possibleActions'][] = 'Pass';
+			}
+		}
+
 		return $args;
 	}
 
@@ -1869,10 +1907,7 @@ class Game extends \Table
 			// Enemy reaction
 			// If this enemy has triggers (meaning it has an effect that can be triggered by taking damage) and its triggers contains $hp, then the enemy reacts to damage!
 			$enemyInfo = $this->tokens['enemyInfo'][$enemy];
-			$keyExists = array_key_exists('triggers', $enemyInfo);
-			$triggerExists = array_search($hp, $enemyInfo['triggers']) !== false;
-			$this->debug("keyExists: <$keyExists>, triggerExists: <$triggerExists>");
-			if ($keyExists && $triggerExists)
+			if (array_key_exists('triggers', $enemyInfo) && array_search($hp, $enemyInfo['triggers']) !== false)
 			{
 				$reaction = "the{$enemy}ReactsToDamage";
 				$this->$reaction();
@@ -2309,7 +2344,7 @@ class Game extends \Table
 	public function resolveSirensAttack1(): void
 	{
 		$this->globals->inc('SIRENS_TEMPTING_TUNE', 1);
-		$this->notify->all('resolveScreech', clienttranslate('Resolved Tempting Tune die result: ${explanation}'), array(
+		$this->notify->all('resolveTemptingTune', clienttranslate('Resolved Tempting Tune die result: ${explanation}'), array(
 			'explanation' => $this->tokens['enemySheets']['Sirens']['specialAttack1']['effect'],
 		));
 	}
