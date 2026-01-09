@@ -574,6 +574,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actDeclareDial", {value: 'fire', location: 'fire'}));
 						break;
 
+					case 'resolvePlunder':
+						if (args.possibleActions.includes('Pass'))
+							this.statusBar.addActionButton(_('Pass'), () => {this.bgaPerformAction('actPass');}, {color: 'secondary'});
+						break;
+
 					case 'resolvePatch':
 						if (args.possibleActions.includes('Patch'))
 							this.statusBar.addActionButton(_('Patch'), () => {
@@ -772,6 +777,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv,});
 			else if (args.possibleActions.includes('Discard') && parentDiv === 'myHand') //&& args.possibleIdsDiscard.includes(parseInt(card.id)))
 				this.bgaPerformAction('actDiscard', {cardId: card.id});
+			else if (args.possibleActions.includes('TemptingTune') && parentDiv === 'deck')
+				this.bgaPerformAction('actTemptingTune', {});
 		},
 
         

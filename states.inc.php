@@ -197,11 +197,11 @@ $machinestates = [
 	STATE_RESOLVE_PLUNDER => array(
 		'name' => 'resolvePlunder',
 		'description' => clienttranslate('${actplayer} must Plunder'),
-		'descriptionmyturn' => clienttranslate('Plunder: ${you} must choose 1 card from the Treasure Column'),
+		'descriptionmyturn' => clienttranslate('Plunder: ${you} ${message}'),
 		'type' => 'activeplayer',
 		'possibleactions' => ['actDraw', 'actTemptingTune', 'actPass'],
 		'args' => 'argResolvePlunder',
-		'transitions' => ['next' => STATE_RESOLVE_PLUNDER_HELPER],
+		'transitions' => ['again' => STATE_RESOLVE_PLUNDER, 'next' => STATE_RESOLVE_PLUNDER_HELPER],
 	), 
 
 	STATE_RESOLVE_PATCH_HELPER => array(

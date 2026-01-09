@@ -394,23 +394,36 @@ class Game extends \Table
 						// Setting FLAG to false indicates treasure is getting divided (Makes future stResolvePlunderHelper visits much simpler)
 						$this->globals->set('FLAG', false);	
 						$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+						$this->globals->set('COUNTER', 1);
 						$this->gamestate->changeActivePlayer($nextPlayer);
 					}
 					// 3. Too many plunderers, not enough treasure! 
 					//    (no need for player states, just move on to the next helper state
 					else 
 					{
-						$this->water->moveAllCardsInLocation('treasureColumn', 'discard');	
+						$cards = array_values($this->water->getCardsInLocation('treasureColumn'));
+						$this->notify->all('resolvePlunderMessage', clienttranslate('Since there are more plunderers than treasures, all the treasure is discarded.'), array());
+						$this->notifyForCardsDiscarded(-1, $cards);
+						foreach ($cards as $card)
+							$this->discard($card['id']);
 						$moveOnToNextAction = true;
 					}
 
 					// This action was resolved entirely in the game state (either 1 player or too many players plundered)
 					if ($moveOnToNextAction)
 					{
-						$nextAction = 'patch';
 						$lastPlunderer = array_keys($playerInfo)[count($dialValues) - 1 - array_search('plunder', array_reverse($dialValues))];
 						$this->globals->set('PREVIOUS_PLAYER', $lastPlunderer);
-						// No need to update FLAG since it should still be true
+
+						// Resolve Tempting Tune if active, else move on to the next state
+						if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0)
+						{
+							$this->globals->set('FLAG', false);	
+							$this->gamestate->changeActivePlayer($lastPlunderer);
+						}
+						else
+							$nextAction = 'patch';
+							// No need to update FLAG since it should still be true
 					}
 
 				}
@@ -420,6 +433,7 @@ class Game extends \Table
 				{
 					$this->gamestate->changeActivePlayer($nextPlayer);
 					$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+					$this->globals->set('COUNTER', 1);
 				}
 			}
 		}
@@ -652,13 +666,14 @@ class Game extends \Table
 			}
 			else if ($currentState === 'resolvePlunder')
 			{
-				if (in_array('TemptingTune', $args['possibleActions']))
+				if (in_array('TemptingTune', $this->argResolvePlunder()['possibleActions']))
 					$again = true;
 			}
 			else if ($currentState === 'resolvePatch')
 			{
 				// Only give the player a chance to patch if they have a hammer left!
-				if (in_array($playerId, $this->globals->get('LIST')['availableHammers']))
+				$list = (array) $this->globals->get('LIST');
+				if (in_array($playerId, $list['availableHammers']))
 				{
 					$this->globals->set('FLAG', false);
 					$again = true;
@@ -676,9 +691,9 @@ class Game extends \Table
 			// The player still needs to draw COUNTER > 0 more cards! Draw another!
 			$again = true;
 
-		// If $again == true, then the player is not done completing this action yet. They may need to draw another card, discard card(s), or fix something!
+		// If $again, then the player is not done completing this action yet. They may need to draw another card, discard card(s), or fix something!
 		// Otherwise, safely move on to the next action
-		($this->globals->get('COUNTER') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
+		($again) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
 
 	public function actTemptingTune()
@@ -686,15 +701,15 @@ class Game extends \Table
 		$playerId = $this->gamestate->getActivePlayerList()[0];
 		$args = $this->argResolvePlunder(); 
 		
-		if (!in_array('TemptingTune', $args['posibleActions']))
+		if (!in_array('TemptingTune', $args['possibleActions']))
 			throw new \BgaSystemException("actTemptingTune: not allowed right now in state {$this->getStateName()}");
 
-		$cards = array_values($this->water->pickCards(2, 'deck', $playerId));
-		$this->notifyForCardsDrawn($playerId, $cards);
+		$card = $this->water->pickCard('deck', $playerId);
+		$this->notifyForCardsDrawn(intval($playerId), [$card]);
 
 		// Give the player a chance to do something if their turn is not done 
 		// (when they still need to do their Draw action or they have a second Tempting Tune to resolve)
-		($this->globals->get('COUNTER') > 0 || $this->globals->inc('SIRENS_TEMPTING_TUNE', -1) > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
+		($this->globals->inc('SIRENS_TEMPTING_TUNE', -1) > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
 
 	public function actDiscard(int $cardId)
@@ -1001,15 +1016,11 @@ class Game extends \Table
 
 	public function actPass()
 	{
-		$again = $this->globals->get('SIRENS_TEMPTING_TUNE') > 0 && $this->globals->get('COUNTER') > 0;
-		if (!$again)
-		{
-			$this->globals->set('FLAG', true);
-			$this->globals->set('COUNTER', 0);
-			$this->globals->set('LIST', []);
-			$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
-		}
-		($again) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
+		$this->globals->set('FLAG', true);
+		$this->globals->set('COUNTER', 0);
+		$this->globals->set('LIST', []);
+		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+		$this->gamestate->nextState('next');
 	}
 	
 	public function argDeclareDial()
@@ -1057,20 +1068,32 @@ class Game extends \Table
 	{
 		$activePlayer = $this->gamestate->getActivePlayerList()[0];
 		$args = [];
-		$args['possibleActions'] = ['Draw'];
-		$args['location'] = 'treasureColumn';
-		$args['possibleIdsDraw'] = array_keys($this->water->getCardsInLocation('treasureColumn'));
 
-		// Determine if the player may Tempting Tune: (is Tempting Tune active and is this the last player to resolve a plunder action)
-		if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0)
+		// Determine if the player may Tempting Tune: 
+		//	 (is Tempting Tune active AND is this the last player to resolve a plunder action AND have they finished their plundering?
+		$canTemptingTune = false;
+		if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0 && $this->globals->get('COUNTER') <= 0)
 		{
 			$plunderers = array_keys($this->getCollectionFromDB("SELECT `player_id` FROM `player` WHERE `dial_value`='plunder' ORDER BY `custom_order`"));
 			$treasureNbr = $this->water->countCardInLocation('treasureColumn');
-			if (count($plunderers) === 1 || ($array_last($plunderers) === $activePlayer && // There arent enough treasures left for another go around?))
-			{
-				$args['possibleActions'][] = 'TemptingTune';
-				$args['possibleActions'][] = 'Pass';
-			}
+			$lastPlunderer = $plunderers[count($plunderers) - 1]."";
+			
+			if (count($plunderers) === 1 || ($lastPlunderer === $activePlayer && $treasureNbr < count($plunderers))) 
+				$canTemptingTune = true;
+		}
+		if ($canTemptingTune)
+		{
+			$args['possibleActions'] = ['TemptingTune', 'Pass'];
+			$nbr = $this->globals->get('SIRENS_TEMPTING_TUNE');
+			$args['message'] = "may draw up to $nbr card(s) from the Water Deck with Tempting Tune";
+			$args['possibleIdsDraw'] = [$this->water->getCardOnTop('deck')['id']];
+		}
+		else
+		{
+			$args['possibleActions'] = ['Draw'];
+			$args['location'] = 'treasureColumn';
+			$args['possibleIdsDraw'] = array_keys($this->water->getCardsInLocation('treasureColumn'));
+			$args['message'] = 'must draw 1 card from the Treasure Column';
 		}
 
 		return $args;
@@ -1959,21 +1982,31 @@ class Game extends \Table
 		{
 			// Make an obfuscated version for the other players
 			$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
-			$cardObfuscated = $card;
-			$cardObfuscated['type'] = 'backside';
-			$cardObfuscated['type_arg'] = 0;
 
-			$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
-				'player_id' => $playerId,
-				'player_name' => $this->getPlayerNameById($playerId),
-				'card' => $cardObfuscated,	
-				'location' => $location,
-			));	
-			$this->notify->player($playerId, 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
-				'card_description' => $cardDescription,
-				'card' => $card,
-				'location' => $location,
-			));
+			if ($playerId > 0)
+			{
+				$cardObfuscated = $card;
+				$cardObfuscated['type'] = 'backside';
+				$cardObfuscated['type_arg'] = 0;
+
+				$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
+					'player_id' => $playerId,
+					'player_name' => $this->getPlayerNameById($playerId),
+					'card' => $cardObfuscated,	
+					'location' => $location,
+				));	
+				$this->notify->player($playerId, 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
+					'card_description' => $cardDescription,
+					'card' => $card,
+					'location' => $location,
+				));
+			}
+			else
+				$this->notify->all('actDiscard', clienttranslate('Discarded ${card_description}'), array(
+					'card_description' => $cardDescription,
+					'card' => $card,
+					'location' => $location,
+				));
 		}
 	}
 
@@ -2343,7 +2376,7 @@ class Game extends \Table
 	// Tempting Tune: The last player to resolve a Plunder this round may also draw 2 cards from the Water Deck.
 	public function resolveSirensAttack1(): void
 	{
-		$this->globals->inc('SIRENS_TEMPTING_TUNE', 1);
+		$this->globals->inc('SIRENS_TEMPTING_TUNE', 2);
 		$this->notify->all('resolveTemptingTune', clienttranslate('Resolved Tempting Tune die result: ${explanation}'), array(
 			'explanation' => $this->tokens['enemySheets']['Sirens']['specialAttack1']['effect'],
 		));
