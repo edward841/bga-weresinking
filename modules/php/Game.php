@@ -403,9 +403,10 @@ class Game extends \Table
 					{
 						$cards = array_values($this->water->getCardsInLocation('treasureColumn'));
 						$this->notify->all('resolvePlunderMessage', clienttranslate('Since there are more plunderers than treasures, all the treasure is discarded.'), array());
+						$this->setCardsOrientation(array_column($cards, 'id'), false);
 						$this->notifyForCardsDiscarded(-1, $cards);
 						foreach ($cards as $card)
-							$this->discard($card['id']);
+							$this->discard(intval($card['id']));
 						$moveOnToNextAction = true;
 					}
 
@@ -1066,17 +1067,17 @@ class Game extends \Table
 
 	public function argResolvePlunder()
 	{
-		$activePlayer = $this->gamestate->getActivePlayerList()[0];
+		$activePlayer = $this->globals->get('PREVIOUS_PLAYER');
 		$args = [];
 
 		// Determine if the player may Tempting Tune: 
-		//	 (is Tempting Tune active AND is this the last player to resolve a plunder action AND have they finished their plundering?
+		//	 (is Tempting Tune active AND have they finished their plundering action AND is this the last player to resolve a plunder action?
 		$canTemptingTune = false;
 		if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0 && $this->globals->get('COUNTER') <= 0)
 		{
 			$plunderers = array_keys($this->getCollectionFromDB("SELECT `player_id` FROM `player` WHERE `dial_value`='plunder' ORDER BY `custom_order`"));
 			$treasureNbr = $this->water->countCardInLocation('treasureColumn');
-			$lastPlunderer = $plunderers[count($plunderers) - 1]."";
+			$lastPlunderer = $plunderers[count($plunderers) - 1];
 			
 			if (count($plunderers) === 1 || ($lastPlunderer === $activePlayer && $treasureNbr < count($plunderers))) 
 				$canTemptingTune = true;

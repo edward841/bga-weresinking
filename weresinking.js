@@ -1079,7 +1079,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			
 			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
 			if (notif.location === 'discard')
+			{
 				this.waterDiscard.addCard(card);
+				this.waterDiscard.setCardVisible(card, false);
+			}
 			else if (notif.location === 'sharksBelly')
 				this.specialLocation.addCard(card);
 		},
