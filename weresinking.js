@@ -380,6 +380,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				for (i = 0; i < gamedatas.globals.specialLocation; i++)
 					this.specialLocation.addCard({'id': -i, 'type': 'backside', 'type_arg': 0});
 			}
+			else if (gamedatas.globals.enemy === 'Skullsairs')
+			{
+				this.specialLocation = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('specialLocation'), {});
+				if (gamedatas.globals.specialLocations != null)
+					this.specialLocation.addCard(gamedatas.globals.specialLocation);
+			}
 
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
@@ -1135,6 +1141,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 			
 			this.addScreechEffect();
+		},
+
+		// Skullsairs
+		notif_resolveBoardingParty: function(notif)
+		{
+			console.log('notif_resolveBoardingParty');
+			console.log(notif);
+
+			this.specialLocation.addCard(notif.card);			
 		},
    });             
 });

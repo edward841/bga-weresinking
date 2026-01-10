@@ -1297,10 +1297,10 @@ class Game extends \Table
 
 		if ($globals['enemy'] === 'Shark')
 			$globals['specialLocation'] = $this->water->countCardInLocation('sharksBelly'); 
-		else if ($globals['enemy'] === 'Skullsairs')
-			$globals['specialLocation'] = $this->water->getCardOnTop('SkullsairsStash'); // TODO make sure this makes sense when you do the Skullsairs Stash
 		else if ($globals['enemy'] === 'Sirens')
 			$globals['screech'] = $this->globals->get('SIRENS_SCREECH');
+		else if ($globals['enemy'] === 'Skullsairs')
+			$globals['specialLocation'] = $this->water->getCardOnTop('skullsairsStash'); // TODO Should we only display the top card? Or should we display all the cards in a faceup slightly messy discard deck so you mostly see the top card but see the edges of some other ones to get a sense of how full the pile is
 
 		$result['globals'] = $globals;
 
@@ -2394,7 +2394,24 @@ class Game extends \Table
 
 
 	// The Skullsairs!	
-	public function resolveSkullsairsAttack1(): void {}
-	public function resolveSkullsairsAttack2(): void {}
-	public function theSkullsairsReactsToDamage(): void { return; }
+	public function resolveSkullsairsAttack1(): void 
+	{
+		
+	}
+
+	public function resolveSkullsairsAttack2(): void 
+	{
+		$treasureColumn = $this->water->getCardsInLocation('treasureColumn', null, 'location_arg');
+		$card = $treasureColumn[count($treasureColumn) - 1];
+		$this->water->insertCardOnExtremePosition($card['id'], 'skullsairsStash', true);
+		$this->notify->all('resolveBoardingParty', clienttranslate('Resolved Boarding Party die result: ${explanation}'), array(
+			'explanation' => $this->tokens['enemySheets']['Skullsairs']['specialAttack2']['effect'],
+			'card' => $card,
+		));
+	}
+
+	public function theSkullsairsReactsToDamage(): void 
+	{
+
+	}
 }
