@@ -1300,7 +1300,8 @@ class Game extends \Table
 		else if ($globals['enemy'] === 'Sirens')
 			$globals['screech'] = $this->globals->get('SIRENS_SCREECH');
 		else if ($globals['enemy'] === 'Skullsairs')
-			$globals['specialLocation'] = $this->water->getCardOnTop('skullsairsStash'); // TODO Should we only display the top card? Or should we display all the cards in a faceup slightly messy discard deck so you mostly see the top card but see the edges of some other ones to get a sense of how full the pile is
+			$globals['specialLocation'] = $this->water->getCardsInLocation('skullsairsStash', null, 'location_arg'); //$this->water->getCardOnTop('skullsairsStash'); 
+		// TODO Should we only display the top card? Or should we display all the cards in a faceup slightly messy discard deck so you mostly see the top card but see the edges of some other ones to get a sense of how full the pile is
 
 		$result['globals'] = $globals;
 
@@ -2402,11 +2403,16 @@ class Game extends \Table
 	public function resolveSkullsairsAttack2(): void 
 	{
 		$treasureColumn = $this->water->getCardsInLocation('treasureColumn', null, 'location_arg');
-		$card = $treasureColumn[count($treasureColumn) - 1];
+		// Safety measure but probably not necessary 
+		// (this function call should always immediately follow putting at least two treasure cards into the treasure column so this should never matter)
+		if (count($treasureColumn) == 0)
+			return;
+		$card = $treasureColumn[0];
 		$this->water->insertCardOnExtremePosition($card['id'], 'skullsairsStash', true);
-		$this->notify->all('resolveBoardingParty', clienttranslate('Resolved Boarding Party die result: ${explanation}'), array(
+		$this->notify->all('resolveBoardingParty', clienttranslate('Resolved Boarding Party die result: ${explanation}. Moved ${card_description} to the Skullsairs\' Stash.'), array(
 			'explanation' => $this->tokens['enemySheets']['Skullsairs']['specialAttack2']['effect'],
 			'card' => $card,
+			'card_description' => $this->tokens['waterDeck'][$card['type']]['name'],
 		));
 	}
 

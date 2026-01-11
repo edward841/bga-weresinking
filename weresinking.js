@@ -383,8 +383,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			else if (gamedatas.globals.enemy === 'Skullsairs')
 			{
 				this.specialLocation = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('specialLocation'), {});
-				if (gamedatas.globals.specialLocations != null)
-					this.specialLocation.addCard(gamedatas.globals.specialLocation);
+				gamedatas.globals.specialLocation.forEach((card) => {this.specialLocation.addCard(card)});
 			}
 
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
