@@ -2395,11 +2395,39 @@ class Game extends \Table
 
 
 	// The Skullsairs!	
+	// Cursed Search: All players must reveal 1 Cursed Amulet in their hand if able. If they have one, they must reveal a card at random from their hand. If its a Treasure, add it to the Skullsairs' Stash.
 	public function resolveSkullsairsAttack1(): void 
 	{
-		
-	}
+		// Is it better to get a list of players with amulets, and then only load cards in their hands individually, or to get all players hands and then use that to determine who has the cursed amulets?
+		// Basically is it better to let SQL do the bulk of the work or a simple for loop and call it done? Which is more efficient? Which is more understandable?
 
+		// Im going to go with SQL.
+		$allPlayers = array_keys($this->loadPlayersBasicInfos());
+		$playersWithAmulets = array_unique(array_values($this->getCollectionFromDB("SELECT `card_id`, `location_arg` FROM `water` WHERE `card_type`='cursedAmulet' AND `card_location`='hand'", true)));
+		for (array_diff($allPlayers, $playersWithAmulets) as $playerId)
+			$this->notify->all('resolveCursedSearchMessage', clienttranslate('${player_name} does not have a Cursed Amulet.'), array(
+				'player_id' => $playerId,
+				'player_name' => $this->getPlayerNameById($playerId),	
+			));
+
+		for ($playersWithAmulets as $playerId)
+		{
+			$card = $this->water->getCard($this->getRandomCardFrom($playerId));
+			$discardCard = $card['type'] !== 'clearWater';
+			if ($discardCard)
+				$this->discard($card['id']);
+			$this->notify->all('resolveCursedSearch', clienttranslate('${player_name} has a Cursed Amulet!'), array(
+				'player_id' => $playerId,
+				'player_name' => $this->getPlayerNameById($playerId),	
+				'card_description' => $this->tokens['waterDeck'][$card['type']]['name'],
+				'discard_card' => $discardCard,
+			));
+
+			// I want to to the '{player_name} discards {card_description}' as a separate notification. I think I want to modify the $notifyForCardsDiscarded to have an obfuscate parameter, and be able to enable/disable obfuscation with that parameter and use that without obfuscation here. That could also make my code clearer for discarding from the Treasure column, if there is a clear indication for no obfuscation
+		}
+	}
+	
+	// Boarding Party: Move the lowest card in the Treasure column to the Skullsairs' Stash.
 	public function resolveSkullsairsAttack2(): void 
 	{
 		$treasureColumn = $this->water->getCardsInLocation('treasureColumn', null, 'location_arg');
