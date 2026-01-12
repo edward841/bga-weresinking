@@ -1081,7 +1081,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_actDiscard');
 			console.log(notif);
-			
+				
 			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
 			if (notif.location === 'discard')
 			{
@@ -1089,7 +1089,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				this.waterDiscard.setCardVisible(card, false);
 			}
 			else if (notif.location === 'sharksBelly')
+			{
 				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, false);
+			}
+			else if (notif.location === 'skullsairsStash')
+			{
+				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, true);
+			}
 		},
 
 		notif_actDiscardPrivate: function(notif)
@@ -1103,6 +1111,29 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			else if (notif.location === 'sharksBelly')
 				this.specialLocation.addCard(card);
 			this.waterDiscard.setCardVisible(card, false);
+		},
+
+		notif_discard: function(notif)
+		{
+			console.log('notif_discard');
+			console.log(notif);
+
+			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
+			if (notif.location === 'discard')
+			{
+				this.waterDiscard.addCard(card);
+				this.waterDiscard.setCardVisible(card, false);
+			}
+			else if (notif.location === 'sharksBelly')
+			{
+				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, false);
+			}
+			else if (notif.location === 'skullsairsStash')
+			{
+				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, true);
+			}
 		},
 
 		notif_actPatch: function(notif)

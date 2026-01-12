@@ -404,7 +404,7 @@ class Game extends \Table
 						$cards = $this->water->getCardsInLocation('treasureColumn');
 						$this->notify->all('resolvePlunderMessage', clienttranslate('Since there are more plunderers than treasures, all the treasure is discarded.'), array());
 						$this->setCardsOrientation(array_column($cards, 'id'), false);
-						$this->notifyForCardsDiscarded($cards, -1, 'player', false);
+						$this->notifyForCardsDiscarded(array_values($cards), -1, 'discard', false);
 						foreach ($cards as $card)
 							$this->discard(intval($card['id']));
 						$moveOnToNextAction = true;
@@ -1975,45 +1975,47 @@ class Game extends \Table
 	// If $hidden, all sensitive info must be hidden from everyone else	
 	public function notifyForCardsDiscarded(array $cards, int $playerId = -1, string $location = 'discard', bool $private = true)
 	{
-//		if ($this->globals->get('SHARK_CHOMP_CHOMP') > 0)
-//			$location = 'sharksBelly';
-//
-//		foreach ($cards as $card)
-//		{
-//			$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
-//
-//			if ($private)
-//			{
-//				// Make a private version for the other players
-//				$privateCard = $card;
-//				$privateCard['type'] = 'backside';
-//				$privateCard['type_arg'] = 0;
-//
-//				$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
-//					'player_id' => $playerId,
-//					'player_name' => $this->getPlayerNameById($playerId),
-//					'card' => $privateCard,	
-//					'location' => $location,
-//				));	
-//				$this->notify->player($playerId, 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
-//					'card_description' => $cardDescription,
-//					'card' => $card,
-//					'location' => $location,
-//				));
-//			}
-//			else if ($playerId < 0)
-//				$this->notify->all('actDiscard', clienttranslate('Discarded ${card_description}'), array(
-//					'card_description' => $cardDescription,
-//					'card' => $card,
-//					'location' => $location,
-//				));
-//			else
-//				$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
-//					'card_description' => $cardDescription,
-//					'card' => $card,
-//					'location' => $location,
-//				));
-//		}
+		if ($this->globals->get('SHARK_CHOMP_CHOMP') > 0)
+			$location = 'sharksBelly';
+
+		foreach ($cards as $card)
+		{
+			$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
+
+			if ($private)
+			{
+				// Make a private version for the other players
+				$privateCard = $card;
+				$privateCard['type'] = 'backside';
+				$privateCard['type_arg'] = 0;
+
+				$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
+					'player_id' => $playerId,
+					'player_name' => $this->getPlayerNameById($playerId),
+					'card' => $privateCard,	
+					'location' => $location,
+				));	
+				$this->notify->player($playerId, 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
+					'card_description' => $cardDescription,
+					'card' => $card,
+					'location' => $location,
+				));
+			}
+			else if ($playerId < 0)
+				$this->notify->all('discard', clienttranslate('Discarded ${card_description}'), array(
+					'card_description' => $cardDescription,
+					'card' => $card,
+					'location' => $location,
+				));
+			else
+				$this->notify->all('discard', clienttranslate('${player_name} discarded a ${card_description}'), array(
+					'player_id' => $playerId,
+					'player_name' => $this->getPlayerNameById($playerId),
+					'card_description' => $cardDescription,
+					'card' => $card,
+					'location' => $location,
+				));
+		}
 	}
 
 	public function addToLIST($element)
@@ -2428,10 +2430,8 @@ class Game extends \Table
 			if ($card['type'] !== 'clearWater')
 			{
 				$this->water->insertCardOnExtremePosition('skullsairsStash', $card['id'], true);
-				$this->notifyForCardsDiscarded([$card['id']], $playerId, 'skullsairsStash', false);
+				$this->notifyForCardsDiscarded([$card], intval($playerId), 'skullsairsStash', false);
 			}
-
-			// I want to to the '{player_name} discards {card_description}' as a separate notification. I think I want to modify the $notifyForCardsDiscarded to have an obfuscate parameter, and be able to enable/disable obfuscation with that parameter and use that without obfuscation here. That could also make my code clearer for discarding from the Treasure column, if there is a clear indication for no obfuscation
 		}
 	}
 	
