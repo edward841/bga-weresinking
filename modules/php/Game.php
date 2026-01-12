@@ -401,10 +401,10 @@ class Game extends \Table
 					//    (no need for player states, just move on to the next helper state
 					else 
 					{
-						$cards = array_values($this->water->getCardsInLocation('treasureColumn'));
+						$cards = $this->water->getCardsInLocation('treasureColumn');
 						$this->notify->all('resolvePlunderMessage', clienttranslate('Since there are more plunderers than treasures, all the treasure is discarded.'), array());
 						$this->setCardsOrientation(array_column($cards, 'id'), false);
-						$this->notifyForCardsDiscarded(-1, $cards);
+						$this->notifyForCardsDiscarded($cards, -1, 'player', false);
 						foreach ($cards as $card)
 							$this->discard(intval($card['id']));
 						$moveOnToNextAction = true;
@@ -532,7 +532,7 @@ class Game extends \Table
 				$discards = [];
 				while ($nbr-- > 10)
 					$discards[] = $this->discard($this->getRandomCardFrom($playerId));
-				$this->notifyForCardsDiscarded($playerId, $discards);
+				$this->notifyForCardsDiscarded($discards, $playerId);
 			}
 		}
 
@@ -739,7 +739,7 @@ class Game extends \Table
 		// Proceed now that all input has been verified: Move the indicated card to the discard pile
 		$playerId = $this->gamestate->getActivePlayerList()[0];
 		$card = $this->water->getCard($cardId);
-		$this->notifyForCardsDiscarded(intval($playerId), array($card));
+		$this->notifyForCardsDiscarded(array($card), intval($playerId));
 		$this->discard($cardId);
 		
 		// Handles specific states
@@ -1007,7 +1007,7 @@ class Game extends \Table
 
 		// Actually execute the action now that we have verified the input
 		// If it was a miss, mark that the cannon was activated (if successful, it was marked as activated by fireCannons)
-		$this->notifyForCardsDiscarded(intval($this->getActivePlayerId()), array($this->water->getCard($cardId)));
+		$this->notifyForCardsDiscarded(array($this->water->getCard($cardId)), intval($this->getActivePlayerId()));
 		$this->discard($cardId);
 		if (!$this->fireCannons(array($cannonId)))
 			$this->addToLIST($cannonId);
@@ -1972,44 +1972,48 @@ class Game extends \Table
 		}
 	}
 
-	// In all cases, the card discarded is unknown to everyone except for $playerId
-	// Therefore all sensitive info must be obfuscated from everyone else	
-	public function notifyForCardsDiscarded(int $playerId, array $cards)
+	// If $hidden, all sensitive info must be hidden from everyone else	
+	public function notifyForCardsDiscarded(array $cards, int $playerId = -1, string $location = 'discard', bool $private = true)
 	{
-		$location = 'discard';
-		if ($this->globals->get('SHARK_CHOMP_CHOMP') > 0)
-			$location = 'sharksBelly';
-
-		foreach ($cards as $card)
-		{
-			// Make an obfuscated version for the other players
-			$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
-
-			if ($playerId > 0)
-			{
-				$cardObfuscated = $card;
-				$cardObfuscated['type'] = 'backside';
-				$cardObfuscated['type_arg'] = 0;
-
-				$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
-					'player_id' => $playerId,
-					'player_name' => $this->getPlayerNameById($playerId),
-					'card' => $cardObfuscated,	
-					'location' => $location,
-				));	
-				$this->notify->player($playerId, 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
-					'card_description' => $cardDescription,
-					'card' => $card,
-					'location' => $location,
-				));
-			}
-			else
-				$this->notify->all('actDiscard', clienttranslate('Discarded ${card_description}'), array(
-					'card_description' => $cardDescription,
-					'card' => $card,
-					'location' => $location,
-				));
-		}
+//		if ($this->globals->get('SHARK_CHOMP_CHOMP') > 0)
+//			$location = 'sharksBelly';
+//
+//		foreach ($cards as $card)
+//		{
+//			$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
+//
+//			if ($private)
+//			{
+//				// Make a private version for the other players
+//				$privateCard = $card;
+//				$privateCard['type'] = 'backside';
+//				$privateCard['type_arg'] = 0;
+//
+//				$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
+//					'player_id' => $playerId,
+//					'player_name' => $this->getPlayerNameById($playerId),
+//					'card' => $privateCard,	
+//					'location' => $location,
+//				));	
+//				$this->notify->player($playerId, 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
+//					'card_description' => $cardDescription,
+//					'card' => $card,
+//					'location' => $location,
+//				));
+//			}
+//			else if ($playerId < 0)
+//				$this->notify->all('actDiscard', clienttranslate('Discarded ${card_description}'), array(
+//					'card_description' => $cardDescription,
+//					'card' => $card,
+//					'location' => $location,
+//				));
+//			else
+//				$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
+//					'card_description' => $cardDescription,
+//					'card' => $card,
+//					'location' => $location,
+//				));
+//		}
 	}
 
 	public function addToLIST($element)
@@ -2401,27 +2405,31 @@ class Game extends \Table
 		// Is it better to get a list of players with amulets, and then only load cards in their hands individually, or to get all players hands and then use that to determine who has the cursed amulets?
 		// Basically is it better to let SQL do the bulk of the work or a simple for loop and call it done? Which is more efficient? Which is more understandable?
 
-		// Im going to go with SQL.
+		// Im going to go with SQL. I think its plenty efficient and understandable, and it plays nicely with the getRandomCardFrom function
+		
+		$this->notify->all('resolveCursedSearchMessage', clienttranslate('Resolving Cursed Search'), array());
 		$allPlayers = array_keys($this->loadPlayersBasicInfos());
-		$playersWithAmulets = array_unique(array_values($this->getCollectionFromDB("SELECT `card_id`, `location_arg` FROM `water` WHERE `card_type`='cursedAmulet' AND `card_location`='hand'", true)));
-		for (array_diff($allPlayers, $playersWithAmulets) as $playerId)
+		$playersWithAmulets = array_unique(array_values($this->getCollectionFromDB("SELECT `card_id`, `card_location_arg` FROM `water` WHERE `card_type`='cursedAmulet' AND `card_location`='hand'", true)));
+		foreach (array_diff($allPlayers, $playersWithAmulets) as $playerId)
 			$this->notify->all('resolveCursedSearchMessage', clienttranslate('${player_name} does not have a Cursed Amulet.'), array(
 				'player_id' => $playerId,
 				'player_name' => $this->getPlayerNameById($playerId),	
 			));
 
-		for ($playersWithAmulets as $playerId)
+		foreach ($playersWithAmulets as $playerId)
 		{
-			$card = $this->water->getCard($this->getRandomCardFrom($playerId));
-			$discardCard = $card['type'] !== 'clearWater';
-			if ($discardCard)
-				$this->discard($card['id']);
-			$this->notify->all('resolveCursedSearch', clienttranslate('${player_name} has a Cursed Amulet!'), array(
+			$card = $this->water->getCard($this->getRandomCardFrom(intval($playerId)));
+			$this->notify->all('resolveCursedSearchMessage', clienttranslate('${player_name} has a Cursed Amulet! They reveal they have a ${card_description} in their hand!'), array(
 				'player_id' => $playerId,
 				'player_name' => $this->getPlayerNameById($playerId),	
 				'card_description' => $this->tokens['waterDeck'][$card['type']]['name'],
-				'discard_card' => $discardCard,
 			));
+
+			if ($card['type'] !== 'clearWater')
+			{
+				$this->water->insertCardOnExtremePosition('skullsairsStash', $card['id'], true);
+				$this->notifyForCardsDiscarded([$card['id']], $playerId, 'skullsairsStash', false);
+			}
 
 			// I want to to the '{player_name} discards {card_description}' as a separate notification. I think I want to modify the $notifyForCardsDiscarded to have an obfuscate parameter, and be able to enable/disable obfuscation with that parameter and use that without obfuscation here. That could also make my code clearer for discarding from the Treasure column, if there is a clear indication for no obfuscation
 		}
