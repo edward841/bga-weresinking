@@ -1017,11 +1017,20 @@ class Game extends \Table
 
 	public function actPass()
 	{
-		$this->globals->set('FLAG', true);
-		$this->globals->set('COUNTER', 0);
-		$this->globals->set('LIST', []);
-		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
-		$this->gamestate->nextState('next');
+		$state = $this->gamestate->getCurrentMainStateId();
+		if ($state === STATE_RESOLVE_FIRE && $this->globals->get('COUNTER') > 0)
+		{
+			$this->globals->set('COUNTER', 0);
+			$this->gamestate->nextState('again');
+		}	
+		else
+		{
+			$this->globals->set('FLAG', true);
+			$this->globals->set('COUNTER', 0);
+			$this->globals->set('LIST', []);
+			$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+			$this->gamestate->nextState('next');
+		}
 	}
 	
 	public function argDeclareDial()
@@ -1158,6 +1167,15 @@ class Game extends \Table
 		{
 			$args['possibleActions'] = ['Fire'];
 			$args['instruction'] = clienttranslate('must fire');
+		}
+		else if (($nbr = $this->globals->get('COUNTER')) > 0 && count($cards = $this->water->getCardsInLocation('skullsairsStash')) > 0)
+		{
+			// If there are fewer cards in the Skullsairs Stash than youre supposed to draw, then clearly you can draw at most the number of cards in the stash
+			if (count($cards) < $nbr)
+				$nbr = $this->globals->set('COUNTER', count($cards));
+			$args['possibleActions'] = ['actDraw', 'actPass'];
+			$args['instruction'] = 'may draw up to $nbr card(s) from the Skullsairs\' Stash';
+			$args['possibleToDraw'] = array_values($cards);
 		}
 		else
 		{
@@ -2454,6 +2472,12 @@ class Game extends \Table
 
 	public function theSkullsairsReactsToDamage(): void 
 	{
-
+		$playerId = $this->getActivePlayerId();
+		$nbr = $this->globals->inc('COUNTER', 1);
+		$this->notify->all('theSkullsairsReactsToDamageMessage', clienttranslate('${player_name} may choose ${nbr} card(s) from the Skullsairs\' Stash'), array(
+			'player_id' => $playerId,
+			'player_name' => $this->getPlayerNameById($playerId),
+			'nbr' => $nbr,
+		));
 	}
 }
