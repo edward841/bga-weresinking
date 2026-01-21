@@ -1159,6 +1159,7 @@ class Game extends \Table
 	{
 		$args = [];
 		$flag = $this->globals->get('FLAG');
+		$activePlayer = $this->getActivePlayerId();
 		
 		$operableCannons = $this->getNonEmptyCollectionFromDB("SELECT dice.die_id id, cannon.card_type, cannon.card_type_arg FROM `dice` INNER JOIN `cannon` ON dice.die_id = cannon.card_id WHERE cannon.card_location = 'cannonsColumn'");
 		$args['operableCannons'] = array_keys($operableCannons);
@@ -1168,23 +1169,22 @@ class Game extends \Table
 			$args['possibleActions'] = ['Fire'];
 			$args['instruction'] = clienttranslate('must fire');
 		}
-		else if (($nbr = $this->globals->get('COUNTER')) > 0 && count($cards = $this->water->getCardsInLocation('skullsairsStash')) > 0)
-		{
-			// If there are fewer cards in the Skullsairs Stash than youre supposed to draw, then clearly you can draw at most the number of cards in the stash
-			if (count($cards) < $nbr)
-				$nbr = $this->globals->set('COUNTER', count($cards));
-			$args['possibleActions'] = ['actDraw', 'actPass'];
-			$args['instruction'] = 'may draw up to $nbr card(s) from the Skullsairs\' Stash';
-			$args['possibleToDraw'] = array_values($cards);
-		}
+//		else if (($nbr = $this->globals->get('COUNTER')) > 0 && count($cards = $this->water->getCardsInLocation('skullsairsStash')) > 0)
+//		{
+//			// If there are fewer cards in the Skullsairs Stash than youre supposed to draw, then clearly you can draw at most the number of cards in the stash
+//			if (count($cards) < $nbr)
+//				$nbr = $this->globals->set('COUNTER', count($cards));
+//			$args['possibleActions'] = ['Draw', 'Pass'];
+//			$args['instruction'] = 'may draw up to $nbr card(s) from the Skullsairs\' Stash';
+//			$args['possibleToDraw'] = array_values($cards);
+//		}
 		else
 		{
-			$activePlayer = $this->getActivePlayerId();
 			$treasure = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `water` WHERE `card_location`='hand' AND `card_location_arg`='$activePlayer' AND `card_type` != 'clearWater'"));
 			$alreadyActivated = (array) $this->globals->get('LIST');
 			
 			// nbr indicates how many more times the player can shoot their treasure
-			// This is either the number of treasure cards they have or the number of ive cannons they haven't re-rolled yet, whichever is less
+			// This is either the number of treasure cards they have or the number of active cannons they haven't re-rolled yet, whichever is less
 			$nbr = min(count($treasure), count($args['operableCannons']) - count($alreadyActivated));
 			$notYetActivated = [];
 			if ($nbr > 0)
