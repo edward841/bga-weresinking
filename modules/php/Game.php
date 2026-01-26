@@ -1164,41 +1164,53 @@ class Game extends \Table
 		$operableCannons = $this->getNonEmptyCollectionFromDB("SELECT dice.die_id id, cannon.card_type, cannon.card_type_arg FROM `dice` INNER JOIN `cannon` ON dice.die_id = cannon.card_id WHERE cannon.card_location = 'cannonsColumn'");
 		$args['operableCannons'] = array_keys($operableCannons);
 
+		// First action of fire action: Fire all cannons!
 		if ($flag)
 		{
 			$args['possibleActions'] = ['Fire'];
 			$args['instruction'] = clienttranslate('must fire');
-		}
-//		else if (($nbr = $this->globals->get('COUNTER')) > 0 && count($cards = $this->water->getCardsInLocation('skullsairsStash')) > 0)
-//		{
-//			// If there are fewer cards in the Skullsairs Stash than youre supposed to draw, then clearly you can draw at most the number of cards in the stash
-//			if (count($cards) < $nbr)
-//				$nbr = $this->globals->set('COUNTER', count($cards));
-//			$args['possibleActions'] = ['Draw', 'Pass'];
-//			$args['instruction'] = 'may draw up to $nbr card(s) from the Skullsairs\' Stash';
-//			$args['possibleToDraw'] = array_values($cards);
-//		}
-		else
-		{
-			$treasure = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `water` WHERE `card_location`='hand' AND `card_location_arg`='$activePlayer' AND `card_type` != 'clearWater'"));
-			$alreadyActivated = (array) $this->globals->get('LIST');
-			
-			// nbr indicates how many more times the player can shoot their treasure
-			// This is either the number of treasure cards they have or the number of active cannons they haven't re-rolled yet, whichever is less
-			$nbr = min(count($treasure), count($args['operableCannons']) - count($alreadyActivated));
-			$notYetActivated = [];
-			if ($nbr > 0)
-			{
-				foreach (array_diff(array_keys($operableCannons), $alreadyActivated) as $id)
-					$notYetActivated[] = $operableCannons[$id];
-			}
-			
-			$args['possibleActions'] = $nbr > 0 ? ['ShootYeTreasure', 'Pass'] : ['Pass'];
-			$args['possibleDiscard'] = array_values($this->water->getCards($treasure));
-			$args['possibleToFireCannons'] = $notYetActivated;
-			$args['instruction'] = $nbr > 0 ? clienttranslate("may shoot ye treasure up to $nbr times") : clienttranslate('must pass');
+			return $args;
 		}
 
+		$treasure = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `water` WHERE `card_location`='hand' AND `card_location_arg`='$activePlayer' AND `card_type` != 'clearWater'"));
+		$alreadyActivated = (array) $this->globals->get('LIST');
+		
+		// nbr indicates how many more times the player can shoot their treasure
+		// This is either the number of treasure cards they have or the number of active cannons they haven't re-rolled yet, whichever is less
+		$nbr = min(count($treasure), count($args['operableCannons']) - count($alreadyActivated));
+
+		// If nbr > 0, then the player must be given a chance to Shoot Ye Treasure
+		if ($nbr > 0)
+		{
+			$notYetActivated = [];
+			foreach (array_diff(array_keys($operableCannons), $alreadyActivated) as $id)
+				$notYetActivated[] = $operableCannons[$id];
+
+			$args['possibleActions'] = ['ShootYeTreasure', 'Pass'];
+			$args['possibleDiscard'] = array_values($this->water->getCards($treasure));
+			$args['possibleToFireCannons'] = $notYetActivated;
+			$args['instruction'] = clienttranslate("may shoot ye treasure up to $nbr times");
+			return $args;
+		}
+		
+		// Skullsairs stash: If they should and can draw from the Skullsairs' stash because damage was done this turn
+		// TODO Make sure this condition makes sense? I think COUNTER needs to have the number of damage dealt this turn, and we must allow the player to draw up to that number from the skullsairs stash (e.g. make sure COUNTER isnt used for anything else during the fire action so it doesnt get muddied)
+		if (($nbr = $this->globals->get('COUNTER')) > 0 && count($cards = $this->water->getCardsInLocation('skullsairsStash')) > 0)
+		{
+			// If they are supposed to draw more cards than the stash currently has, then you can draw at most the number of cards in the stash
+			$nbr = min($nbr, count($cards));
+
+			// TODO Im not certain Draw is right, to implement what Joseph requested of selecting multiple at once we might need a different kind of draw? Or maybe we should refactor the normal draw to draw a flexible number of cards? Maybe we make a DrawMultiple for this?
+			$args['possibleActions'] = ['Draw', 'Pass'];
+			$args['instruction'] = 'may draw up to $nbr card(s) from the Skullsairs\' Stash';
+			$args['possibleToDraw'] = array_values($cards);
+			$args['nbr'] = $nbr;
+			return $args;
+		}
+
+		// Everything that could be done was done, and the player must now pass.
+		$args['possibleActions'] = ['Pass'];
+		$args['instruction'] = clienttranslate('must pass');
 		return $args;
 	}
 
@@ -1880,8 +1892,8 @@ class Game extends \Table
 		else
 		{
 			$updateString = '';
-			for ($i = 0; $i < count($cannonIds); $i++)
-				$updateString .= "WHEN {$cannonIds[$i]} THEN " . \bga_rand(1,6) . ' ';
+			foreach ($cannonIds as $id) 
+				$updateString .= "WHEN $id THEN " . \bga_rand(1,6) . ' ';
 			$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` IN ('". implode("','", $cannonIds)."')");
 		}
 	
@@ -1931,7 +1943,7 @@ class Game extends \Table
 				$dieIds = array_map('intval', $dieIds);
 				$maxDieId = max($dieIds);
 
-				switch($enemyInfo['adjustBasicDice'][$hp])
+				switch ($enemyInfo['adjustBasicDice'][$hp])
 				{
 					case 1:
 						$maxDieId++;
@@ -1941,15 +1953,11 @@ class Game extends \Table
 					case -1:
 						$this->DbQuery("DELETE FROM `dice` WHERE `die_id` = '$maxDieId'");
 						break;
-
-					default:
-						var_dump($enemyInfo['adjustBasicDice'][$hp]);
 				}
 			}
 
 			// Enemy reaction
 			// If this enemy has triggers (meaning it has an effect that can be triggered by taking damage) and its triggers contains $hp, then the enemy reacts to damage!
-			$enemyInfo = $this->tokens['enemyInfo'][$enemy];
 			if (array_key_exists('triggers', $enemyInfo) && array_search($hp, $enemyInfo['triggers']) !== false)
 			{
 				$reaction = "the{$enemy}ReactsToDamage";
@@ -2474,6 +2482,7 @@ class Game extends \Table
 	{
 		$playerId = $this->getActivePlayerId();
 		$nbr = $this->globals->inc('COUNTER', 1);
+		// TODO Maybe it would make more sense to move this notif elsewhere? If the player deals multiple damage in one turn then this would display for each damage with different values of nbr...
 		$this->notify->all('theSkullsairsReactsToDamageMessage', clienttranslate('${player_name} may choose ${nbr} card(s) from the Skullsairs\' Stash'), array(
 			'player_id' => $playerId,
 			'player_name' => $this->getPlayerNameById($playerId),
