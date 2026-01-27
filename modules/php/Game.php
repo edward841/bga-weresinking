@@ -597,14 +597,6 @@ class Game extends \Table
 		$this->gamestate->nextState('next');
 	}
 
-	// This is yet untested, but I'm considering a different architecture as a possible solution to the question:
-	// In the player states with multiple things, should I separate each thing into its own action? 
-	// (e.g. 'draw water from column, then discard from hand' or 'either draw 1 or discard 1. Then perform patch')
-	// I'm pretty sure its either that or clientside states, and I'd prefer splitting the actions over messing with clientside states...
-	// Pros: Possible actions would be clearer, the backend implementation would be much cleaner, you could enforce the order by arg functions, should be straightforward to display the currently allowed actions in frontend using the same arg function for input
-	// Cons: more functions to implement, could be more confusing, not sure how arg function would know what is currently allowed (maybe a global flag?)
-	
-
 	public function actDraw(string $cardId, string $location)
 	{
 		// Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
@@ -618,7 +610,7 @@ class Game extends \Table
 		if ($location === 'deck')
 			$cardId = $args['possibleIdsDraw'][0];
 
-		// Fail the draw if: Draw is not in the arg's possibleActions, the given location is wrong, or the given cardId is wrong
+		// Fail the draw iff: Draw is not in the arg's possibleActions, the given location is wrong, or the given cardId is wrong
 		// It might seem silly to check if actDraw is in possibleActions array since we already verified it is allowed by the state. 
 		// This lets us to control at what point the player can do each subaction (managing the order of operations for multistep actions like bucket)
 		$message = '';
@@ -695,6 +687,36 @@ class Game extends \Table
 		// If $again, then the player is not done completing this action yet. They may need to draw another card, discard card(s), or fix something!
 		// Otherwise, safely move on to the next action
 		($again) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
+	}
+	
+	// TODO problem expected: actDraw is verifying that $cardId is in a list of possibleDrawIds but our argResolveFire is giving it possibleToDraw, plus there is a type mismatch. The act is expecting an int, but the arg is giving an array that is the whole card (stemming from a relatively new concept that we should give the front end the full cards not just ids so they can highlight the card properly)
+	public function actDraw(array $cardIds, string $location, bool $exactly = true)
+	{
+		$currentState = $this->getStateName();
+		$argFunction = 'arg' . ucfirst($currentState);
+		$args = $this->$argFunction();
+		$counter = (int) $this->globals->get('COUNTER');
+
+		$message = '';
+		if ($cardIds == null)
+			$message = "actDraw called with null cardIds";
+		else if (count($cardIds) == 0)
+			$message = "actDraw called with empty cardIds";
+		else if ($exactly && count($cardIds) !== $counter)
+			$message = "actDraw called with ${count($cardIds)} cards, expected exactly $counter cards";
+		else if (!$exactly && count($cardIds) > $counter)
+			$message = "actDraw called with ${count($cardIds)} cards, expected $counter cards or fewer";
+		else if (count($cardIds) !== count(array_count_values($cardIds)))
+			$message = "actDraw called with duplicate cardIds";
+
+		if ($message !== '')
+		{
+			$cardIdsString = implode(',', $cardIds);
+			throw new \BgaSystemException("actDraw: cardIds: <$cardIdsString>, location: '$location', exactly: $exactly not allowed in state {$this->getStateName()}\n($message)");
+		}
+
+		foreach ($cardIds as $cardId)
+			$this->actDraw($cardId, $location);
 	}
 
 	public function actTemptingTune()
@@ -1018,9 +1040,12 @@ class Game extends \Table
 	public function actPass()
 	{
 		$state = $this->gamestate->getCurrentMainStateId();
+		// This pass was to forgo shooting treasure but we still need to give the player a chance to select from the Skullsairs' stash
 		if ($state === STATE_RESOLVE_FIRE && $this->globals->get('COUNTER') > 0)
 		{
-			$this->globals->set('COUNTER', 0);
+			// We doctor the LIST as the indicator to argResolveFire on what part of the fire action we need to do now
+			$activeCannons = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `cannon` WHERE `card_location`='cannonsColumn'"));
+			$this->globals->set('LIST', $activeCannons);
 			$this->gamestate->nextState('again');
 		}	
 		else
@@ -1960,7 +1985,7 @@ class Game extends \Table
 			// If this enemy has triggers (meaning it has an effect that can be triggered by taking damage) and its triggers contains $hp, then the enemy reacts to damage!
 			if (array_key_exists('triggers', $enemyInfo) && array_search($hp, $enemyInfo['triggers']) !== false)
 			{
-				$reaction = "the{$enemy}ReactsToDamage";
+				$reation = "the{$enemy}ReactsToDamage";
 				$this->$reaction();
 			}
 		}
