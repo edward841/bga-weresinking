@@ -621,11 +621,22 @@ class Game extends \Table
 		}
 		else if ($location !== $args['location'])
 			$message = "Location given: $location, expected <{$args['location']}>";
-		else if (!in_array((int) $cardId, $args['possibleIdsDraw'], true))
+
+		// $args['possibleIdsDraw'] is a list of ids of cards that could be drawn, where $args['possibleToDraw'] is a list of the cards that could be drawn
+		// 'possibleIdsDraw' was the original idea, I think Im going to refactor to 'possibleToDraw' to work better with selecting cards in the front end
+		// We will probably phase out 'possibleIdsDraw' and move to the 'possibleToDraw' model but in the transitional time we'll just allow both 
+		else if (in_array('possibleIdsDraw', array_keys($args)) && !in_array((int) $cardId, $args['possibleIdsDraw'], true))
 		{
 			$possibleIds = implode(',', $args['possibleIdsDraw']);
 			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
 		}
+		else if (in_array('possibleToDraw', array_keys($args)) && !in_array((int) $cardId, array_column($args['possibleToDraw'], 'card_id'), true))
+		{
+			$possibleIds = implode(',', $args['possibleToDraw']);
+			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
+		}
+		else if (count(array_intersect(array_keys($args), ['possibleIdsDraw', 'possibleToDraw'])) == 0)
+			$message = 'No possibleIdsDraw or possibleToDraw found in args, one needed to verify cardId';
 		
 		if ($message !== '')
 			throw new \BgaSystemException("actDraw: cardId: '$cardId', location: '$location' not allowed in state {$this->getStateName()}\n($message)");
@@ -690,7 +701,7 @@ class Game extends \Table
 	}
 	
 	// TODO problem expected: actDraw is verifying that $cardId is in a list of possibleDrawIds but our argResolveFire is giving it possibleToDraw, plus there is a type mismatch. The act is expecting an int, but the arg is giving an array that is the whole card (stemming from a relatively new concept that we should give the front end the full cards not just ids so they can highlight the card properly)
-	public function actDraw(array $cardIds, string $location, bool $exactly = true)
+	public function actDrawMultiple(array $cardIds, string $location, bool $exactly = true)
 	{
 		$currentState = $this->getStateName();
 		$argFunction = 'arg' . ucfirst($currentState);
@@ -698,21 +709,23 @@ class Game extends \Table
 		$counter = (int) $this->globals->get('COUNTER');
 
 		$message = '';
+		if (!in_array('DrawMultiple', $args['possibleActions']))
+			$message = 'actDrawMultiple called, not in possibleMoves';
 		if ($cardIds == null)
-			$message = "actDraw called with null cardIds";
+			$message = "actDrawMultiple called with null cardIds";
 		else if (count($cardIds) == 0)
-			$message = "actDraw called with empty cardIds";
+			$message = "actDrawMultiple called with empty cardIds";
 		else if ($exactly && count($cardIds) !== $counter)
-			$message = "actDraw called with ${count($cardIds)} cards, expected exactly $counter cards";
+			$message = "actDrawMultiple called with ${count($cardIds)} cards, expected exactly $counter cards";
 		else if (!$exactly && count($cardIds) > $counter)
-			$message = "actDraw called with ${count($cardIds)} cards, expected $counter cards or fewer";
+			$message = "actDrawMultiple called with ${count($cardIds)} cards, expected $counter cards or fewer";
 		else if (count($cardIds) !== count(array_count_values($cardIds)))
-			$message = "actDraw called with duplicate cardIds";
+			$message = "actDrawMultiple called with duplicate cardIds";
 
 		if ($message !== '')
 		{
 			$cardIdsString = implode(',', $cardIds);
-			throw new \BgaSystemException("actDraw: cardIds: <$cardIdsString>, location: '$location', exactly: $exactly not allowed in state {$this->getStateName()}\n($message)");
+			throw new \BgaSystemException("actDrawMultiple: cardIds: <$cardIdsString>, location: '$location', exactly: $exactly not allowed in state {$this->getStateName()}\n($message)");
 		}
 
 		foreach ($cardIds as $cardId)
@@ -1226,8 +1239,9 @@ class Game extends \Table
 			$nbr = min($nbr, count($cards));
 
 			// TODO Im not certain Draw is right, to implement what Joseph requested of selecting multiple at once we might need a different kind of draw? Or maybe we should refactor the normal draw to draw a flexible number of cards? Maybe we make a DrawMultiple for this?
-			$args['possibleActions'] = ['Draw', 'Pass'];
-			$args['instruction'] = 'may draw up to $nbr card(s) from the Skullsairs\' Stash';
+			// We are attempting to overload Draw to have an array version for variable number of cards, well see if it works...
+			$args['possibleActions'] = ['Draw', 'DrawMultiple', 'Pass'];
+			$args['instruction'] = "may draw up to $nbr card(s) from the Skullsairs' Stash";
 			$args['possibleToDraw'] = array_values($cards);
 			$args['nbr'] = $nbr;
 			return $args;
