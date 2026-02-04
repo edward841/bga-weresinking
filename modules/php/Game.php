@@ -1999,7 +1999,8 @@ class Game extends \Table
 			// If this enemy has triggers (meaning it has an effect that can be triggered by taking damage) and its triggers contains $hp, then the enemy reacts to damage!
 			if (array_key_exists('triggers', $enemyInfo) && array_search($hp, $enemyInfo['triggers']) !== false)
 			{
-				$reation = "the{$enemy}ReactsToDamage";
+				$reaction = "the{$enemy}ReactsToDamage";
+				var_dump('Reaction: ', $reaction);
 				$this->$reaction();
 			}
 		}
@@ -2519,6 +2520,7 @@ class Game extends \Table
 
 	public function theSkullsairsReactsToDamage(): void 
 	{
+		var_dump('Running theSkullsairsReactsToDamage...');
 		$playerId = $this->getActivePlayerId();
 		$nbr = $this->globals->inc('COUNTER', 1);
 		// TODO Maybe it would make more sense to move this notif elsewhere? If the player deals multiple damage in one turn then this would display for each damage with different values of nbr...

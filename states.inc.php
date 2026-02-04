@@ -242,7 +242,7 @@ $machinestates = [
 		'description' => clienttranslate('${actplayer} may Fire'),
 		'descriptionmyturn' => clienttranslate('${you} ${instruction}'),
 		'type' => 'activeplayer',
-		'possibleactions' => ['actFire', 'actShootYeTreasure', 'actDraw', 'actPass'],
+		'possibleactions' => ['actFire', 'actShootYeTreasure', 'actDraw', 'actDrawMultiple', 'actPass'],
 		'args' => 'argResolveFire',
 		'transitions' => ['next' => STATE_RESOLVE_FIRE_HELPER, 'again' => STATE_RESOLVE_FIRE],
 	),
