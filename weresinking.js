@@ -501,6 +501,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						this.playerHand.setSelectionMode('single', args.args.possibleDiscard);
 						this.operationalCannons.setSelectionMode('single', args.args.possibleToFireCannons);
 					}
+					else if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('MultipleDraw'))
+					{
+								
+					}
 					break;
             }
         },
@@ -608,7 +612,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 					case 'resolveFire':
 						const possibleActions = args.possibleActions;
-						console.log(possibleActions);
 						if (possibleActions.includes("Fire"))
 							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actFire"), { color: 'primary'});
 						if (possibleActions.includes("ShootYeTreasure"))

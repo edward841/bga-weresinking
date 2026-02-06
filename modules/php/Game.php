@@ -507,6 +507,7 @@ class Game extends \Table
 
 				// Set FLAG to true (indicates that the player needs to draw now)
 				$this->globals->set('FLAG', true);
+				$this->globals->set('COUNTER', 0);
 			}
 		}	
 
@@ -1053,22 +1054,29 @@ class Game extends \Table
 	public function actPass()
 	{
 		$state = $this->gamestate->getCurrentMainStateId();
-		// This pass was to forgo shooting treasure but we still need to give the player a chance to select from the Skullsairs' stash
+		// Passing is complicated when you add drawing from the Skullsairs stash into the mix (especially with the already complicated action of firing)
 		if ($state === STATE_RESOLVE_FIRE && $this->globals->get('COUNTER') > 0)
 		{
-			// We doctor the LIST as the indicator to argResolveFire on what part of the fire action we need to do now
-			$activeCannons = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `cannon` WHERE `card_location`='cannonsColumn'"));
-			$this->globals->set('LIST', $activeCannons);
-			$this->gamestate->nextState('again');
+			// We need to distinguish between two possible passes: 
+			//	 1. A pass to forgo shooting treasure (and move on to selecting treasure from the stash)
+			//	 2. A pass to forgo selecting treasure from the stash (and move on to the next state)
+			$args = $this->argResolveFire();
+			if (in_array('ShootYeTreasure', $args['possibleActions']))
+			{
+				// We adjust the LIST to indicate to argResolveFire what part of the fire action we need to do now
+				$activeCannons = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `cannon` WHERE `card_location`='cannonsColumn'"));
+				$this->globals->set('LIST', $activeCannons);
+				$this->gamestate->nextState('again');
+				return null;
+			}
 		}	
-		else
-		{
-			$this->globals->set('FLAG', true);
-			$this->globals->set('COUNTER', 0);
-			$this->globals->set('LIST', []);
-			$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
-			$this->gamestate->nextState('next');
-		}
+		
+		// Most common pass logic: Resets all globals
+		$this->globals->set('FLAG', true);
+		$this->globals->set('COUNTER', 0);
+		$this->globals->set('LIST', []);
+		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+		$this->gamestate->nextState('next');
 	}
 	
 	public function argDeclareDial()
