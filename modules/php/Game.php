@@ -590,7 +590,7 @@ class Game extends \Table
 		$this->notify->all('actDeclareDial', clienttranslate('${player_name} placed their dial in the ${dial_location}'),
 			array(
 				'player_id' => $activePlayer,
-				'player_name' => $this->getPlayerNameById($activePlayer),
+				'player_name' => $this->getPlayerNameById((int) $activePlayer),
 				'dial_location' => $actionToColumn[$location],
 				'screech' => $this->globals->get('SIRENS_SCREECH'),
 			));
@@ -687,7 +687,7 @@ class Game extends \Table
 				{
 					$this->notify->all('patchMessage', clienttranslate('${player_name} already used their hammer(s)'), array(
 						'player_id' => $playerId,
-						'player_name' => $this->getPlayerNameById($playerId),
+						'player_name' => $this->getPlayerNameById((int) $playerId),
 					));
 				}
 			}
@@ -804,7 +804,7 @@ class Game extends \Table
 			{
 				$this->notify->all('patchMessage', clienttranslate('${player_name} already used their hammer(s)'), array(
 					'player_id' => $playerId,
-					'player_name' => $this->getPlayerNameById($playerId),
+					'player_name' => $this->getPlayerNameById((int) $playerId),
 				));
 			}
 		}
@@ -843,7 +843,7 @@ class Game extends \Table
 				// All cannons can be fixed with one hammer!
 				$this->addToColumn('cannonsColumn', null, $cardId);
 				$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problemName}'), array(
-					'player_name' => $this->getPlayerNameById($playerId),
+					'player_name' => $this->getPlayerNameById((int) $playerId),
 					'player_id' => $playerId,
 					'problemName' => $this->tokens['cannons'][$type], 
 					'card' => $this->cannons->getCard($cardId),
@@ -858,7 +858,7 @@ class Game extends \Table
 					// Good news! We can fix it with just one mallet!
 					$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
 					$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problemName}'), array(
-						'player_name' => $this->getPlayerNameById($playerId),
+						'player_name' => $this->getPlayerNameById((int) $playerId),
 						'player_id' => $playerId,
 						'problemName' => $this->tokens['breaches'][$type]['name'],
 						'card' => $this->breaches->getCard($cardId),
@@ -881,7 +881,7 @@ class Game extends \Table
 
 					$this->notify->all('actPatchMessage', clienttranslate('${player_name} requests assistance to repair the ${problemName}'), array(
 						'player_id' => $playerId,
-						'player_name' => $this->getPlayerNameById($playerId),
+						'player_name' => $this->getPlayerNameById((int) $playerId),
 						'problemName' => $this->tokens['breaches'][$this->breaches->getCard($cardId)['type']]['name'],
 					));
 
@@ -921,7 +921,7 @@ class Game extends \Table
 
 		$this->notify->all('actPatchMessage', clienttranslate('${player_name} ${response} contribute their dial towards the ${problemName}'), array(
 			'player_id' => $playerId,
-			'player_name' => $this->getPlayerNameById($playerId),
+			'player_name' => $this->getPlayerNameById((int) $playerId),
 			'response' => $contribute ? clienttranslate('will') : clienttranslate('will not'),
 			'problemName' => $problemName,
 		));
@@ -952,7 +952,7 @@ class Game extends \Table
 					$this->notify->all('actPatchMessage', clienttranslate('${player_name} helped fix the ${problemName}'), array(
 						'problemName' => $problemName,
 						'player_id' => $id,
-						'player_name' => $this->getPlayerNameById($id),
+						'player_name' => $this->getPlayerNameById((int) $id),
 					));
 				}
 
@@ -973,7 +973,7 @@ class Game extends \Table
 			$this->notify->all('actPatchMessage', clienttranslate('Patching the ${problemName} failed, {player_name} gets a chance to Patch something else.'), array(
 				'problemName' => $problemName, 
 				'player_id' => $originalPlayerId,
-				'player_name' => $this->getPlayerNameById($originalPlayerId),
+				'player_name' => $this->getPlayerNameById((int) $originalPlayerId),
 			));
 
 			// Adjust LIST
@@ -2036,7 +2036,7 @@ class Game extends \Table
 			$this->notify->all('actDraw', clienttranslate('${player_name} drew ${card_description}'), array(
 				'player_id' => $playerId,
 				'card_description' => $cardDescriptionObfuscated,
-				'player_name' => $this->getPlayerNameById($playerId),
+				'player_name' => $this->getPlayerNameById((int) $playerId),
 				'card' => $cardObfuscated,	
 			));	
 			$this->notify->player(intval($playerId), 'actDrawPrivate', clienttranslate('You drew ${card_description}'), array(
@@ -2065,7 +2065,7 @@ class Game extends \Table
 
 				$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
 					'player_id' => $playerId,
-					'player_name' => $this->getPlayerNameById($playerId),
+					'player_name' => $this->getPlayerNameById((int) $playerId),
 					'card' => $privateCard,	
 					'location' => $location,
 				));	
@@ -2084,7 +2084,7 @@ class Game extends \Table
 			else
 				$this->notify->all('discard', clienttranslate('${player_name} discarded a ${card_description}'), array(
 					'player_id' => $playerId,
-					'player_name' => $this->getPlayerNameById($playerId),
+					'player_name' => $this->getPlayerNameById((int) $playerId),
 					'card_description' => $cardDescription,
 					'card' => $card,
 					'location' => $location,
@@ -2489,7 +2489,7 @@ class Game extends \Table
 		foreach (array_diff($allPlayers, $playersWithAmulets) as $playerId)
 			$this->notify->all('resolveCursedSearchMessage', clienttranslate('${player_name} does not have a Cursed Amulet.'), array(
 				'player_id' => $playerId,
-				'player_name' => $this->getPlayerNameById($playerId),	
+				'player_name' => $this->getPlayerNameById((int) $playerId),	
 			));
 
 		foreach ($playersWithAmulets as $playerId)
@@ -2497,7 +2497,7 @@ class Game extends \Table
 			$card = $this->water->getCard($this->getRandomCardFrom(intval($playerId)));
 			$this->notify->all('resolveCursedSearchMessage', clienttranslate('${player_name} has a Cursed Amulet! They reveal they have a ${card_description} in their hand!'), array(
 				'player_id' => $playerId,
-				'player_name' => $this->getPlayerNameById($playerId),	
+				'player_name' => $this->getPlayerNameById((int) $playerId),	
 				'card_description' => $this->tokens['waterDeck'][$card['type']]['name'],
 			));
 
@@ -2534,7 +2534,7 @@ class Game extends \Table
 		// TODO Maybe it would make more sense to move this notif elsewhere? If the player deals multiple damage in one turn then this would display for each damage with different values of nbr...
 		$this->notify->all('theSkullsairsReactsToDamageMessage', clienttranslate('${player_name} may choose ${nbr} card(s) from the Skullsairs\' Stash'), array(
 			'player_id' => $playerId,
-			'player_name' => $this->getPlayerNameById($playerId),
+			'player_name' => $this->getPlayerNameById((int) $playerId),
 			'nbr' => $nbr,
 		));
 	}
