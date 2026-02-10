@@ -631,9 +631,9 @@ class Game extends \Table
 			$possibleIds = implode(',', $args['possibleIdsDraw']);
 			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
 		}
-		else if (in_array('possibleToDraw', array_keys($args)) && !in_array((int) $cardId, array_column($args['possibleToDraw'], 'card_id'), true))
+		else if (in_array('possibleToDraw', array_keys($args)) && !in_array($cardId, array_column($args['possibleToDraw'], 'id'), true))
 		{
-			$possibleIds = implode(',', $args['possibleToDraw']);
+			$possibleIds = implode(',', array_column($args['possibleToDraw'], 'id'));
 			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
 		}
 		else if (count(array_intersect(array_keys($args), ['possibleIdsDraw', 'possibleToDraw'])) == 0)
@@ -1252,6 +1252,7 @@ class Game extends \Table
 			$args['instruction'] = "may draw up to $nbr card(s) from the Skullsairs' Stash";
 			$args['possibleToDraw'] = array_values($cards);
 			$args['nbr'] = $nbr;
+			$args['location'] = 'skullsairsStash';
 			return $args;
 		}
 
@@ -2008,7 +2009,6 @@ class Game extends \Table
 			if (array_key_exists('triggers', $enemyInfo) && array_search($hp, $enemyInfo['triggers']) !== false)
 			{
 				$reaction = "the{$enemy}ReactsToDamage";
-				var_dump('Reaction: ', $reaction);
 				$this->$reaction();
 			}
 		}
