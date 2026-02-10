@@ -50,6 +50,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.operationalCannons = null;
 			this.bustedCannons = null;
 			this.specialLocation = null;
+			this.tempCards = null;
 		
 			// This is the backbone of the getCardUniqueId for easily displaying any given item card.
 			// Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
@@ -120,6 +121,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					<div id="enemyDice"></div>
 				</div>
 			</div>
+			<div id="tempWrapper"></div>
 			<div id="sirensScreechDialsWrapper" class="whiteblock hide">
 				<b id="sirensScreechDialsLabel">${_('Declared Dials')}</b>
 				<div id="sirensScreechDials"></div>
@@ -501,9 +503,23 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						this.playerHand.setSelectionMode('single', args.args.possibleDiscard);
 						this.operationalCannons.setSelectionMode('single', args.args.possibleToFireCannons);
 					}
-					else if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('MultipleDraw'))
+					else if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('DrawMultiple'))
 					{
-								
+						//dojo.addClass('specialLocation', 'hide');
+						const skullsairsStashElement = dojo.create('div', {'id': 'skullsairsStashWrapper', 'class': 'whiteblock'}, 'tempWrapper');
+						skullsairsStashElement.innerHTML = `	
+								<b id="skullsairsStashLabel">${_('Skullsairs Stash')}</b>
+								<div id="skullsairsStash"></div>`
+						this.tempCards = new BgaCards.LineStock(this.waterManager, document.getElementById('skullsairsStash'), {});
+						this.tempCards.setSelectionMode('multiple');
+						args.args.possibleToDraw.forEach((card) => this.tempCards.addCard(card));
+						this.tempCards.onSelectionChange = (selection, lastChange) => {
+							if (selection.length >= args.args.nbr)
+								this.tempCards.setSelectableCards(selection);
+							else
+								this.tempCards.setSelectableCards();
+							this.updatePageTitle();
+						};
 					}
 					break;
             }
@@ -527,6 +543,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				case 'resolveFire':
 					this.playerHand.setSelectionMode('none');
 					this.operationalCannons.setSelectionMode('none');	
+					if (this.tempCards != null)
+					{ 
+						//dojo.removeClass('specialLocation', 'hide');
+						this.tempCards.getCards().forEach((card) => this.specialLocation.addCard(card));
+						this.tempCards = null;
+						dojo.empty('tempWrapper');
+					}
 					break;
 
 				// Reset dials for a new round
@@ -627,6 +650,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						}
 						if (possibleActions.includes("Pass"))
 							this.statusBar.addActionButton(_('Pass'), () => this.bgaPerformAction("actPass"), { color: 'secondary' }); 
+						if (possibleActions.includes("DrawMultiple") && this.tempCards != null && this.tempCards.getSelection().length > 0)
+							this.statusBar.addActionButton(_('Draw Card(s)'), () => this.bgaPerformAction("actDrawMultiple", {
+								'cardIds': this.tempCards.getSelection().map(value => value.key),
+								'location': 'skullsairsStash',
+								'exactly': false,
+							}), {color: 'primary'});
 						break;
 
 //					case 'resolveBucket':
