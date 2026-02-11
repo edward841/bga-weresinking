@@ -16,6 +16,7 @@
  */
 declare(strict_types=1);
 namespace Bga\Games\weresinking;
+use \Bga\GameFramework\Actions\Types\IntArrayParam;
 
 require_once(APP_GAMEMODULE_PATH . "module/table/table.game.php");
 
@@ -702,7 +703,7 @@ class Game extends \Table
 	}
 	
 	// TODO problem expected: actDraw is verifying that $cardId is in a list of possibleDrawIds but our argResolveFire is giving it possibleToDraw, plus there is a type mismatch. The act is expecting an int, but the arg is giving an array that is the whole card (stemming from a relatively new concept that we should give the front end the full cards not just ids so they can highlight the card properly)
-	public function actDrawMultiple(array $cardIds, string $location, bool $exactly = true)
+	public function actDrawMultiple(#[IntArrayParam(min: 1, max: 6)] array $cardIds, string $location, bool $exactly = true)
 	{
 		$currentState = $this->getStateName();
 		$argFunction = 'arg' . ucfirst($currentState);
@@ -730,7 +731,7 @@ class Game extends \Table
 		}
 
 		foreach ($cardIds as $cardId)
-			$this->actDraw($cardId, $location);
+			$this->actDraw($cardId.'', $location);
 	}
 
 	public function actTemptingTune()

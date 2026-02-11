@@ -511,13 +511,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 								<b id="skullsairsStashLabel">${_('Skullsairs Stash')}</b>
 								<div id="skullsairsStash"></div>`
 						this.tempCards = new BgaCards.LineStock(this.waterManager, document.getElementById('skullsairsStash'), {});
-						this.tempCards.setSelectionMode('single');
+						this.tempCards.setSelectionMode('multiple');
 						args.args.possibleToDraw.forEach((card) => this.tempCards.addCard(card));
 						this.tempCards.onSelectionChange = (selection, lastChange) => {
-//							if (selection.length >= args.args.nbr)
-//								this.tempCards.setSelectableCards(selection);
-//							else
-//								this.tempCards.setSelectableCards();
+							if (selection.length >= args.args.nbr)
+								this.tempCards.setSelectableCards(selection);
+							else
+								this.tempCards.setSelectableCards();
 							this.updatePageTitle();
 						};
 					}
@@ -650,10 +650,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						}
 						if (possibleActions.includes("Pass"))
 							this.statusBar.addActionButton(_('Pass'), () => this.bgaPerformAction("actPass"), { color: 'secondary' }); 
-						if (possibleActions.includes("Draw") && this.tempCards != null && this.tempCards.getSelection().length == 1)
+						if (possibleActions.includes("Draw") && this.tempCards != null)
 							this.statusBar.addActionButton(_('Draw Card(s)'), () => 
-									this.bgaPerformAction('actDraw', {'cardId': this.tempCards.getSelection()[0].id, 'location': 'skullsairsStash',})
-								, {color: 'primary'});
+									this.bgaPerformAction('actDrawMultiple', {'cardIds': this.tempCards.getSelection().map(card => card.id), 'location': 'skullsairsStash',})
+								, {color: 'primary', disabled: this.tempCards.getSelection().length == 0});
 						break;
 
 //					case 'resolveBucket':
