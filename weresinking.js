@@ -50,6 +50,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.operationalCannons = null;
 			this.bustedCannons = null;
 			this.specialLocation = null;
+			this.tempCards = null;
 		
 			// This is the backbone of the getCardUniqueId for easily displaying any given item card.
 			// Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
@@ -120,6 +121,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					<div id="enemyDice"></div>
 				</div>
 			</div>
+			<div id="tempWrapper"></div>
 			<div id="sirensScreechDialsWrapper" class="whiteblock hide">
 				<b id="sirensScreechDialsLabel">${_('Declared Dials')}</b>
 				<div id="sirensScreechDials"></div>
@@ -380,6 +382,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				for (i = 0; i < gamedatas.globals.specialLocation; i++)
 					this.specialLocation.addCard({'id': -i, 'type': 'backside', 'type_arg': 0});
 			}
+			else if (gamedatas.globals.enemy === 'Skullsairs')
+			{
+				this.specialLocation = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('specialLocation'), {});
+				gamedatas.globals.specialLocation.forEach((card) => {this.specialLocation.addCard(card)});
+			}
 
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
@@ -496,6 +503,24 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						this.playerHand.setSelectionMode('single', args.args.possibleDiscard);
 						this.operationalCannons.setSelectionMode('single', args.args.possibleToFireCannons);
 					}
+					else if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('DrawMultiple'))
+					{
+						//dojo.addClass('specialLocation', 'hide');
+						const skullsairsStashElement = dojo.create('div', {'id': 'skullsairsStashWrapper', 'class': 'whiteblock'}, 'tempWrapper');
+						skullsairsStashElement.innerHTML = `	
+								<b id="skullsairsStashLabel">${_('Skullsairs Stash')}</b>
+								<div id="skullsairsStash"></div>`
+						this.tempCards = new BgaCards.LineStock(this.waterManager, document.getElementById('skullsairsStash'), {});
+						this.tempCards.setSelectionMode('multiple');
+						args.args.possibleToDraw.forEach((card) => this.tempCards.addCard(card));
+						this.tempCards.onSelectionChange = (selection, lastChange) => {
+							if (selection.length >= args.args.nbr)
+								this.tempCards.setSelectableCards(selection);
+							else
+								this.tempCards.setSelectableCards();
+							this.updatePageTitle();
+						};
+					}
 					break;
             }
         },
@@ -518,6 +543,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				case 'resolveFire':
 					this.playerHand.setSelectionMode('none');
 					this.operationalCannons.setSelectionMode('none');	
+					if (this.tempCards != null)
+					{ 
+						//dojo.removeClass('specialLocation', 'hide');
+						this.tempCards.getCards().forEach((card) => this.specialLocation.addCard(card));
+						this.tempCards = null;
+						dojo.empty('tempWrapper');
+					}
 					break;
 
 				// Reset dials for a new round
@@ -603,7 +635,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 					case 'resolveFire':
 						const possibleActions = args.possibleActions;
-						console.log(possibleActions);
 						if (possibleActions.includes("Fire"))
 							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actFire"), { color: 'primary'});
 						if (possibleActions.includes("ShootYeTreasure"))
@@ -619,6 +650,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						}
 						if (possibleActions.includes("Pass"))
 							this.statusBar.addActionButton(_('Pass'), () => this.bgaPerformAction("actPass"), { color: 'secondary' }); 
+						if (possibleActions.includes("Draw") && this.tempCards != null)
+							this.statusBar.addActionButton(_('Draw Card(s)'), () => 
+									this.bgaPerformAction('actDrawMultiple', {'cardIds': this.tempCards.getSelection().map(card => card.id), 'location': 'skullsairsStash',})
+								, {color: 'primary', disabled: this.tempCards.getSelection().length == 0});
 						break;
 
 //					case 'resolveBucket':
@@ -1076,7 +1111,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_actDiscard');
 			console.log(notif);
-			
+				
 			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
 			if (notif.location === 'discard')
 			{
@@ -1084,7 +1119,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				this.waterDiscard.setCardVisible(card, false);
 			}
 			else if (notif.location === 'sharksBelly')
+			{
 				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, false);
+			}
+			else if (notif.location === 'skullsairsStash')
+			{
+				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, true);
+			}
 		},
 
 		notif_actDiscardPrivate: function(notif)
@@ -1098,6 +1141,29 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			else if (notif.location === 'sharksBelly')
 				this.specialLocation.addCard(card);
 			this.waterDiscard.setCardVisible(card, false);
+		},
+
+		notif_discard: function(notif)
+		{
+			console.log('notif_discard');
+			console.log(notif);
+
+			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
+			if (notif.location === 'discard')
+			{
+				this.waterDiscard.addCard(card);
+				this.waterDiscard.setCardVisible(card, false);
+			}
+			else if (notif.location === 'sharksBelly')
+			{
+				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, false);
+			}
+			else if (notif.location === 'skullsairsStash')
+			{
+				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, true);
+			}
 		},
 
 		notif_actPatch: function(notif)
@@ -1135,6 +1201,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 			
 			this.addScreechEffect();
+		},
+
+		// Skullsairs
+		notif_resolveBoardingParty: function(notif)
+		{
+			console.log('notif_resolveBoardingParty');
+			console.log(notif);
+
+			this.specialLocation.addCard(notif.card);			
 		},
    });             
 });
