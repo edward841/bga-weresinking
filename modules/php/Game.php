@@ -812,6 +812,31 @@ class Game extends \Table
 		$again ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
 
+	public function actDiscardMultiple(#[IntArrayParam(min: 1)] array $cardIds)
+	{
+		$currentState = $this->getStateName();
+		$argFunction = 'arg' . ucfirst($currentState);
+		$args = $this->$argFunction();
+		$counter = (int) $this->globals->get('COUNTER');
+
+		$message = '';
+		if (!in_array('DiscardMultiple', $args['possibleActions']))
+			$message = 'actDiscardMultiple called, not in possibleMoves';
+		if ($cardIds == null)
+			$message = "actDiscardMultiple called with null cardIds";
+		else if (count($cardIds) == 0)
+			$message = "actDiscardMultiple called with empty cardIds";
+
+		if ($message !== '')
+		{
+			$cardIdsString = implode(',', $cardIds);
+			throw new \BgaSystemException("actDiscardMultiple: cardIds: <$cardIdsString> not allowed in state {$this->getStateName()}\n($message)");
+		}
+
+		foreach ($cardIds as $cardId)
+			$this->actDiscard($cardId);
+	}
+
 	// Handle different types of problems differently (cannon vs breach vs TODO chest)
 	public function actPatch(int $cardId, string $type)
 	{
@@ -1106,16 +1131,18 @@ class Game extends \Table
 
 		// We only really need the card ids, all the other info is not necessary
 		if ($flag)
-			$args['possibleToDraw'] = $this->obfuscateCards(array_keys($this->water->getCardsInLocation('waterColumn')));
+			$args['possibleIdsDraw'] = array_keys($this->water->getCardsInLocation('waterColumn'));
 		else
 			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->getActivePlayerId()));
 
+		$args['nbr'] = $this->globals->get('COUNTER');
 		$args['possibleActions'] = [$flag ? 'Draw' : 'Discard'];
+		if ($args['nbr'] == 2)
+			$args['possibleActions'][] = $flag ? 'DrawMultiple': 'DiscardMultiple';
 
 		// We're creating the perfect balance of simplicity and informative descriptionmyturn
 		// descriptionmyturn = '${you} must ${verb} ${nbr} card(s)${ending}'
 		$args['verb'] = $flag ? 'draw' : 'discard';
-		$args['nbr'] = $this->globals->get('COUNTER');
 		$args['ending'] = $flag ? ' from the Water Column' : '';
 		
 		return $args;
@@ -2111,18 +2138,18 @@ class Game extends \Table
 		return true;
 	}
 	
-	public function obfuscateCard(int $id)
-	{
-		return ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
-	}
-
-	public function obfuscateCards(array $ids)
-	{
-		$cards = [];
-		foreach ($ids as $id)
-			$cards[] = $this->obfuscateCard($id);
-		return $cards;
-	}
+//	public function obfuscateCard(int $id)
+//	{
+//		return ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
+//	}
+//
+//	public function obfuscateCards(array $ids)
+//	{
+//		$cards = [];
+//		foreach ($ids as $id)
+//			$cards[] = $this->obfuscateCard($id);
+//		return $cards;
+//	}
 	// (End of Helper functions)
 
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

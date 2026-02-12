@@ -176,7 +176,7 @@ $machinestates = [
 		'description' => clienttranslate('${actplayer} must Bucket'),
 		'descriptionmyturn' => clienttranslate('Bucket: ${you} must ${verb} ${nbr} card(s)${ending}'),
 		'type' => 'activeplayer',
-		'possibleactions' => ['actDraw', 'actDiscard'],
+		'possibleactions' => ['actDraw', 'actDiscard', 'actDrawMultiple', 'actDiscardMultiple'],
 		'args' => 'argResolveBucket',
 		'transitions' => ['next' => STATE_RESOLVE_BUCKET_HELPER, 'again' => STATE_RESOLVE_BUCKET],
 	), 
