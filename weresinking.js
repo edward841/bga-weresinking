@@ -484,8 +484,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				case 'resolveBucket':
 					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Draw'))
 					{
-						this.waterColumn.setSelectionMode('single', args.args.possibleToDraw);
+						this.waterColumn.setSelectionMode('single');
 						this.waterColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+					}
+					break;
+				case 'resolvePlunder': 
+					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Draw'))
+					{
+						this.treasureColumn.setSelectionMode('single');
+						this.treasureColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
 					}
 					break;
 				case 'resolvePatch':
@@ -530,6 +537,20 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					}
 					break;
             }
+			if (this.isCurrentPlayerActive())
+			{
+				console.log('PossibleActions:', args.args.possibleActions);
+				if (args.args.possibleActions.includes('Draw') && args.args.location == 'deck')
+				{
+					this.waterDeck.setSelectionMode('single');
+					this.waterDeck.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+				}
+				if (args.args.possibleActions.includes('Discard'))
+				{
+					this.playerHand.setSelectionMode('single');
+					this.playerHand.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+				}
+			}
         },
 
         // onLeavingState: this method is called each time we are leaving a game state.
@@ -544,12 +565,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				case 'resolveBucket': 
 					this.waterColumn.setSelectionMode('none');
 					break;
+				case 'resolvePlunder':
+					this.treasureColumn.setSelectionMode('none');
+					break;
 				case 'resolvePatch': 
 					this.resetBreachesSelection();
 					this.bustedCannons.setSelectionMode('none');
 					this.breaches.setSelectionMode('none');
+					this.playerHand.setSelectionMode('none');
+					this.waterDeck.setSelectionMode('none');
 					break;
-
 				case 'resolveFire':
 					this.playerHand.setSelectionMode('none');
 					this.operationalCannons.setSelectionMode('none');	
@@ -620,11 +645,18 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 							this.statusBar.addActionButton(_('Draw'), () => {this.bgaPerformAction('actDraw', {cardId: this.waterColumn.getSelection()[0].id, location: 'waterColumn'})}, {color: 'primary', disabled: this.waterColumn.getSelection().length == 0});
 						break;
 					case 'resolvePlunder':
+						if (args.possibleActions.includes('Draw'))
+							this.statusBar.addActionButton(_('Draw'), () => {this.bgaPerformAction('actDraw',{cardId: this.treasureColumn.getSelection()[0].id, location: 'treasureColumn'})}, {color: 'primary', disabled: this.treasureColumn.getSelection().length == 0});
 						if (args.possibleActions.includes('Pass'))
 							this.statusBar.addActionButton(_('Pass'), () => {this.bgaPerformAction('actPass');}, {color: 'secondary'});
 						break;
 
 					case 'resolvePatch':
+						if (args.possibleActions.includes('Draw') && args.location == 'deck')
+							this.statusBar.addActionButton(_('Draw'), () => {
+								this.waterDeck.setSelectionMode('none');
+								this.bgaPerformAction('actDraw', {cardId: 0, location: 'deck'});
+							}, {color: 'primary', disabled: this.waterDeck.getSelection().length == 0});
 						if (args.possibleActions.includes('Patch'))
 							this.statusBar.addActionButton(_('Patch'), () => {
 								card = this.bustedCannons.getSelection().concat(this.breaches.getSelection())[0];
@@ -665,7 +697,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 							this.statusBar.addActionButton(_('Pass'), () => this.bgaPerformAction("actPass"), { color: 'secondary' }); 
 						if (possibleActions.includes("Draw") && this.tempCards != null)
 							this.statusBar.addActionButton(_('Draw Card(s)'), () => 
-									this.bgaPerformAction('actDrawMultiple', {'cardIds': this.tempCards.getSelection().map(card => card.id), 'location': 'skullsairsStash',})
+									this.bgaPerformAction('actDrawMultiple', {'cardIds': this.tempCards.getSelection().map(card => card.id), 'location': 'skullsairsStash', 'exactly': false})
 								, {color: 'primary', disabled: this.tempCards.getSelection().length == 0});
 						break;
 
@@ -673,6 +705,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //						const currentAction = args.possibleActions[0];
 //						this.statusBar.addActionButton(_(currentAction), () => this.bgaPerformAction("act" + currentAction, {cardId: }));
                 }
+
+				if (args.possibleActions.includes('Discard'))
+					this.statusBar.addActionButton(_('Discard'), () => {
+						this.bgaPerformAction('actDiscard', {cardId: this.playerHand.getSelection()[0].id});
+						this.playerHand.setSelectionMode('none');
+					}, {color: 'primary', disabled: this.playerHand.getSelection().length == 0});
             }
         },        
 

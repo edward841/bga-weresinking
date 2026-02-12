@@ -2543,7 +2543,6 @@ class Game extends \Table
 
 	public function theSkullsairsReactsToDamage(): void 
 	{
-		var_dump('Running theSkullsairsReactsToDamage...');
 		$playerId = $this->getActivePlayerId();
 		$nbr = $this->globals->inc('COUNTER', 1);
 		// TODO Maybe it would make more sense to move this notif elsewhere? If the player deals multiple damage in one turn then this would display for each damage with different values of nbr...
