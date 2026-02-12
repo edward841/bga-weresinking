@@ -292,7 +292,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
 				// Front side is operational, backside is busted
-				onCardClick: (card) => this.onCardClick('cannon', card),
+///* FLAG */		onCardClick: (card) => this.onCardClick('cannon', card),
 				isCardVisible: (card) => card.location === 'cannonsColumn',
 				cardWidth: this.cardWidth,
 				cardHeight: this.cardHeight,
@@ -309,7 +309,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
 				setupBackDiv: (card, div) => {},
-				onCardClick: (card) => this.onCardClick('breach', card),
+///* FLAG */		onCardClick: (card) => this.onCardClick('breach', card),
 				isCardVisible: (card) => card.location === 'breachesColumn',
 				cardWidth: this.cardWidth,
 				cardHeight: this.cardHeight,
@@ -335,7 +335,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			const gapBetweenCannonsAndBreaches = (gamedatas.globals.permanentBreaches > 0) ? 30 : 20;
 
 			this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, gamedatas.deckCount.water);
-			this.waterDeck.onCardClick = (card) => {this.onCardClick('deck', card);};
+///* FLAG */	this.waterDeck.onCardClick = (card) => {this.onCardClick('deck', card);};
 			
 			this.waterDiscard = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('waterDiscardPile'), {});
 			this.waterDiscard.addCards(gamedatas.discardDeck);
@@ -350,7 +350,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				autoPlace: card => card.location === 'hand' && card.location_arg === this.player_id,
 				//fanShaped: true,
 			});
-			this.playerHand.onCardClick = (card) => {this.onCardClick('myHand', card);};
+///* FLAG */	this.playerHand.onCardClick = (card) => {this.onCardClick('myHand', card);};
 			this.playerHand.onSelectionChange = (selection, lastChange) => this.updatePageTitle();
 
 			//this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);	
@@ -415,7 +415,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			stock.setSelectionMode('none');
 
 			// Event listener for user clicks
-			stock.onCardClick = (card) => {this.onCardClick(divId, card);};
+///* FLAG */	stock.onCardClick = (card) => {this.onCardClick(divId, card);};
 
 			// Correct formatting when cards are removed (otherwise the tops of the cards will still be offset for the stock and the whitespace will be all wrong)
 			stock.onCardRemoved = (card) => {
@@ -481,6 +481,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         {
             switch(stateName)
             {
+				case 'resolveBucket':
+					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Draw'))
+					{
+						this.waterColumn.setSelectionMode('single', args.args.possibleToDraw);
+						this.waterColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+					}
+					break;
 				case 'resolvePatch':
 					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Patch'))
 					{
@@ -534,6 +541,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             
             switch(stateName)
             {
+				case 'resolveBucket': 
+					this.waterColumn.setSelectionMode('none');
+					break;
 				case 'resolvePatch': 
 					this.resetBreachesSelection();
 					this.bustedCannons.setSelectionMode('none');
@@ -592,7 +602,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //
 //                    // Add test action buttons in the action status bar, simulating a card click:
 //                    playableCardsIds.forEach(
-//                        cardId => this.statusBar.addActionButton(_('Play card with id ${card_id}').replace('${card_id}', cardId), () => this.onCardClick(cardId))
+/* FLAG *///                        cardId => this.statusBar.addActionButton(_('Play card with id ${card_id}').replace('${card_id}', cardId), () => this.onCardClick(cardId))
 //                    ); 
 //
 //                    this.statusBar.addActionButton(_('Pass'), () => this.bgaPerformAction("actPass"), { color: 'secondary' }); 
@@ -605,7 +615,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						if (args.possibleActions.includes('fire'))
 							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actDeclareDial", {value: 'fire', location: 'fire'}));
 						break;
-
+					case 'resolveBucket': 
+						if (args.possibleActions.includes('Draw'))
+							this.statusBar.addActionButton(_('Draw'), () => {this.bgaPerformAction('actDraw', {cardId: this.waterColumn.getSelection()[0].id, location: 'waterColumn'})}, {color: 'primary', disabled: this.waterColumn.getSelection().length == 0});
+						break;
 					case 'resolvePlunder':
 						if (args.possibleActions.includes('Pass'))
 							this.statusBar.addActionButton(_('Pass'), () => {this.bgaPerformAction('actPass');}, {color: 'secondary'});
@@ -792,28 +805,28 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         */
 		onCardClick: function(parentDiv, card)
 		{
-			console.log(`Clicked card of type ${parentDiv}`);	
-			if (!this.current_player_is_active)
-				return;
-	
-
-			// Active player is attempting to take their turn
-			// We need to verify that this move is allowed and then hand it off to backend
-			const args = this.gamedatas.gamestate.args;
-
-			// Intervene for deck, there is only one option of what that card could be
-			if (parentDiv === 'deck')
-				card = {'id': args.possibleIdsDraw[0], 'type': 'backside', 'type_arg': '0'};
-			console.log('printing the card:');
-			console.log(card);
-
-			// TODO Consider keeping these additional safety checks in the final version? Would make troubleshooting harder right now tho
-			if (args.possibleActions.includes('Draw') && parentDiv === args.location) //&& args.possibleIdsDraw.includes(parseInt(card.id)))
-				this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv,});
-			else if (args.possibleActions.includes('Discard') && parentDiv === 'myHand') //&& args.possibleIdsDiscard.includes(parseInt(card.id)))
-				this.bgaPerformAction('actDiscard', {cardId: card.id});
-			else if (args.possibleActions.includes('TemptingTune') && parentDiv === 'deck')
-				this.bgaPerformAction('actTemptingTune', {});
+//			console.log(`Clicked card of type ${parentDiv}`);	
+//			if (!this.current_player_is_active)
+//				return;
+//	
+//
+//			// Active player is attempting to take their turn
+//			// We need to verify that this move is allowed and then hand it off to backend
+//			const args = this.gamedatas.gamestate.args;
+//
+//			// Intervene for deck, there is only one option of what that card could be
+//			if (parentDiv === 'deck')
+//				card = {'id': args.possibleIdsDraw[0], 'type': 'backside', 'type_arg': '0'};
+//			console.log('printing the card:');
+//			console.log(card);
+//
+//			// TODO Consider keeping these additional safety checks in the final version? Would make troubleshooting harder right now tho
+//			if (args.possibleActions.includes('Draw') && parentDiv === args.location) //&& args.possibleIdsDraw.includes(parseInt(card.id)))
+//				this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv,});
+//			else if (args.possibleActions.includes('Discard') && parentDiv === 'myHand') //&& args.possibleIdsDiscard.includes(parseInt(card.id)))
+//				this.bgaPerformAction('actDiscard', {cardId: card.id});
+//			else if (args.possibleActions.includes('TemptingTune') && parentDiv === 'deck')
+//				this.bgaPerformAction('actTemptingTune', {});
 		},
 
         

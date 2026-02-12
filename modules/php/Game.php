@@ -632,7 +632,7 @@ class Game extends \Table
 			$possibleIds = implode(',', $args['possibleIdsDraw']);
 			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
 		}
-		else if (in_array('possibleToDraw', array_keys($args)) && !in_array($cardId, array_column($args['possibleToDraw'], 'id'), true))
+		else if (in_array('possibleToDraw', array_keys($args)) && !in_array($cardId, array_column($args['possibleToDraw'], 'id')))
 		{
 			$possibleIds = implode(',', array_column($args['possibleToDraw'], 'id'));
 			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
@@ -1106,7 +1106,7 @@ class Game extends \Table
 
 		// We only really need the card ids, all the other info is not necessary
 		if ($flag)
-			$args['possibleIdsDraw'] = array_keys($this->water->getCardsInLocation('waterColumn'));
+			$args['possibleToDraw'] = $this->obfuscateCards(array_keys($this->water->getCardsInLocation('waterColumn')));
 		else
 			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->getActivePlayerId()));
 
@@ -2110,6 +2110,20 @@ class Game extends \Table
 		$this->globals->set('LIST', $list);
 		return true;
 	}
+	
+	public function obfuscateCard(int $id)
+	{
+		return ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
+	}
+
+	public function obfuscateCards(array $ids)
+	{
+		$cards = [];
+		foreach ($ids as $id)
+			$cards[] = $this->obfuscateCard($id);
+		return $cards;
+	}
+	// (End of Helper functions)
 
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Basic Enemy Dice:
