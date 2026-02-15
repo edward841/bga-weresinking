@@ -252,11 +252,16 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stUpkeep',
-		'transitions' => ['' => STATE_CHECK_FOR_BREACHES],
+		'transitions' => ['anotherRound' => STATE_CHECK_FOR_BREACHES, 'gameEnd' => STATE_END_GAME_SCORING],
 	),
 
-//	STATE_END_GAME_SCORING => array(
-//	),
+	STATE_END_GAME_SCORING => array(
+		'name' => 'endGameScoring',
+		'description' => '',
+		'type' => 'game',
+		'action' => 'stEndGameScoring',
+		'transitions' => ['' => STATE_END_GAME],
+	),
 
     // Final state.
     // Please do not modify (and do not overload action/args methods).

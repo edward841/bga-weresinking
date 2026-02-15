@@ -265,6 +265,7 @@ $this->tokens = [
 		'clearWater' => [
 			'name' => clienttranslate('Clear Water'),
 			'type' => 'water',
+			'value' => 0,
 			'remove' => [
 				3 => 15,
 				4 => 10,
@@ -428,14 +429,14 @@ $this->tokens = [
 		'treasureMap' => [
 			'name' => clienttranslate('Treasure Map'),
 			'type' => 'item',
-			'value' => -1,
+			'value' => '*',
 			'trigger' => 'none',
 			'text' => clienttranslate('Worth 5 Victory points if you have no Clear Water cards in your hand.'),
 			],
 		'waterFlask' => [
 			'name' => clienttranslate('Water Flask'),
 			'type' => 'item',
-			'value' => -1,
+			'value' => '*',
 			'trigger' => 'none',
 			'text' => clienttranslate('Worth 1 Victory point for each Clear Water card in your hand.'),
 			],
@@ -518,7 +519,7 @@ $this->tokens = [
 			'type' => 'enemy item',
 			'enemy' => 'Skullsairs',
 			'quantity' => 6,
-			'value' => 0,
+			'value' => '*',
 			'trigger' => 'none',
 			'text' => clienttranslate('Collect more for a combined value: 1=1VP, 2=4VP, 4=12VP, 6=24VP.'),
 			],
