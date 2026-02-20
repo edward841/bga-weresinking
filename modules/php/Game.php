@@ -100,7 +100,7 @@ class Game extends \Table
 			// TODO Implement chests...
 
 			// STEP 3: Move the Threshold Sheet to the next level
-			$this->globals->inc('THRESHOLD_LEVEL', 1);
+			$thresholdLevel = $this->globals->inc('THRESHOLD_LEVEL', 1);
 
 			// STEP 4: Shuffle all cards in the Water deck, disard pile, and water and treasure columns to create a new water deck
 			$this->water->moveAllCardsInLocation('discard', 'deck');
@@ -121,7 +121,7 @@ class Game extends \Table
 		else 
 			$this->notify->all('checkWaterThreshold', clienttranslate('The number of cards is less than the Water Threshold. Continue on to the Threat Phase'));
 
-		$this->gamestate->nextState();
+		($thresholdLevel <= 4) ? $this->gamestate->nextState('next') : $this->gamestate->nextState('endGame');
 	}	
 	
 	public function stDealWaterAndTreasure()
@@ -567,7 +567,9 @@ class Game extends \Table
 		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
 		$this->globals->set('SIRENS_SCREECH', false);
 
-		$this->gamestate->nextState('anotherRound');
+		// If we have met either end game condition, proceed to game end. Else start a new round
+		($this->globals->get('ENEMY_HP') > 0 && $this->globals->get('THRESHOLD_LEVEL') <= 4) ? 
+			$this->gamestate->nextState('anotherRound') : $this->gamestate->nextState('endGame');
 	}
 
 	public function stEndGameScoring()

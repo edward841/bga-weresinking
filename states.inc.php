@@ -103,7 +103,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stCheckWaterThreshold',
-		'transitions' => ['' => STATE_DEAL_WATER_AND_TREASURE],
+		'transitions' => ['next' => STATE_DEAL_WATER_AND_TREASURE, 'endGame' => STATE_UPKEEP],
 	),
 
 	STATE_DEAL_WATER_AND_TREASURE => array(
@@ -244,7 +244,7 @@ $machinestates = [
 		'type' => 'activeplayer',
 		'possibleactions' => ['actFire', 'actShootYeTreasure', 'actDraw', 'actDrawMultiple', 'actPass'],
 		'args' => 'argResolveFire',
-		'transitions' => ['next' => STATE_RESOLVE_FIRE_HELPER, 'again' => STATE_RESOLVE_FIRE],
+		'transitions' => ['next' => STATE_RESOLVE_FIRE_HELPER, 'again' => STATE_RESOLVE_FIRE, 'endGame' => STATE_UPKEEP],
 	),
 
 	STATE_UPKEEP => array(
