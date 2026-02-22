@@ -575,73 +575,26 @@ class Game extends \Table
 	public function stEndGameScoring()
 	{
 		var_dump('END GAME SCORING HERE');
-		$enemyDefeated = $this->globals->get('ENEMY_HP') == 6;
+		$enemyDefeated = $this->globals->get('ENEMY_HP') <= 0;
 		$shipSinks = $this->globals->get('THRESHOLD_LEVEL') > 4;
 		if (!$enemyDefeated && !$shipSinks)
 			throw new \BgaSystemException('stEndGameScoring: Enemy not defeated and ship not sunk! Should not be here!');
-
-		$handCounts = $this->water->countCardsByLocationArgs('hand');
-		$pointCounts = array();
-		foreach (array_keys($handCounts) as $id)
-		{
-			$playerHand = array_column($this->water->getPlayerHand($id), 'card_type');
-			$counts = array_count_values($playerHand);
-			foreach ($playerHand as $cardName)
-			{
-				$pointCount = 0;
-				$value = $this->tokens['waterDeck'][$cardName]['value'];
-				if (is_numeric($value))
-					$pointCount += $value;
-				else if ($value === '*')
-				{
-					switch ($cardName)
-					{
-						case 'waterFlask':
-							if (array_key_exists('clearWater', $counts))
-								$pointCount += $counts['clearWater'];
-							break;
-						case 'treasureMap':
-							if (!array_key_exists('clearWater', $counts))
-								$pointCount += 5;
-							break;
-
-						// We score the first cursed amulet for the whole collection and score all the other amulets at 0
-						case 'cursedAmulet':
-							$pointCount += [0 => 0, 1 => 1, 2 => 4, 4 => 12, 6 => 24][$counts['cursedAmulet']];
-							$counts['cursedAmulet'] = 0;
-							break;
-					}
-				}
-				else
-					throw new \BgaSystemException("stEndGameScoring: value of $cardName is <$value>, neither numeric nor '*'");
-
-				if ($cardName === 'rubberDucky' && array_key_exists('clearWater', $counts))
-					$handCounts[$id] -= $counts['clearWater'];
-				
-				$pointCounts[$id] = $pointCount;
-			}
-		}
 		
-		// If $enemyDefeated then greatest pointCount wins and least handCount is tiebreaker
-		if ($enemyDefeated)
-		{
-			foreach ($pointCounts as $id => $pointCount)
-				$this->bga->playerScore->set($id, $pointCount);
-			foreach ($handCounts as $id => $handCount)
-				$this->bga->playerScoreAux->set($id, $handCount);
-		}	
-		// If $shipSinks then least handCount wins and greatest pointCount is tiebreaker
-		else
-		{
-			foreach ($handCounts as $id => $handCount)
-				$this->bga->playerScore->set($id, $handCount);
-			foreach ($pointCounts as $id => $pointCount)
-				$this->bga->playerScoreAux->set($id, $pointCount);
-		}
+		$endScores = $this->getEndScores();
 
+		// If $enemyDefeated then greatest pointCount wins and least handCount is tiebreaker
+		// If $shipSinks then least handCount wins and greatest pointCount is tiebreaker
+		foreach ($endScores as $id => $details)
+		{
+			$this->bga->playerScore->set($id, $enemyDefeated ? $details['pointCount'] : $details['handCount']);
+			$this->bga->playerScoreAux->set($id, $enemyDefeated ? $details['handCount'] : $details['pointCount']);
+		}
+		$this->notify->all('endScores', '', ['endScores' => $endScores]);
+
+		// Straight from the docs for how to handle reverse scoring or reverse aux scoring (https://en.doc.boardgamearena.com/Main_game_logic:_Game.php#Tie_breaker)
 		$playersDb = $this->game->getCollectionFromDb("SELECT * FROM `player`");
 		$players = Player::fromPlayersDb($playersDb);
-		return ($enemyDefeated) ? GameResult::individualRanking($players, reverseScoreAux: true) : GameResult::individualRanking($players, reverseScore: true);
+		return $enemyDefeated ? GameResult::individualRanking($players, reverseScoreAux: true) : GameResult::individualRanking($players, reverseScore: true);
 	}
 	
 	public function actDeclareDial(string $value, string $location)
@@ -1566,6 +1519,10 @@ class Game extends \Table
 		// Developer Help: (may want to delete or comment for final version)
 		$result['constants'] = get_defined_constants(true)['user'];
 
+		// Straight from the docs on how to handle end game scoring (https://en.doc.boardgamearena.com/BgaScoreSheet)
+		$isEndScore = intval($this->gamestate->state_id()) >= STATE_END_GAME;
+		$result['endScores'] = $isEndScore ? $this->getEndScores() : null;
+
         return $result;
     }
 
@@ -2223,7 +2180,51 @@ class Game extends \Table
 //		foreach ($ids as $id)
 //			$cards[] = $this->obfuscateCard($id);
 //		return $cards;
-//	}
+	//	}
+	
+	public function getEndScores(): array	
+	{
+		$endScores = array();
+		foreach (array_keys($this->loadPlayersBasicInfos()) as $id)
+		{
+			$playerHand = array_column($this->water->getPlayerHand($id), 'card_type');
+			$counts = array_count_values($playerHand);
+			$endScores[$id] = ['handCount' => count($playerHand), 'pointCount' => 0];
+			foreach ($playerHand as $cardName)
+			{
+				$value = $this->tokens['waterDeck'][$cardName]['value'];
+				if (is_numeric($value))
+					$endScores[$id]['pointCount'] += $value;
+				else if ($value === '*')
+				{
+					switch ($cardName)
+					{
+						case 'waterFlask':
+							if (array_key_exists('clearWater', $counts))
+								$endScores[$id]['pointCount'] += $counts['clearWater'];
+							break;
+						case 'treasureMap':
+							if (!array_key_exists('clearWater', $counts))
+								$endScores[$id]['pointCount'] += 5;
+							break;
+
+						// We score the first cursed amulet for the whole collection and score all the other amulets at 0
+						case 'cursedAmulet':
+							$endScores[$id]['pointCount'] += [0 => 0, 1 => 1, 2 => 4, 4 => 12, 6 => 24][$counts['cursedAmulet']];
+							$counts['cursedAmulet'] = 0;
+							break;
+					}
+				}
+				else
+					throw new \BgaSystemException("stEndGameScoring: value of $cardName is <$value>, neither numeric nor '*'");
+
+				if ($cardName === 'rubberDucky' && array_key_exists('clearWater', $counts))
+					$endScores[$id]['handCount'] -= $counts['clearWater'];
+			}
+		}
+		return $endScores;
+	}	
+
 	// (End of Helper functions)
 
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
