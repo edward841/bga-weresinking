@@ -16,7 +16,9 @@
  */
 declare(strict_types=1);
 namespace Bga\Games\weresinking;
-use \Bga\GameFramework\Actions\Types\IntArrayParam;
+use Bga\GameFramework\Actions\Types\IntArrayParam;
+use Bga\GameFramework\GameResult\GameResult;
+use Bga\GameFramework\GameResult\Player;
 
 require_once(APP_GAMEMODULE_PATH . "module/table/table.game.php");
 
@@ -569,12 +571,12 @@ class Game extends \Table
 
 		// If we have met either end game condition, proceed to game end. Else start a new round
 		($this->globals->get('ENEMY_HP') > 0 && $this->globals->get('THRESHOLD_LEVEL') <= 4) ? 
-			$this->gamestate->nextState('anotherRound') : $this->gamestate->nextState('endGame');
+			$this->gamestate->nextState('anotherRound') : $this->gamestate->nextState('gameEnd');
 	}
 
 	public function stEndGameScoring()
 	{
-		var_dump('END GAME SCORING HERE');
+		//var_dump('END GAME SCORING HERE');
 		$enemyDefeated = $this->globals->get('ENEMY_HP') <= 0;
 		$shipSinks = $this->globals->get('THRESHOLD_LEVEL') > 4;
 		if (!$enemyDefeated && !$shipSinks)
@@ -592,7 +594,7 @@ class Game extends \Table
 		$this->notify->all('endScores', '', ['endScores' => $endScores]);
 
 		// Straight from the docs for how to handle reverse scoring or reverse aux scoring (https://en.doc.boardgamearena.com/Main_game_logic:_Game.php#Tie_breaker)
-		$playersDb = $this->game->getCollectionFromDb("SELECT * FROM `player`");
+		$playersDb = $this->getCollectionFromDB("SELECT * FROM `player`");
 		$players = Player::fromPlayersDb($playersDb);
 		return $enemyDefeated ? GameResult::individualRanking($players, reverseScoreAux: true) : GameResult::individualRanking($players, reverseScore: true);
 	}
@@ -1843,6 +1845,14 @@ class Game extends \Table
 			'playerNbr' => $this->getPlayersNumber(),
 			'thresholdLevel' => $this->globals->get('THRESHOLD_LEVEL'),
 		));
+	}
+
+	#[Debug(reload: true)]
+	public function debug_gameEnd()
+	{
+		$this->pickCardsForWaterColumn(5);
+		$this->globals->set('ENEMY_HP', 1);
+		$this->globals->set('THRESHOLD_LEVEL', 4);
 	}
 
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
