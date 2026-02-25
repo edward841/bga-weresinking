@@ -23,7 +23,6 @@ define([
 	getLibUrl('bga-animations', '1.x'),
 	getLibUrl('bga-cards', '1.x'),
 	getLibUrl('bga-dice', '1.x'),
-	getLibUrl('bga-score-sheet', '1.x'),
 ],
 function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDice, BgaScoreSheet) {
     return declare("bgagame.weresinking", ebg.core.gamegui, {
@@ -127,10 +126,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				<b id="sirensScreechDialsLabel">${_('Declared Dials')}</b>
 				<div id="sirensScreechDials"></div>
 			</div>
-			<div id="myHandWrapper" class="whiteblock">
-				<b id="myHandLabel">${_('My hand')}</b>
-				<div id="myHand"></div>
-			</div>
+				<div id="myHandWrapper" class="whiteblock">
+					<b id="myHandLabel">${_('My hand')}</b>
+					<div id="myHand"></div>
+				</div>
+			<div id="otherHands"></div>
 			<div id="myCharacterWrapper" class="whiteblock">
 				<b id="myCharacterLabel">${_('My character')}</b>
 				<div id="myCharacterItemsWrapper" class="flexRow">
@@ -254,6 +254,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				this.chestSizeCounters[playerId].create('chestSize_' + playerId);
 				this.chestSizeCounters[playerId].setValue(Number(gamedatas.players[playerId].chestSize));
 			}
+
+			if (gamedatas.endScores != null)
+			{
+//				for (let playerId in gamedatas.endScores)
+//					this.bga.playerPanels.getScoreCounter(playerId).setValue(Number(gamedatas.endScores[playerId].pointCount));
+			}
+			if (gamedatas.otherHands != null)
+				this.revealOtherHands(this.gamedatas.otherHands);
 
 			// Score sheet
 //			this.scoreSheet = new BgaScoreSheet.ScoreSheet(
@@ -887,6 +895,24 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.bga.gameArea.removeLastTurnBanner();
 		},
 
+		revealOtherHands: function(hands)
+		{
+			currentPlayer = this.bga.players.getCurrentPlayerId();
+			console.log(currentPlayer);
+			for (let playerId in hands)
+			{
+				console.log(playerId === currentPlayer);
+				if (playerId == currentPlayer)
+					continue;
+				const otherHandWrapper = dojo.create('div', {'id': 'otherHand_'+playerId, 'class': 'whiteblock'}, 'otherHands');
+				otherHandWrapper.innerHTML = `	
+						<b>${_(this.bga.players.getFormattedPlayerName(playerId)+"'s Hand")}</b>
+						<div id="otherHandDiv_${playerId}"></div>`
+				const otherHand = new BgaCards.LineStock(this.waterManager, document.getElementById('otherHandDiv_'+playerId), {});
+				this.populateStock(otherHand, hands[playerId]);
+			}
+		},
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -1321,5 +1347,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 			this.specialLocation.addCard(notif.card);			
 		},
+
+		notif_endScores: function(notif)
+		{
+			console.log('notif_endScores');
+			console.log(notif);
+
+			this.revealOtherHands(notif.hands);
+		}
    });             
 });

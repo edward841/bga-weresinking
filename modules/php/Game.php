@@ -1424,6 +1424,9 @@ class Game extends \Table
 		
         // Gather all information about current game situation (visible by player $currentPlayerId).
 		$globals['threshold'] = $this->globals->get('THRESHOLD_LEVEL');
+		if ($globals['threshold'] > 4) 
+			$globals['threshold'] = 4;
+
 		$globals['enemy'] = $this->globals->get('ENEMY');
 		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
 		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
@@ -1480,7 +1483,7 @@ class Game extends \Table
 		
 		// This player's hand
 		$result['hand'] = $this->water->getPlayerHand($currentPlayerId);
-
+		
 		// Deck info
 		$result['deckCount'] = [
 			'water' => $this->water->countCardInLocation('deck'),
@@ -1521,8 +1524,18 @@ class Game extends \Table
 		$result['constants'] = get_defined_constants(true)['user'];
 
 		// Straight from the docs on how to handle end game scoring (https://en.doc.boardgamearena.com/BgaScoreSheet)
-		$isEndScore = intval($this->gamestate->state_id()) >= STATE_END_GAME;
-		$result['endScores'] = $isEndScore ? $this->getEndScores() : null;
+		$result['endScores'] = null;
+		$result['otherHands'] = null;
+		if (intval($this->gamestate->state_id()) >= STATE_END_GAME)
+		{
+			$result['endScores'] = $this->getEndScores();
+			$result['otherHands'] = array();
+			foreach (array_keys($result['players']) as $id)
+			{
+				if ($id !== $currentPlayerId)
+					$result['otherHands'][$id] = $this->water->getPlayerHand($id);	
+			}
+		}
 
         return $result;
     }
@@ -1847,9 +1860,20 @@ class Game extends \Table
 	}
 
 	#[Debug(reload: true)]
+	public function debug_randomizeHands()
+	{
+		$this->water->moveAllCardsInLocation('hand', 'deck');
+		$this->water->moveAllCardsInLocation('discard', 'deck');
+		$this->water->shuffle('deck');
+		
+		foreach (array_keys($this->loadPlayersBasicInfos()) as $id)
+			$this->water->pickCardsForLocation(\bga_rand(2,10), 'deck', 'hand', $id);
+	}
+
+	#[Debug(reload: true)]
 	public function debug_gameEnd()
 	{
-		$this->pickCardsForWaterColumn(5);
+		$this->pickCardsForWaterColumn(10);
 		$this->globals->set('ENEMY_HP', 1);
 		$this->globals->set('THRESHOLD_LEVEL', 4);
 	}
