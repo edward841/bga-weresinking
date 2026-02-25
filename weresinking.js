@@ -23,8 +23,9 @@ define([
 	getLibUrl('bga-animations', '1.x'),
 	getLibUrl('bga-cards', '1.x'),
 	getLibUrl('bga-dice', '1.x'),
+	getLibUrl('bga-score-sheet', '1.x'),
 ],
-function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDice) {
+function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDice, BgaScoreSheet) {
     return declare("bgagame.weresinking", ebg.core.gamegui, {
         constructor: function(){
             console.log('weresinking constructor');
@@ -253,6 +254,37 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				this.chestSizeCounters[playerId].create('chestSize_' + playerId);
 				this.chestSizeCounters[playerId].setValue(Number(gamedatas.players[playerId].chestSize));
 			}
+
+			// Score sheet
+//			this.scoreSheet = new BgaScoreSheet.ScoreSheet(
+//				document.getElementById(`my-score-sheet`), // an empty div on your template to place the score sheet on
+//				{
+//					animationsActive: () => this.bga.gameui.bgaAnimationsActive(), // so the animation doesn't trigger on replay fast mode
+//					playerNameWidth: 80,
+//					playerNameHeight: 30,
+//					entryLabelWidth: 120,
+//					entryLabelHeight: 20,
+//					classes: 'score-sheet-background',
+//					players: gamedatas.players,
+//					entries: [
+//						{
+//							property: 'pointCount',
+//							label: _('Treasure Cards Point Value'),
+//							labelClasses: 'entries-label',
+//						},
+//						{
+//							property: 'handCount',
+//							label: _('Hand Size'),
+//							labelClasses: 'entries-label',
+//						},
+//					],
+//					scores: gamedatas.endScores, // to defined if the game state is 99, else null, so the score displays directly on reload when the game is ended. If unset, the score sheet will be hidden by default.
+////					onScoreDisplayed: (property, playerId, score) => { // if you want to do something when a score is revealed
+////						if (property === 'total') {
+////							this.bga.playerPanels.getScoreCounter[playerId].setValue(score);
+////						}
+////					},
+//				});
 
             console.log( "Ending game setup" );
         },
