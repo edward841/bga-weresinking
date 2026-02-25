@@ -450,7 +450,7 @@ $this->tokens = [
 		'woodenMallet' => [
 			'name' => clienttranslate('Wooden Mallet'),
 			'type' => 'item',
-			'value' => 0,
+			'value' => 1,
 			'trigger' => 'reveal patch',
 			'text' => clienttranslate('Gain 1 extra Hammer this round.'),
 			],

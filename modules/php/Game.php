@@ -596,6 +596,7 @@ class Game extends \Table
 		// Straight from the docs for how to handle reverse scoring or reverse aux scoring (https://en.doc.boardgamearena.com/Main_game_logic:_Game.php#Tie_breaker)
 		$playersDb = $this->getCollectionFromDB("SELECT * FROM `player`");
 		$players = Player::fromPlayersDb($playersDb);
+		$this->gamestate->nextState('gameEnd');
 		return $enemyDefeated ? GameResult::individualRanking($players, reverseScoreAux: true) : GameResult::individualRanking($players, reverseScore: true);
 	}
 	
@@ -2197,7 +2198,7 @@ class Game extends \Table
 		$endScores = array();
 		foreach (array_keys($this->loadPlayersBasicInfos()) as $id)
 		{
-			$playerHand = array_column($this->water->getPlayerHand($id), 'card_type');
+			$playerHand = array_column($this->water->getPlayerHand($id), 'type');
 			$counts = array_count_values($playerHand);
 			$endScores[$id] = ['handCount' => count($playerHand), 'pointCount' => 0];
 			foreach ($playerHand as $cardName)

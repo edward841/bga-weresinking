@@ -260,7 +260,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stEndGameScoring',
-		'transitions' => ['' => STATE_END_GAME],
+		'transitions' => ['gameEnd' => STATE_END_GAME],
 	),
 
     // Final state.
