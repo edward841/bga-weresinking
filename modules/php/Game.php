@@ -17,8 +17,6 @@
 declare(strict_types=1);
 namespace Bga\Games\weresinking;
 use Bga\GameFramework\Actions\Types\IntArrayParam;
-use Bga\GameFramework\GameResult\GameResult;
-use Bga\GameFramework\GameResult\Player;
 
 require_once(APP_GAMEMODULE_PATH . "module/table/table.game.php");
 
@@ -574,31 +572,31 @@ class Game extends \Table
 			$this->gamestate->nextState('anotherRound') : $this->gamestate->nextState('gameEnd');
 	}
 
-	public function stEndGameScoring()
-	{
-		//var_dump('END GAME SCORING HERE');
-		$enemyDefeated = $this->globals->get('ENEMY_HP') <= 0;
-		$shipSinks = $this->globals->get('THRESHOLD_LEVEL') > 4;
-		if (!$enemyDefeated && !$shipSinks)
-			throw new \BgaSystemException('stEndGameScoring: Enemy not defeated and ship not sunk! Should not be here!');
-		
-		$endScores = $this->getEndScores();
-
-		// If $enemyDefeated then greatest pointCount wins and least handCount is tiebreaker
-		// If $shipSinks then least handCount wins and greatest pointCount is tiebreaker
-		foreach ($endScores as $id => $details)
-		{
-			$this->bga->playerScore->set($id, $enemyDefeated ? $details['pointCount'] : $details['handCount']);
-			$this->bga->playerScoreAux->set($id, $enemyDefeated ? $details['handCount'] : $details['pointCount']);
-		}
-		$this->notify->all('endScores', '', ['endScores' => $endScores]);
-
-		// Straight from the docs for how to handle reverse scoring or reverse aux scoring (https://en.doc.boardgamearena.com/Main_game_logic:_Game.php#Tie_breaker)
-		$playersDb = $this->getCollectionFromDB("SELECT * FROM `player`");
-		$players = Player::fromPlayersDb($playersDb);
-		$this->gamestate->nextState('gameEnd');
-		return $enemyDefeated ? GameResult::individualRanking($players, reverseScoreAux: true) : GameResult::individualRanking($players, reverseScore: true);
-	}
+//	public function stEndGameScoring()
+//	{
+//		//var_dump('END GAME SCORING HERE');
+//		$enemyDefeated = $this->globals->get('ENEMY_HP') <= 0;
+//		$shipSinks = $this->globals->get('THRESHOLD_LEVEL') > 4;
+//		if (!$enemyDefeated && !$shipSinks)
+//			throw new \BgaSystemException('stEndGameScoring: Enemy not defeated and ship not sunk! Should not be here!');
+//		
+//		$endScores = $this->getEndScores();
+//
+//		// If $enemyDefeated then greatest pointCount wins and least handCount is tiebreaker
+//		// If $shipSinks then least handCount wins and greatest pointCount is tiebreaker
+//		foreach ($endScores as $id => $details)
+//		{
+//			$this->bga->playerScore->set($id, $enemyDefeated ? $details['pointCount'] : $details['handCount']);
+//			$this->bga->playerScoreAux->set($id, $enemyDefeated ? $details['handCount'] : $details['pointCount']);
+//		}
+//		$this->notify->all('endScores', '', ['endScores' => $endScores]);
+//
+//		// Straight from the docs for how to handle reverse scoring or reverse aux scoring (https://en.doc.boardgamearena.com/Main_game_logic:_Game.php#Tie_breaker)
+//		$playersDb = $this->getCollectionFromDB("SELECT * FROM `player`");
+//		$players = Player::fromPlayersDb($playersDb);
+//		$this->gamestate->nextState('gameEnd');
+//		return $enemyDefeated ? GameResult::individualRanking($players, reverseScoreAux: true) : GameResult::individualRanking($players, reverseScore: true);
+//	}
 	
 	public function actDeclareDial(string $value, string $location)
 	{
