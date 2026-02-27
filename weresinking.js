@@ -261,7 +261,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //					this.bga.playerPanels.getScoreCounter(playerId).setValue(Number(gamedatas.endScores[playerId].pointCount));
 			}
 			if (gamedatas.otherHands != null)
-				this.revealOtherHands(this.gamedatas.otherHands);
+				this.displayGameState(this.gamedatas.otherHands, this.gamedatas.globals.ENEMY_HP >= 0);
 
 			// Score sheet
 //			this.scoreSheet = new BgaScoreSheet.ScoreSheet(
@@ -895,8 +895,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.bga.gameArea.removeLastTurnBanner();
 		},
 
-		revealOtherHands: function(hands)
+		displayGameState: function(hands, enemyDefeated)
 		{
+			// Display Other Players' Hands
 			currentPlayer = this.bga.players.getCurrentPlayerId();
 			console.log(currentPlayer);
 			for (let playerId in hands)
@@ -911,6 +912,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				const otherHand = new BgaCards.LineStock(this.waterManager, document.getElementById('otherHandDiv_'+playerId), {});
 				this.populateStock(otherHand, hands[playerId]);
 			}
+
+			// Display Game End Condition
+			this.bga.gameArea.addWinConditionBanner(enemyDefeated ? _('THE ENEMY IS DEFEATED') : _('THE SHIP SINKS'));
 		},
 
         ///////////////////////////////////////////////////
@@ -1353,7 +1357,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_endScores');
 			console.log(notif);
 
-			this.revealOtherHands(notif.hands);
+			this.displayGameState(notif.hands, notif.enemyDefeated);
 		}
    });             
 });

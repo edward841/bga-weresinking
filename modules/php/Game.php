@@ -1067,7 +1067,7 @@ class Game extends \Table
 
 		$this->fireCannons($args['operableCannons']);
 		$this->globals->set('FLAG', false);		
-		$this->gamestate->nextState('again');
+		($this->globals->get('ENEMY_HP') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('endGame');
 	}
 
 	public function actShootYeTreasure(int $cardId, int $cannonId)
@@ -1102,7 +1102,7 @@ class Game extends \Table
 		if (!$this->fireCannons(array($cannonId)))
 			$this->addToLIST($cannonId);
 
-		$this->gamestate->nextState('again');
+		($this->globals->get('ENEMY_HP') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('endGame');
 	}
 
 	public function actPass()
@@ -1423,12 +1423,11 @@ class Game extends \Table
 		$result['dials'] = $dials;
 		
         // Gather all information about current game situation (visible by player $currentPlayerId).
+		$globals['enemy'] = $this->globals->get('ENEMY');
+		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
 		$globals['threshold'] = $this->globals->get('THRESHOLD_LEVEL');
 		if ($globals['threshold'] > 4) 
 			$globals['threshold'] = 4;
-
-		$globals['enemy'] = $this->globals->get('ENEMY');
-		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
 		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
 		$globals['firstMate'] = $this->globals->get('FIRST_MATE');
 
@@ -2243,7 +2242,7 @@ class Game extends \Table
 
 						// We score the first cursed amulet for the whole collection and score all the other amulets at 0
 						case 'cursedAmulet':
-							$endScores[$id]['pointCount'] += [0 => 0, 1 => 1, 2 => 4, 4 => 12, 6 => 24][$counts['cursedAmulet']];
+							$endScores[$id]['pointCount'] += [0 => 0, 1 => 1, 2 => 4, 3 => 4, 4 => 12, 5 => 12, 6 => 24][$counts['cursedAmulet']];
 							$counts['cursedAmulet'] = 0;
 							break;
 					}
