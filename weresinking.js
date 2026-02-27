@@ -24,7 +24,7 @@ define([
 	getLibUrl('bga-cards', '1.x'),
 	getLibUrl('bga-dice', '1.x'),
 ],
-function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDice) {
+function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDice, BgaScoreSheet) {
     return declare("bgagame.weresinking", ebg.core.gamegui, {
         constructor: function(){
             console.log('weresinking constructor');
@@ -45,10 +45,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.waterDiscard = null;
 			this.waterColumn = null;
 			this.treasureColumn = null;
-			this.breachDeck = null;
+			this.breachesDeck = null;
 			this.breaches = null;
 			this.operationalCannons = null;
 			this.bustedCannons = null;
+			this.specialLocation = null;
+			this.tempCards = null;
 		
 			// This is the backbone of the getCardUniqueId for easily displaying any given item card.
 			// Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
@@ -74,7 +76,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			var playerCount = Object.values(gamedatas.players).length;
 			console.log( "Starting game setup" );
 			console.log( `Enemy is ${gamedatas.globals.enemy}.`);
-			console.log( `There are ${playerCount} players!`);
+			console.log(gamedatas);
 			const playerColor = gamedatas.players[gamedatas.currentPlayer].color;
 
 			document.getElementById('game_play_area').insertAdjacentHTML('beforeend', `
@@ -119,10 +121,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					<div id="enemyDice"></div>
 				</div>
 			</div>
-			<div id="myHandWrapper" class="whiteblock">
-				<b id="myHandLabel">${_('My hand')}</b>
-				<div id="myHand"></div>
+			<div id="tempWrapper"></div>
+			<div id="sirensScreechDialsWrapper" class="whiteblock hide">
+				<b id="sirensScreechDialsLabel">${_('Declared Dials')}</b>
+				<div id="sirensScreechDials"></div>
 			</div>
+				<div id="myHandWrapper" class="whiteblock">
+					<b id="myHandLabel">${_('My hand')}</b>
+					<div id="myHand"></div>
+				</div>
+			<div id="otherHands"></div>
 			<div id="myCharacterWrapper" class="whiteblock">
 				<b id="myCharacterLabel">${_('My character')}</b>
 				<div id="myCharacterItemsWrapper" class="flexRow">
@@ -135,8 +143,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			</div>
 			`);
 			
-			// Essential Setup: Managers, cards, dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			// create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
+			// Adds the special location if we are playing the shark or skullsairs
+			// (Yes this feels slightly out of place, but it has to be before setupCards call because it attaches a bga-cards object to the div)
+			if (gamedatas.globals.hasOwnProperty('specialLocation'))
+				dojo.create('div', {'id': 'specialLocation', 'class': 'card ' + gamedatas.globals.enemy + ' front'}, 'enemySheetWrapper');
+
+			// Essential Setup: Managers, cards, dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
 			this.animationManager = new BgaAnimations.Manager({
 				animationsActive: () => this.bgaAnimationsActive(),
 			});
@@ -152,6 +164,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.setupNotifications();
 
 			// Additional UI modifications to fine tune the look further ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			// Sirens Screech attack modifies UI slightly if we are currently declaring dials during a Screech attack!
+			if (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech && gamedatas.gamestate.id <= gamedatas.constants.STATE_DECLARE_DIAL)
+				this.addScreechEffect();
+
 			// Add permanent breaches
 			for (let i = 0; i < gamedatas.globals.permanentBreaches; i++)
 			{
@@ -162,23 +178,26 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			if (gamedatas.currentPlayer === gamedatas.globals.firstMate)
 				dojo.create("div", {class: "dutiesChecklist"}, "myCharacterItemsWrapper");
 
-			// Place dials if necessary
-			var parentElement = '';
+			// Place dials if necessary (handling the special case of the screech of course)
 			for (let i = 0; i < gamedatas.dials.length; i++)
 			{
+				var parentElement = (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech) ? 'sirensScreechDials' : '';
 				var dial = gamedatas.dials[i];
 				if (dial['dial_location'] !== 'player')
-					parentElement = this.actionToColumn([dial['dial_location']]) + 'Dials';
-				else if (dial['id'] === gamedatas.currentPlayer + '')
+				{
+					if (parentElement === '' || gamedatas.gamestate.id > gamedatas.constants.STATE_DECLARE_DIAL)
+						parentElement = this.actionToColumn([dial['dial_location']]) + 'Dials';
+				}
+				else if (dial['id'] === (gamedatas.currentPlayer + ''))
 					parentElement = 'myCharacterItemsWrapper';
 				else
-					continue;
+					continue; // For spectators when no dial should be displayed!
 				dojo.create("div", {id: `dial_${dial['id']}`, class: "dial", 'data-value': dial['dial_value'], 'data-color': gamedatas.players[dial['id']].color}, parentElement);
 			}
 
 			// Controls the amount of space for cards (the height of the gap between the board and the player hand)
 			this.correctGapUnderBoard();
-
+			
 			// Add character sheets for my crew
 			for (var player_id in gamedatas.players)
 			{
@@ -236,6 +255,45 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				this.chestSizeCounters[playerId].setValue(Number(gamedatas.players[playerId].chestSize));
 			}
 
+			if (gamedatas.endScores != null)
+			{
+//				for (let playerId in gamedatas.endScores)
+//					this.bga.playerPanels.getScoreCounter(playerId).setValue(Number(gamedatas.endScores[playerId].pointCount));
+			}
+			if (gamedatas.otherHands != null)
+				this.displayGameState(this.gamedatas.otherHands, this.gamedatas.globals.ENEMY_HP >= 0);
+
+			// Score sheet
+//			this.scoreSheet = new BgaScoreSheet.ScoreSheet(
+//				document.getElementById(`my-score-sheet`), // an empty div on your template to place the score sheet on
+//				{
+//					animationsActive: () => this.bga.gameui.bgaAnimationsActive(), // so the animation doesn't trigger on replay fast mode
+//					playerNameWidth: 80,
+//					playerNameHeight: 30,
+//					entryLabelWidth: 120,
+//					entryLabelHeight: 20,
+//					classes: 'score-sheet-background',
+//					players: gamedatas.players,
+//					entries: [
+//						{
+//							property: 'pointCount',
+//							label: _('Treasure Cards Point Value'),
+//							labelClasses: 'entries-label',
+//						},
+//						{
+//							property: 'handCount',
+//							label: _('Hand Size'),
+//							labelClasses: 'entries-label',
+//						},
+//					],
+//					scores: gamedatas.endScores, // to defined if the game state is 99, else null, so the score displays directly on reload when the game is ended. If unset, the score sheet will be hidden by default.
+////					onScoreDisplayed: (property, playerId, score) => { // if you want to do something when a score is revealed
+////						if (property === 'total') {
+////							this.bga.playerPanels.getScoreCounter[playerId].setValue(score);
+////						}
+////					},
+//				});
+
             console.log( "Ending game setup" );
         },
 		
@@ -274,7 +332,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
 				// Front side is operational, backside is busted
-				onCardClick: (card) => this.onCardClick('cannon', card),
+///* FLAG */		onCardClick: (card) => this.onCardClick('cannon', card),
 				isCardVisible: (card) => card.location === 'cannonsColumn',
 				cardWidth: this.cardWidth,
 				cardHeight: this.cardHeight,
@@ -291,7 +349,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
 				},
 				setupBackDiv: (card, div) => {},
-				onCardClick: (card) => this.onCardClick('breach', card),
+///* FLAG */		onCardClick: (card) => this.onCardClick('breach', card),
 				isCardVisible: (card) => card.location === 'breachesColumn',
 				cardWidth: this.cardWidth,
 				cardHeight: this.cardHeight,
@@ -317,10 +375,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			const gapBetweenCannonsAndBreaches = (gamedatas.globals.permanentBreaches > 0) ? 30 : 20;
 
 			this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, gamedatas.deckCount.water);
-			this.waterDeck.onCardClick = (card) => {this.onCardClick('deck', card);};
+///* FLAG */	this.waterDeck.onCardClick = (card) => {this.onCardClick('deck', card);};
 			
-			this.waterDiscard = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('waterDiscardPile'), {
-			});
+			this.waterDiscard = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('waterDiscardPile'), {});
 			this.waterDiscard.addCards(gamedatas.discardDeck);
 
 			this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager);
@@ -333,7 +390,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				autoPlace: card => card.location === 'hand' && card.location_arg === this.player_id,
 				//fanShaped: true,
 			});
-			this.playerHand.onCardClick = (card) => {this.onCardClick('myHand', card);};
+///* FLAG */	this.playerHand.onCardClick = (card) => {this.onCardClick('myHand', card);};
+			this.playerHand.onSelectionChange = (selection, lastChange) => this.updatePageTitle();
 
 			//this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);	
 			this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager, this.bigCardGap);
@@ -341,12 +399,34 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				dojo.style('breaches', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCannonsAndBreaches}px`); 
 				dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); 
 			};
+			this.bustedCannons.setSort((a, b) => a.type - b.type);
 			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager, this.bigCardGap);
 			this.operationalCannons.onCardCountChange = (cardCount) => {dojo.style('cannonsColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCardsAndDials}px`)};
+			this.operationalCannons.onSelectionChange = (selection, lastChange) => this.updatePageTitle();
 
 			this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, gamedatas.deckCount.breaches);
 			this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager, this.bigCardGap);
 			this.breaches.onCardCountChange = (cardCount) => {dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); };
+
+			// Set it up so you cannot select a cannon and breach at the same time
+			this.resetBreachesSelection();
+			this.bustedCannons.onSelectionChange = (selection, lastChanged) => {
+				if (selection.length > 0) 
+					this.breaches.unselectAll();
+				this.updatePageTitle();
+			};
+
+			if (gamedatas.globals.enemy === 'Shark')
+			{
+				this.specialLocation = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('specialLocation'), {});
+				for (i = 0; i < gamedatas.globals.specialLocation; i++)
+					this.specialLocation.addCard({'id': -i, 'type': 'backside', 'type_arg': 0});
+			}
+			else if (gamedatas.globals.enemy === 'Skullsairs')
+			{
+				this.specialLocation = new BgaCards.DiscardDeck(this.waterManager, document.getElementById('specialLocation'), {});
+				gamedatas.globals.specialLocation.forEach((card) => {this.specialLocation.addCard(card)});
+			}
 
 			this.populateStock(this.waterColumn, gamedatas.waterColumn);
 			this.populateStock(this.treasureColumn, gamedatas.treasureColumn);
@@ -375,7 +455,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			stock.setSelectionMode('none');
 
 			// Event listener for user clicks
-			stock.onCardClick = (card) => {this.onCardClick(divId, card);};
+///* FLAG */	stock.onCardClick = (card) => {this.onCardClick(divId, card);};
 
 			// Correct formatting when cards are removed (otherwise the tops of the cards will still be offset for the stock and the whitespace will be all wrong)
 			stock.onCardRemoved = (card) => {
@@ -418,6 +498,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				direction: "column",
 				gap: (this.bigCardGap - this.diceWidth)+'px',
 				perspective: diePerspective,
+				sort: (a, b) => parseInt(a.color.slice(-1)) - parseInt(b.color.slice(-1)),
 			});
 			this.operationalDice = new BgaDice.LineStock(this.diceManager, document.getElementById('operationalDice'), {
 				direction: "column",
@@ -436,27 +517,99 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         // onEnteringState: this method is called each time we are entering into a new game state.
         //                  You can use this method to perform some user interface changes at this moment.
         //
-        onEnteringState: function( stateName, args )
+        onEnteringState: function(stateName, args)
         {
-            console.log( 'Entering state: '+stateName, args );
-            
-            switch( stateName )
+            switch(stateName)
             {
-            
-            /* Example:
-            
-            case 'myGameState':
-            
-                // Show some HTML block at this game state
-                dojo.style( 'my_html_block_id', 'display', 'block' );
-                
-                break;
-           */
-           
-           
-            case 'dummy':
-                break;
+				case 'resolveBucket':
+					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Draw'))
+					{
+						if (args.args.nbr == 1)
+						{
+							this.waterColumn.setSelectionMode('single');
+							this.waterColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+						}
+						else
+						{
+							this.waterColumn.setSelectionMode('multiple');
+							this.waterColumn.onSelectionChange = (selection, lastChange) => {
+								selection.length == args.args.nbr ? this.waterColumn.setSelectableCards(selection) : this.waterColumn.setSelectableCards();
+								this.updatePageTitle();
+							};
+						}
+					}
+					break;
+				case 'resolvePlunder': 
+					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Draw'))
+					{
+						this.treasureColumn.setSelectionMode('single');
+						this.treasureColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+					}
+					break;
+				case 'resolvePatch':
+					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Patch'))
+					{
+						this.bustedCannons.setSelectionMode('single', args.args.possibleToPatch.cannon);	
+						this.breaches.setSelectionMode('single', args.args.possibleToPatch.breach);
+					}
+					else if (args.args.possibleActions.includes('ContributeHammer'))
+					{
+						// Select the breach in question, forcefully disable deselecting the card, and mark everything else as not selectable
+						this.breaches.setSelectionMode('single', [args.args.card]);	
+						this.breaches.selectCard(args.args.card);
+						this.breaches.onSelectionChange = (selection, lastChange) => {if (selection.length == 0) this.breaches.selectCard(args.args.card)};
+						this.bustedCannons.setSelectionMode('single', []);
+					}
+					break;
+
+				case 'resolveFire':
+					if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('ShootYeTreasure'))
+					{
+						this.playerHand.setSelectionMode('single', args.args.possibleDiscard);
+						this.operationalCannons.setSelectionMode('single', args.args.possibleToFireCannons);
+					}
+					else if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('DrawMultiple'))
+					{
+						//dojo.addClass('specialLocation', 'hide');
+						const skullsairsStashElement = dojo.create('div', {'id': 'skullsairsStashWrapper', 'class': 'whiteblock'}, 'tempWrapper');
+						skullsairsStashElement.innerHTML = `	
+								<b id="skullsairsStashLabel">${_('Skullsairs Stash')}</b>
+								<div id="skullsairsStash"></div>`
+						this.tempCards = new BgaCards.LineStock(this.waterManager, document.getElementById('skullsairsStash'), {});
+						this.tempCards.setSelectionMode('multiple');
+						args.args.possibleToDraw.forEach((card) => this.tempCards.addCard(card));
+						this.tempCards.onSelectionChange = (selection, lastChange) => {
+							if (selection.length >= args.args.nbr)
+								this.tempCards.setSelectableCards(selection);
+							else
+								this.tempCards.setSelectableCards();
+							this.updatePageTitle();
+						};
+					}
+					break;
             }
+			if (this.isCurrentPlayerActive())
+			{
+				console.log('PossibleActions:', args.args.possibleActions);
+				if (args.args.possibleActions.includes('Draw') && args.args.location == 'deck')
+				{
+					this.waterDeck.setSelectionMode('single');
+					this.waterDeck.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+				}
+				if (args.args.possibleActions.includes('Discard'))
+				{
+					this.playerHand.setSelectionMode('multiple');
+					this.playerHand.onSelectionChange = (selection, lastChange) => {
+						selection.length == args.args.nbr ? this.playerHand.setSelectableCards(selection) : this.playerHand.setSelectableCards();
+						this.updatePageTitle();
+					};
+				}
+				else if (args.args.possibleActions.includes('Discard'))
+				{
+					this.playerHand.setSelectionMode('single');
+					this.playerHand.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+				}
+			}
         },
 
         // onLeavingState: this method is called each time we are leaving a game state.
@@ -466,8 +619,34 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         {
             console.log( 'Leaving state: '+stateName );
             
-            switch( stateName )
+            switch(stateName)
             {
+				case 'resolveBucket': 
+					this.waterColumn.setSelectionMode('none');
+					this.playerHand.setSelectionMode('none');
+					break;
+				case 'resolvePlunder':
+					this.treasureColumn.setSelectionMode('none');
+					break;
+				case 'resolvePatch': 
+					this.resetBreachesSelection();
+					this.bustedCannons.setSelectionMode('none');
+					this.breaches.setSelectionMode('none');
+					this.playerHand.setSelectionMode('none');
+					this.waterDeck.setSelectionMode('none');
+					break;
+				case 'resolveFire':
+					this.playerHand.setSelectionMode('none');
+					this.operationalCannons.setSelectionMode('none');	
+					if (this.tempCards != null)
+					{ 
+						//dojo.removeClass('specialLocation', 'hide');
+						this.tempCards.getCards().forEach((card) => this.specialLocation.addCard(card));
+						this.tempCards = null;
+						dojo.empty('tempWrapper');
+					}
+					break;
+
 				// Reset dials for a new round
 				case 'upkeep':
 					var dialId = `dial_${this.player_id}`;
@@ -508,7 +687,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //
 //                    // Add test action buttons in the action status bar, simulating a card click:
 //                    playableCardsIds.forEach(
-//                        cardId => this.statusBar.addActionButton(_('Play card with id ${card_id}').replace('${card_id}', cardId), () => this.onCardClick(cardId))
+/* FLAG *///                        cardId => this.statusBar.addActionButton(_('Play card with id ${card_id}').replace('${card_id}', cardId), () => this.onCardClick(cardId))
 //                    ); 
 //
 //                    this.statusBar.addActionButton(_('Pass'), () => this.bgaPerformAction("actPass"), { color: 'secondary' }); 
@@ -516,14 +695,89 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					case 'declareDial':
 						this.statusBar.addActionButton(_('Bucket'), () => this.bgaPerformAction("actDeclareDial", {value: 'bucket', location: 'bucket'}));
 						this.statusBar.addActionButton(_('Plunder'), () => this.bgaPerformAction("actDeclareDial", {value: 'plunder', location: 'plunder'}));
-						this.statusBar.addActionButton(_('Patch'), () => this.bgaPerformAction("actDeclareDial", {value: 'patch', location: 'patch'}));
-						this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actDeclareDial", {value: 'fire', location: 'fire'}));
+						if (args.possibleActions.includes('patch'))
+							this.statusBar.addActionButton(_('Patch'), () => this.bgaPerformAction("actDeclareDial", {value: 'patch', location: 'patch'}));
+						if (args.possibleActions.includes('fire'))
+							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actDeclareDial", {value: 'fire', location: 'fire'}));
+						break;
+					case 'resolveBucket': 
+						if (args.possibleActions.includes('DrawMultiple'))
+							this.statusBar.addActionButton(_('Draw'), () => {this.bgaPerformAction('actDrawMultiple', {'cardIds': this.waterColumn.getSelection().map(card => card.id), 'location': 'waterColumn'})}, {color: 'primary', disabled: this.waterColumn.getSelection().length != args.nbr});
+						else if (args.possibleActions.includes('Draw'))
+							this.statusBar.addActionButton(_('Draw'), () => {this.bgaPerformAction('actDraw', {cardId: this.waterColumn.getSelection()[0].id, location: 'waterColumn'})}, {color: 'primary', disabled: this.waterColumn.getSelection().length == 0});
+						break;
+					case 'resolvePlunder':
+						if (args.possibleActions.includes('Draw'))
+							this.statusBar.addActionButton(_('Draw'), () => {this.bgaPerformAction('actDraw',{cardId: this.treasureColumn.getSelection()[0].id, location: 'treasureColumn'})}, {color: 'primary', disabled: this.treasureColumn.getSelection().length == 0});
+						if (args.possibleActions.includes('Pass'))
+							this.statusBar.addActionButton(_('Pass'), () => {this.bgaPerformAction('actPass');}, {color: 'secondary'});
+						break;
+
+					case 'resolvePatch':
+						if (args.possibleActions.includes('Draw') && args.location == 'deck')
+							this.statusBar.addActionButton(_('Draw'), () => {
+								this.waterDeck.setSelectionMode('none');
+								this.bgaPerformAction('actDraw', {cardId: 0, location: 'deck'});
+							}, {color: 'primary', disabled: this.waterDeck.getSelection().length == 0});
+						if (args.possibleActions.includes('Patch'))
+							this.statusBar.addActionButton(_('Patch'), () => {
+								card = this.bustedCannons.getSelection().concat(this.breaches.getSelection())[0];
+								this.bgaPerformAction("actPatch", {
+									'cardId': card.id,
+									'type': card.type,
+								});
+								this.bustedCannons.unselectAll();
+								this.breaches.unselectAll();
+							}, {color: 'primary', disabled: this.bustedCannons.getSelection().length != 1 && this.breaches.getSelection().length != 1});
+						else if (args.possibleActions.includes('ContributeHammer'))
+						{
+							this.statusBar.addActionButton(_('Yes'), () => {
+								this.bgaPerformAction('actContributeHammer', {'contribute': true});
+							}, {color: 'primary'});
+							this.statusBar.addActionButton(_('No'), () => {
+								this.bgaPerformAction('actContributeHammer', {'contribute': false});
+							}, {color: 'secondary'});
+						}
+						break;
+
+					case 'resolveFire':
+						const possibleActions = args.possibleActions;
+						if (possibleActions.includes("Fire"))
+							this.statusBar.addActionButton(_('Fire'), () => this.bgaPerformAction("actFire"), { color: 'primary'});
+						if (possibleActions.includes("ShootYeTreasure"))
+						{
+							this.statusBar.addActionButton(_('Shoot Ye Treasure'), () => {
+								this.bgaPerformAction("actShootYeTreasure", {
+									'cardId': this.playerHand.getSelection()[0].id,
+									'cannonId': this.operationalCannons.getSelection()[0].id,
+									});
+								this.operationalCannons.unselectAll();
+								this.playerHand.unselectAll();
+							}, {color: 'primary', disabled: this.operationalCannons.getSelection().length != 1 || this.playerHand.getSelection().length != 1}); 
+						}
+						if (possibleActions.includes("Pass"))
+							this.statusBar.addActionButton(_('Pass'), () => this.bgaPerformAction("actPass"), { color: 'secondary' }); 
+						if (possibleActions.includes("Draw") && this.tempCards != null)
+							this.statusBar.addActionButton(_('Draw Card(s)'), () => 
+									this.bgaPerformAction('actDrawMultiple', {'cardIds': this.tempCards.getSelection().map(card => card.id), 'location': 'skullsairsStash', 'exactly': false})
+								, {color: 'primary', disabled: this.tempCards.getSelection().length == 0});
 						break;
 
 //					case 'resolveBucket':
 //						const currentAction = args.possibleActions[0];
 //						this.statusBar.addActionButton(_(currentAction), () => this.bgaPerformAction("act" + currentAction, {cardId: }));
                 }
+
+				if (args.possibleActions.includes('DiscardMultiple'))
+					this.statusBar.addActionButton(_('Discard'), () => {
+						this.bgaPerformAction('actDiscardMultiple', {'cardIds': this.playerHand.getSelection().map(card => card.id)});
+						this.playerHand.setSelectionMode('none');
+					}, {color: 'primary', disabled: this.playerHand.getSelection().length != args.nbr});
+				else if (args.possibleActions.includes('Discard'))
+					this.statusBar.addActionButton(_('Discard'), () => {
+						this.bgaPerformAction('actDiscard', {cardId: this.playerHand.getSelection()[0].id});
+						this.playerHand.setSelectionMode('none');
+					}, {color: 'primary', disabled: this.playerHand.getSelection().length == 0});
             }
         },        
 
@@ -619,6 +873,50 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			return actionToColumnMapping[action];
 		},
 
+		resetBreachesSelection: function()
+		{
+			this.breaches.onSelectionChange = (selection, lastChanged) => {
+				if (selection.length > 0) 
+					this.bustedCannons.unselectAll();
+				this.updatePageTitle();
+			};
+			this.breaches.unselectAll();
+		},
+
+		addScreechEffect: function()
+		{
+			dojo.removeClass('sirensScreechDialsWrapper', 'hide');
+			this.bga.gameArea.addLastTurnBanner('No talking until dials are revealed!');
+		},
+
+		removeScreechEffect: function()
+		{
+			dojo.addClass('sirensScreechDialsWrapper', 'hide');
+			this.bga.gameArea.removeLastTurnBanner();
+		},
+
+		displayGameState: function(hands, enemyDefeated)
+		{
+			// Display Other Players' Hands
+			currentPlayer = this.bga.players.getCurrentPlayerId();
+			console.log(currentPlayer);
+			for (let playerId in hands)
+			{
+				console.log(playerId === currentPlayer);
+				if (playerId == currentPlayer)
+					continue;
+				const otherHandWrapper = dojo.create('div', {'id': 'otherHand_'+playerId, 'class': 'whiteblock'}, 'otherHands');
+				otherHandWrapper.innerHTML = `	
+						<b>${_(this.bga.players.getFormattedPlayerName(playerId)+"'s Hand")}</b>
+						<div id="otherHandDiv_${playerId}"></div>`
+				const otherHand = new BgaCards.LineStock(this.waterManager, document.getElementById('otherHandDiv_'+playerId), {});
+				this.populateStock(otherHand, hands[playerId]);
+			}
+
+			// Display Game End Condition
+			this.bga.gameArea.addWinConditionBanner(enemyDefeated ? _('THE ENEMY IS DEFEATED') : _('THE SHIP SINKS'));
+		},
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -634,34 +932,28 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         */
 		onCardClick: function(parentDiv, card)
 		{
-			console.log(`Clicked card of type ${parentDiv}`);	
-			if (!this.current_player_is_active)
-				return;
-	
-
-			// Active player is attempting to take their turn
-			// We need to verify that this move is allowed and then hand it off to backend
-			const args = this.gamedatas.gamestate.args;
-
-			// Intervene for deck, there is only one option of what that card could be
+//			console.log(`Clicked card of type ${parentDiv}`);	
+//			if (!this.current_player_is_active)
+//				return;
+//	
+//
+//			// Active player is attempting to take their turn
+//			// We need to verify that this move is allowed and then hand it off to backend
+//			const args = this.gamedatas.gamestate.args;
+//
+//			// Intervene for deck, there is only one option of what that card could be
 //			if (parentDiv === 'deck')
-//				card = {'id': args.possibleIdsDraw[0], 'type': 'backside'};
+//				card = {'id': args.possibleIdsDraw[0], 'type': 'backside', 'type_arg': '0'};
 //			console.log('printing the card:');
 //			console.log(card);
-
-			if (args.possibleActions.includes('Draw') && parentDiv === args.location)
-				this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv,});
-			else if (args.possibleActions.includes('Discard') && parentDiv === 'myHand')
-				this.bgaPerformAction('actDiscard', {cardId: card.id});
-
-//			const constants = this.gamedatas.constants;
-//			switch (this.gamedatas.gamestate.id)
-//			{
-//				case constants.STATE_RESOLVE_BUCKET:
-//					if (possibleActions.includes('Draw') && parentDiv === 'waterColumn')
-//						this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv});
-//					break;
-//			}
+//
+//			// TODO Consider keeping these additional safety checks in the final version? Would make troubleshooting harder right now tho
+//			if (args.possibleActions.includes('Draw') && parentDiv === args.location) //&& args.possibleIdsDraw.includes(parseInt(card.id)))
+//				this.bgaPerformAction('actDraw', {cardId: card.id, location: parentDiv,});
+//			else if (args.possibleActions.includes('Discard') && parentDiv === 'myHand') //&& args.possibleIdsDiscard.includes(parseInt(card.id)))
+//				this.bgaPerformAction('actDiscard', {cardId: card.id});
+//			else if (args.possibleActions.includes('TemptingTune') && parentDiv === 'deck')
+//				this.bgaPerformAction('actTemptingTune', {});
 		},
 
         
@@ -737,7 +1029,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.correctGapUnderBoard();
 			
 			// Manage the breaches as well
-			if (this.breachesDeck.getCardCount() > 0)
+			if (this.breaches.getCardCount() > 0)
 			{
 				this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
 				dojo.create('div', {class: 'permanentBreach'}, 'permanentBreaches');
@@ -790,9 +1082,27 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 		
 			// Get the enemy dice, update their face values to match the new values from the notif, and play the die rolling animation
-			const dice = this.enemyDice.getDice();
+			// Now the dice looks complicated because we roll only the dice which are specified in the notif, filtering out the rest
+			var dice = this.enemyDice.getDice().map((die) => notif.diceRollMapping.hasOwnProperty(die.id) ? die : null);
+			dice = dice.filter(die => die != null);
 			dice.forEach(die => die.face = notif.diceRollMapping[die.id]);
 			this.enemyDice.rollDice(dice, {duration: [800, 1200]});
+
+
+		},
+
+		notif_firedCannons: function(notif)
+		{
+			console.log('notif_firedCannons');
+			console.log(notif);
+			
+			var dice = this.operationalDice.getDice().map((die) => notif.rolls.hasOwnProperty(die.id) ? die : null);
+			dice = dice.filter(die => die != null);
+			dice.forEach(die => die.face = notif.rolls[die.id].value);
+			this.operationalDice.rollDice(dice, {duration: [800, 1200]});
+
+			if (notif.hitNbr > 0)
+				dojo.addClass('damageTokenSpaces', 'enemy' + notif.newHp + 'HP');
 		},
 
 		notif_resolveBasicWater: function(notif)
@@ -809,7 +1119,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('notif_resolveBasicBreach');
 			console.log(notif);
 
-			this.breaches.addCard(notif.ids[0], {fromStock: this.breachesDeck}, true);
+			this.breaches.addCard(notif.card, {fromStock: this.breachesDeck}, true);
 			this.correctGapUnderBoard();
 		},
 
@@ -817,8 +1127,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_resolveBasicCannon');
 			console.log(notif);
-
-			this.bustedCannons.addCard(notif.id, {fromStock: this.cannons}, true);
+		
+			this.bustedCannons.addCard(notif.card, {fromStock: this.cannons});
+			this.bustedDice.addDie({'id': notif.card.id, 'color': 'Cannon' + notif.card.type});
 			this.correctGapUnderBoard();
 		},
 
@@ -831,8 +1142,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			var dialId = `dial_${notif.player_id}`;
 			var tempId = dialId + 'temp';
 			var color = this.gamedatas.players[Number(notif.player_id)].color;
-			var targetColumn = `${notif.dial_location}Dials`.replace(' ', '');
-			targetColumn = targetColumn.charAt(0).toLowerCase() + targetColumn.slice(1);
+
+			var targetLocation = 'sirensScreechDials';
+			if (!notif.screech)
+			{
+				targetLocation = `${notif.dial_location}Dials`.replace(' ', '');
+				targetLocation = targetLocation.charAt(0).toLowerCase() + targetLocation.slice(1);
+			}
 			
 			// Hide the dial icon in the corresponding player panel
 			//dojo.addClass(`dialIcon_${notif.player_id}`, 'hide');
@@ -862,13 +1178,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				'class': 'dial hide',
 				'data-value': 'backside', 
 				'data-color': color,
-			}, targetColumn);
+			}, targetLocation);
 			
 			// Correct whitespace
 			this.correctGapUnderBoard();
 			
 			// Move the temp dial into the column
-			// Mobile, targetColumn, duration, delay
+			// Mobile, targetLocation, duration, delay
 			await this.slideToObjectAndDestroy(tempId, dialId, 2000).promise;
 			dojo.removeClass(dialId, 'hide');
 		},
@@ -878,8 +1194,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_revealDials');
 			console.log(notif);
+
 			for (var player in notif.dials)
+			{
 				dojo.attr(`dial_${player}`, 'data-value', notif.dials[player]['dial_value']);
+			}	
+
+			if (notif.screech)
+				this.removeScreechEffect();
 		},
 
 		notif_actDraw: function(notif)
@@ -929,9 +1251,23 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_actDiscard');
 			console.log(notif);
-			
+				
 			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
-			this.waterDiscard.addCard(card);
+			if (notif.location === 'discard')
+			{
+				this.waterDiscard.addCard(card);
+				this.waterDiscard.setCardVisible(card, false);
+			}
+			else if (notif.location === 'sharksBelly')
+			{
+				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, false);
+			}
+			else if (notif.location === 'skullsairsStash')
+			{
+				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, true);
+			}
 		},
 
 		notif_actDiscardPrivate: function(notif)
@@ -940,8 +1276,88 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 	
 			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
-			this.waterDiscard.addCard(card);
+			if (notif.location === 'discard')
+				this.waterDiscard.addCard(card);
+			else if (notif.location === 'sharksBelly')
+				this.specialLocation.addCard(card);
 			this.waterDiscard.setCardVisible(card, false);
 		},
+
+		notif_discard: function(notif)
+		{
+			console.log('notif_discard');
+			console.log(notif);
+
+			card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
+			if (notif.location === 'discard')
+			{
+				this.waterDiscard.addCard(card);
+				this.waterDiscard.setCardVisible(card, false);
+			}
+			else if (notif.location === 'sharksBelly')
+			{
+				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, false);
+			}
+			else if (notif.location === 'skullsairsStash')
+			{
+				this.specialLocation.addCard(card);
+				this.specialLocation.setCardVisible(card, true);
+			}
+		},
+
+		notif_actPatch: function(notif)
+		{
+			console.log('notif_actPatch');
+			console.log(notif);
+			
+			switch (notif.problem)
+			{
+				case 'cannon':
+					this.operationalCannons.addCard(notif.card);
+					break;
+
+				case 'breach':
+					// Fix breaches selection (since it may be forcefully selecting a multi-breach)
+					this.resetBreachesSelection();
+					this.breachesDeck.addCard(notif.card);
+					break;
+			}
+			
+		},
+
+		// Move all cards from the Shark's Belly into the Water Column
+		notif_theSharkReactsToDamage: function(notif)
+		{
+			console.log('notif_theSharkReactsToDamage');
+			console.log(notif);
+
+			notif.cardIds.forEach((id) => this.waterColumn.addCard({'id': id, 'type': 'backside', 'type_arg': 0}));
+		},
+
+		notif_resolveScreech: function(notif)
+		{
+			console.log('notif_resolveScreech');
+			console.log(notif);
+			
+			this.addScreechEffect();
+		},
+
+		// Skullsairs
+		notif_resolveBoardingParty: function(notif)
+		{
+			console.log('notif_resolveBoardingParty');
+			console.log(notif);
+
+			this.specialLocation.addCard(notif.card);			
+		},
+
+		notif_endScores: function(notif)
+		{
+			console.log('notif_endScores');
+			console.log(notif);
+
+			this.displayGameState(notif.hands, notif.enemyDefeated);
+		}
    });             
 });

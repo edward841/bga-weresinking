@@ -63,7 +63,7 @@ $gameinfos = [
     // Note: if you are NOT using any tie breaker, leave the empty string.
     //
     // Example: 'tie_breaker_description' => totranslate( "Number of remaining cards in hand" ),
-    'tie_breaker_description' => "",
+	'tie_breaker_description' => clienttranslate('If enemy was defeated, fewest cards in hand. If the ship sank, highest total point value of treasure in hand'),
 
     // If in the game, all losers are equal (no score to rank them or explicit in the rules that losers are not ranked between them), set this to true
     // The game end result will display "Winner" for the 1st player and "Loser" for all other players

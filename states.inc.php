@@ -103,7 +103,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stCheckWaterThreshold',
-		'transitions' => ['' => STATE_DEAL_WATER_AND_TREASURE],
+		'transitions' => ['next' => STATE_DEAL_WATER_AND_TREASURE, 'endGame' => STATE_UPKEEP],
 	),
 
 	STATE_DEAL_WATER_AND_TREASURE => array(
@@ -176,9 +176,9 @@ $machinestates = [
 		'description' => clienttranslate('${actplayer} must Bucket'),
 		'descriptionmyturn' => clienttranslate('Bucket: ${you} must ${verb} ${nbr} card(s)${ending}'),
 		'type' => 'activeplayer',
-		'possibleactions' => ['actDraw', 'actDiscard'],
+		'possibleactions' => ['actDraw', 'actDiscard', 'actDrawMultiple', 'actDiscardMultiple'],
 		'args' => 'argResolveBucket',
-		'transitions' => ['next' => STATE_RESOLVE_BUCKET_HELPER],
+		'transitions' => ['next' => STATE_RESOLVE_BUCKET_HELPER, 'again' => STATE_RESOLVE_BUCKET],
 	), 
 
 	STATE_RESOLVE_PLUNDER_HELPER => array(
@@ -197,11 +197,11 @@ $machinestates = [
 	STATE_RESOLVE_PLUNDER => array(
 		'name' => 'resolvePlunder',
 		'description' => clienttranslate('${actplayer} must Plunder'),
-		'descriptionmyturn' => clienttranslate('Plunder: ${you} must choose 1 card from the Treasure Column'),
+		'descriptionmyturn' => clienttranslate('Plunder: ${you} ${message}'),
 		'type' => 'activeplayer',
-		'possibleactions' => ['actDraw'],
+		'possibleactions' => ['actDraw', 'actTemptingTune', 'actPass'],
 		'args' => 'argResolvePlunder',
-		'transitions' => ['next' => STATE_RESOLVE_PLUNDER_HELPER],
+		'transitions' => ['again' => STATE_RESOLVE_PLUNDER, 'next' => STATE_RESOLVE_PLUNDER_HELPER],
 	), 
 
 	STATE_RESOLVE_PATCH_HELPER => array(
@@ -220,10 +220,10 @@ $machinestates = [
 		'name' => 'resolvePatch',
 		'description' => clienttranslate('${actplayer} must Patch'),
 		'descriptionmyturn' => clienttranslate('${you} must ${actiondescription}'),
-		'type' => 'activeplayer',
-		'possibleactions' => ['actDraw', 'actDiscard', 'actPatch'],
+		'type' => 'multipleactiveplayer',
+		'possibleactions' => ['actDraw', 'actDiscard', 'actPatch', 'actContributeHammer'],
 		'args' => 'argResolvePatch',
-		'transitions' => ['next' => STATE_RESOLVE_PATCH_HELPER],
+		'transitions' => ['next' => STATE_RESOLVE_PATCH_HELPER, 'again' => STATE_RESOLVE_PATCH],
 	),
 
 	STATE_RESOLVE_FIRE_HELPER => array(
@@ -242,9 +242,9 @@ $machinestates = [
 		'description' => clienttranslate('${actplayer} may Fire'),
 		'descriptionmyturn' => clienttranslate('${you} ${instruction}'),
 		'type' => 'activeplayer',
-		'possibleactions' => ['actFire', 'actShootYeTreasure', 'actPass'],
+		'possibleactions' => ['actFire', 'actShootYeTreasure', 'actDraw', 'actDrawMultiple', 'actPass'],
 		'args' => 'argResolveFire',
-		'transitions' => ['next' => STATE_RESOLVE_FIRE_HELPER],
+		'transitions' => ['next' => STATE_RESOLVE_FIRE_HELPER, 'again' => STATE_RESOLVE_FIRE, 'endGame' => STATE_UPKEEP],
 	),
 
 	STATE_UPKEEP => array(
@@ -252,10 +252,15 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stUpkeep',
-		'transitions' => ['' => STATE_CHECK_FOR_BREACHES],
+		'transitions' => ['anotherRound' => STATE_CHECK_FOR_BREACHES, 'gameEnd' => STATE_END_GAME_SCORING],
 	),
 
 //	STATE_END_GAME_SCORING => array(
+//		'name' => 'endGameScoring',
+//		'description' => '',
+//		'type' => 'game',
+//		'action' => 'stEndGameScoring',
+//		'transitions' => ['gameEnd' => STATE_END_GAME],
 //	),
 
     // Final state.

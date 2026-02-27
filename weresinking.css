@@ -148,6 +148,12 @@
 	margin-left: 376px;
 }
 
+#specialLocation {
+	position: relative;
+	margin: 15px auto 0px auto; 
+	background-image: url('img/Locations.jpg');
+}
+
 #columns {
 	position: relative;
 	height: 0px;
@@ -568,6 +574,7 @@
 	height: 102px;
 	border-radius: 51px;
 	margin-top: 10px;
+	margin-right: 10px;
 	background-image: url('img/Dials.jpg');
 }
 
@@ -734,6 +741,28 @@
 	-webkit-mask: url('img/Dial.png');
 }
 
+/* Special Locations! */
+#specialLocation.Shark { 
+	background-position-x: 360px;		
+}
+
+#specialLocation.Shark.back {
+	background-position-x: 0px;
+}
+
+#specialLocation.Skullsairs {
+	background-position-x: 120px;
+}
+
+#specialLocation.Skullsairs.back {
+	background-position-x: 240px;
+}
+
+#sirensScreechDials {
+	height: 112px;
+	display: flex;
+}
+
 /* Universal classes! Generally helpful and could go anywhere. And have priority over other classes for being at the bottom...*/
 /* Horizontal flex container: display children in a row, evenly spaced and centered */
 /*
@@ -764,9 +793,11 @@
 	background-size: 48px 48px;
 }
 
-.hide {
+.hide, .hide > * {
+	display: none;
 	background-image: none;
 	background-color: transparent;
 	border: none;
+	padding: 0;
+	margin: 0;
 }
-

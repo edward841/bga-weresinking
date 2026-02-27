@@ -16,6 +16,7 @@
  */
 declare(strict_types=1);
 namespace Bga\Games\weresinking;
+use Bga\GameFramework\Actions\Types\IntArrayParam;
 
 require_once(APP_GAMEMODULE_PATH . "module/table/table.game.php");
 
@@ -60,9 +61,7 @@ class Game extends \Table
 
 		// For each breach card in the breaches column, add a water card for each water symbol (denoted by 'scale' in the material file)
 		foreach ($this->breaches->getCardsInLocation('breachesColumn') as $cardId => $details)
-		{
 			$water += $this->tokens['breaches'][$details['type']]['scale'];
-		}
 
 		// Notify client to deal water cards to the Water Column
 		$this->notify->all('checkForBreachesMessage', clienttranslate('Step 1). Check For Breaches'));
@@ -101,7 +100,7 @@ class Game extends \Table
 			// TODO Implement chests...
 
 			// STEP 3: Move the Threshold Sheet to the next level
-			$this->globals->inc('THRESHOLD_LEVEL', 1);
+			$thresholdLevel = $this->globals->inc('THRESHOLD_LEVEL', 1);
 
 			// STEP 4: Shuffle all cards in the Water deck, disard pile, and water and treasure columns to create a new water deck
 			$this->water->moveAllCardsInLocation('discard', 'deck');
@@ -113,10 +112,7 @@ class Game extends \Table
 			if ($this->breaches->countCardInLocation('breachesColumn') > 0)
 			{
 				foreach ($this->breaches->getCardsInLocation('breachesColumn') as $card)
-				{
 					$this->breaches->insertCardOnExtremePosition($card['id'], 'deck', false);
-				}
-
 				$this->globals->inc('PERMANENT_BREACHES', 1);
 			}
 
@@ -125,7 +121,7 @@ class Game extends \Table
 		else 
 			$this->notify->all('checkWaterThreshold', clienttranslate('The number of cards is less than the Water Threshold. Continue on to the Threat Phase'));
 
-		$this->gamestate->nextState();
+		($thresholdLevel <= 4) ? $this->gamestate->nextState('next') : $this->gamestate->nextState('endGame');
 	}	
 	
 	public function stDealWaterAndTreasure()
@@ -134,10 +130,8 @@ class Game extends \Table
 		
 		// Making a list of all the cards added for the client to do proper animations
 		$cards = [];
-
-		$numPlayers = $this->getPlayersNumber();
 		$thresholdLevel = (int) $this->globals->get('THRESHOLD_LEVEL');
-		$thresholdPanelInfo = $this->tokens['thresholdSheets']["$numPlayers players"]["level $thresholdLevel"];
+		$thresholdPanelInfo = $this->tokens['thresholdSheets']["{$this->getPlayersNumber()} players"]["level $thresholdLevel"];
 		
 		// Pick the correct number of cards for the water column according to the threshold panel
 		$waterIds = $this->pickCardsForWaterColumn((int) $thresholdPanelInfo['water']);
@@ -151,28 +145,23 @@ class Game extends \Table
 		$faceupCardIds = [];
 		while ($remainingTreasures > 0)
 		{
-			$card = $this->water->getCardOnTop('deck');
-			
 			// Whether its a clear water or a treasure, this will work either way.
-			$cards[] = ['id' => $card['id'], 'type' => $card['type'], 'type_arg' => $card['type_arg']];
+			$card = $this->water->getCardOnTop('deck');
+			$cards[] = ['id' => (int) $card['id'], 'type' => $card['type'], 'type_arg' => $card['type_arg']];
+			$faceupCardIds[] = $card['id'];
 
 			if ($card['type'] === 'clearWater')
 			{
-				$this->water->insertCardOnExtremePosition($card['id'], 'waterColumn', COLUMN_BOTTOM);
-				$faceupCardIds[] = $card['id'];
+				$this->addToColumn('waterColumn');
 				$clearWaterNbr++;
 			}
 			else
 			{
-				$this->addToTreasureColumn((int) $card['id']);
-				$faceupCardIds[] = $card['id'];
+				$this->addToColumn('treasureColumn');
 				$remainingTreasures--;
 			}
 		}
-
-		$sqlData = implode(',', $faceupCardIds);	
-		$this->DbQuery("UPDATE `water` SET `card_face_up`=TRUE WHERE `card_id` IN ($sqlData)");
-
+		$this->setCardsOrientation($faceupCardIds, true);
 		$this->notify->all('dealWaterAndTreasure', clienttranslate('Dealt ${waterNbr} cards to Water Column. Dealt ${treasureNbr} Treasures. Dealt ${clearWaterNbr} additional Clear Waters.'), array(
 			'waterNbr' => $thresholdPanelInfo['water'],
 			'treasureNbr' => $thresholdPanelInfo['treasure'],
@@ -321,6 +310,7 @@ class Game extends \Table
 		$this->notify->all('revealDials', '', array(
 			'new_turn_order' => $sorted,
 			'dials' => $playerInfo,
+			'screech' => $this->globals->get('SIRENS_SCREECH'),
 		));
 
 		$this->gamestate->nextState('resolveBucketHelper');
@@ -394,9 +384,8 @@ class Game extends \Table
 						$this->notifyForCardsDrawn($nextPlayer, $cardsDrawn);
 					
 						// Update the database so that those cards are facedown (minor but keeps the obfuscation right)
-						// Must occur AFTER the notifications. Since they were faceup, the cards drawn are not obfuscated from other players
-						$implodedCards = implode(',', array_column($cardsDrawn, 'id'));
-						$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id` IN ($implodedCards)");
+						// Must occur AFTER the notification: since they were faceup, the cards drawn are not obfuscated from other players
+						$this->setCardsOrientation(array_column($cardsDrawn, 'id'), false);
 
 						$moveOnToNextAction = true;
 					}
@@ -406,23 +395,37 @@ class Game extends \Table
 						// Setting FLAG to false indicates treasure is getting divided (Makes future stResolvePlunderHelper visits much simpler)
 						$this->globals->set('FLAG', false);	
 						$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+						$this->globals->set('COUNTER', 1);
 						$this->gamestate->changeActivePlayer($nextPlayer);
 					}
 					// 3. Too many plunderers, not enough treasure! 
 					//    (no need for player states, just move on to the next helper state
 					else 
 					{
-						$this->water->moveAllCardsInLocation('treasureColumn', 'discard');	
+						$cards = $this->water->getCardsInLocation('treasureColumn');
+						$this->notify->all('resolvePlunderMessage', clienttranslate('Since there are more plunderers than treasures, all the treasure is discarded.'), array());
+						$this->setCardsOrientation(array_column($cards, 'id'), false);
+						$this->notifyForCardsDiscarded(array_values($cards), -1, 'discard', false);
+						foreach ($cards as $card)
+							$this->discard(intval($card['id']));
 						$moveOnToNextAction = true;
 					}
 
 					// This action was resolved entirely in the game state (either 1 player or too many players plundered)
 					if ($moveOnToNextAction)
 					{
-						$nextAction = 'patch';
 						$lastPlunderer = array_keys($playerInfo)[count($dialValues) - 1 - array_search('plunder', array_reverse($dialValues))];
 						$this->globals->set('PREVIOUS_PLAYER', $lastPlunderer);
-						// No need to update FLAG since it should still be true
+
+						// Resolve Tempting Tune if active, else move on to the next state
+						if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0)
+						{
+							$this->globals->set('FLAG', false);	
+							$this->gamestate->changeActivePlayer($lastPlunderer);
+						}
+						else
+							$nextAction = 'patch';
+							// No need to update FLAG since it should still be true
 					}
 
 				}
@@ -432,6 +435,7 @@ class Game extends \Table
 				{
 					$this->gamestate->changeActivePlayer($nextPlayer);
 					$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+					$this->globals->set('COUNTER', 1);
 				}
 			}
 		}
@@ -447,19 +451,33 @@ class Game extends \Table
 	{
 		$nextPlayer = $this->getNextPlayer();
 		$nextAction = 'upkeep';
-		//var_dump('nextPlayer', $nextPlayer);
 		
 		if ($nextPlayer > 0)
 		{
 			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
 			if ($nextAction === 'patch')
 			{
-				// Update active player
-				$this->gamestate->changeActivePlayer($nextPlayer);
+				// Dont update active player (because its a multiactiveplayer state now)
 				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
 
 				// Set FLAG to true (indicates that the player needs to draw now)
 				$this->globals->set('FLAG', true);
+
+				// If this is the first patching player, set up the LIST to contain a list of all hammers
+				// failedBreaches should reset at the beginning of each patching player's turn 
+				// 		(maybe someone said no during someone elses turn because they want to do it on their turn?)
+				$list = (array) $this->globals->get('LIST');
+				$list['failedBreaches'] = array();
+				if (!array_key_exists('availableHammers', $list))
+				{
+					$patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
+					$list['availableHammers'] = array_values($patchingPlayers);
+					$this->globals->set('LIST', $list);
+				}
+			}
+			else 
+			{
+				$this->globals->set('LIST', array());
 			}
 		}	
 
@@ -467,6 +485,10 @@ class Game extends \Table
 		// If the next player is doing a Patch action, the prepwork is done and this moves to STATE_RESOLVE_PATCH
 		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
 		// If there is not another player, goes to STATE_UPKEEP
+		if ($nextAction === 'patch')
+		{
+			$this->gamestate->setPlayersMultiactive(array($nextPlayer), 'resolvePatch', true);
+		}
 		$this->gamestate->nextState($nextAction);
 	}
 
@@ -486,6 +508,7 @@ class Game extends \Table
 
 				// Set FLAG to true (indicates that the player needs to draw now)
 				$this->globals->set('FLAG', true);
+				$this->globals->set('COUNTER', 0);
 			}
 		}	
 
@@ -511,7 +534,7 @@ class Game extends \Table
 				$discards = [];
 				while ($nbr-- > 10)
 					$discards[] = $this->discard($this->getRandomCardFrom($playerId));
-				$this->notifyForCardsDiscarded($playerId, $discards);
+				$this->notifyForCardsDiscarded($discards, $playerId);
 			}
 		}
 
@@ -535,9 +558,45 @@ class Game extends \Table
 		$this->globals->set('PREVIOUS_PLAYER', 'none');
 		$this->globals->set('FLAG', true);
 		$this->globals->set('COUNTER', 0);
+		$this->globals->set('LIST', []);
 
-		$this->gamestate->nextState();
+		// Enemy items	
+		$this->globals->set('KRAKEN_ANGERED', 0);
+		$this->globals->set('SHARK_CHOMP_CHOMP', 0);
+		$this->globals->set('SHARK_SUBMERGED', 0);
+		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+		$this->globals->set('SIRENS_SCREECH', false);
+
+		// If we have met either end game condition, proceed to game end. Else start a new round
+		($this->globals->get('ENEMY_HP') > 0 && $this->globals->get('THRESHOLD_LEVEL') <= 4) ? 
+			$this->gamestate->nextState('anotherRound') : $this->gamestate->nextState('gameEnd');
 	}
+
+//	public function stEndGameScoring()
+//	{
+//		//var_dump('END GAME SCORING HERE');
+//		$enemyDefeated = $this->globals->get('ENEMY_HP') <= 0;
+//		$shipSinks = $this->globals->get('THRESHOLD_LEVEL') > 4;
+//		if (!$enemyDefeated && !$shipSinks)
+//			throw new \BgaSystemException('stEndGameScoring: Enemy not defeated and ship not sunk! Should not be here!');
+//		
+//		$endScores = $this->getEndScores();
+//
+//		// If $enemyDefeated then greatest pointCount wins and least handCount is tiebreaker
+//		// If $shipSinks then least handCount wins and greatest pointCount is tiebreaker
+//		foreach ($endScores as $id => $details)
+//		{
+//			$this->bga->playerScore->set($id, $enemyDefeated ? $details['pointCount'] : $details['handCount']);
+//			$this->bga->playerScoreAux->set($id, $enemyDefeated ? $details['handCount'] : $details['pointCount']);
+//		}
+//		$this->notify->all('endScores', '', ['endScores' => $endScores]);
+//
+//		// Straight from the docs for how to handle reverse scoring or reverse aux scoring (https://en.doc.boardgamearena.com/Main_game_logic:_Game.php#Tie_breaker)
+//		$playersDb = $this->getCollectionFromDB("SELECT * FROM `player`");
+//		$players = Player::fromPlayersDb($playersDb);
+//		$this->gamestate->nextState('gameEnd');
+//		return $enemyDefeated ? GameResult::individualRanking($players, reverseScoreAux: true) : GameResult::individualRanking($players, reverseScore: true);
+//	}
 	
 	public function actDeclareDial(string $value, string $location)
 	{
@@ -560,34 +619,28 @@ class Game extends \Table
 		$this->notify->all('actDeclareDial', clienttranslate('${player_name} placed their dial in the ${dial_location}'),
 			array(
 				'player_id' => $activePlayer,
-				'player_name' => $this->getPlayerNameById($activePlayer),
+				'player_name' => $this->getPlayerNameById((int) $activePlayer),
 				'dial_location' => $actionToColumn[$location],
+				'screech' => $this->globals->get('SIRENS_SCREECH'),
 			));
 
 		$this->gamestate->nextState('next');
 	}
 
-	// This is yet untested, but I'm considering a different architecture as a possible solution to the question:
-	// In the player states with multiple things, should I separate each thing into its own action? 
-	// (e.g. 'draw water from column, then discard from hand' or 'either draw 1 or discard 1. Then perform patch')
-	// I'm pretty sure its either that or clientside states, and I'd prefer splitting the actions over messing with clientside states...
-	// Pros: Possible actions would be clearer, the backend implementation would be much cleaner, you could enforce the order by arg functions, should be straightforward to display the currently allowed actions in frontend using the same arg function for input
-	// Cons: more functions to implement, could be more confusing, not sure how arg function would know what is currently allowed (maybe a global flag?)
-	
-
 	public function actDraw(string $cardId, string $location)
 	{
 		// Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
-		$playerId = $this->getActivePlayerId();
+		// It might seem odd to have different arg functions, but this simple draw is an allowed action in 3 of the 4 different dial actions (bucket, plunder, patch)
+		// 	and they all work the same at their core but have access to different cards and have little details to control flow
+		$playerId = $this->gamestate->getActivePlayerList()[0];
 		$currentState = $this->getStateName();
 		$argFunction = 'arg' . ucfirst($currentState);
 		$args = $this->$argFunction();
 
 		if ($location === 'deck')
 			$cardId = $args['possibleIdsDraw'][0];
-		$this->debug("\n\nTEST TEST TEST\nactDraw: cardId=$cardId\n\n");
 
-		// Fail the draw if: Draw is not in the arg's possibleActions, the given location is wrong, or the given cardId is wrong
+		// Fail the draw iff: Draw is not in the arg's possibleActions, the given location is wrong, or the given cardId is wrong
 		// It might seem silly to check if actDraw is in possibleActions array since we already verified it is allowed by the state. 
 		// This lets us to control at what point the player can do each subaction (managing the order of operations for multistep actions like bucket)
 		$message = '';
@@ -598,11 +651,22 @@ class Game extends \Table
 		}
 		else if ($location !== $args['location'])
 			$message = "Location given: $location, expected <{$args['location']}>";
-		else if (!in_array((int) $cardId, $args['possibleIdsDraw'], true))
+
+		// $args['possibleIdsDraw'] is a list of ids of cards that could be drawn, where $args['possibleToDraw'] is a list of the cards that could be drawn
+		// 'possibleIdsDraw' was the original idea, I think Im going to refactor to 'possibleToDraw' to work better with selecting cards in the front end
+		// We will probably phase out 'possibleIdsDraw' and move to the 'possibleToDraw' model but in the transitional time we'll just allow both 
+		else if (in_array('possibleIdsDraw', array_keys($args)) && !in_array((int) $cardId, $args['possibleIdsDraw'], true))
 		{
 			$possibleIds = implode(',', $args['possibleIdsDraw']);
 			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
 		}
+		else if (in_array('possibleToDraw', array_keys($args)) && !in_array($cardId, array_column($args['possibleToDraw'], 'id')))
+		{
+			$possibleIds = implode(',', array_column($args['possibleToDraw'], 'id'));
+			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
+		}
+		else if (count(array_intersect(array_keys($args), ['possibleIdsDraw', 'possibleToDraw'])) == 0)
+			$message = 'No possibleIdsDraw or possibleToDraw found in args, one needed to verify cardId';
 		
 		if ($message !== '')
 			throw new \BgaSystemException("actDraw: cardId: '$cardId', location: '$location' not allowed in state {$this->getStateName()}\n($message)");
@@ -610,41 +674,108 @@ class Game extends \Table
 		// Proceed now that all input has been verified: Move the indicated card to the active player's hand, notify frontend, and mark the card as facedown
 		$card = $this->water->getCard($cardId);
 		$this->notifyForCardsDrawn(intval($playerId), array($card));
-		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id`='$cardId'");
+		$this->setCardOrientation(intval($cardId), false);
 
+		// Deck has to be a separate case because $cardId is a dummy value if the location is the deck!
 		if ($location === 'deck')
-			$this->water->pickCard('deck', $this->getActivePlayerId());
+			$this->water->pickCard('deck', $playerId);
 		else
-			$this->water->moveCard($cardId, 'hand', $this->getActivePlayerId());
+			$this->water->moveCard($cardId, 'hand', $playerId);
 
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
+		$again = false;
 		if ($this->globals->inc('COUNTER', -1) <= 0)
 		{
-			// These two states have two steps to their actions so we need to update FLAG to indicate the first part is done (e.g. draw or discard, then patch)
-			if ($currentState === 'resolveBucket' || $currentState === 'resolvePatch')
-				$this->globals->set('FLAG', false);
-
 			if ($currentState === 'resolveBucket')
 			{
 				// Determine how many cards need to be discarded (lastPersonToBucket ? 2 : 1)
 				$nextPlayer = $this->getNextPlayer();
 				$scale = ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket') ? 1 : 2;
 				$this->globals->set('COUNTER', $scale);
+
+				// Indicates that the first part of the multi-part action is done
+				$this->globals->set('FLAG', false);
+				$again = true;
 			}
 			else if ($currentState === 'resolvePlunder')
 			{
-				$this->gamestate->nextState('next');
+				if (in_array('TemptingTune', $this->argResolvePlunder()['possibleActions']))
+					$again = true;
 			}
 			else if ($currentState === 'resolvePatch')
 			{
-				// TODO Temp fix. THIS CLAUSE WILL NEED DELETED WHEN PATCH IS FULLY IMPLEMENTED.
-				// Moves on to the next player after the draw. Will have to remove it and implement the patching action later
-				$this->gamestate->nextState('next');
-				$this->globals->set('FLAG', true);
+				// Only give the player a chance to patch if they have a hammer left!
+				$list = (array) $this->globals->get('LIST');
+				if (in_array($playerId, $list['availableHammers']))
+				{
+					$this->globals->set('FLAG', false);
+					$again = true;
+				}
+				else
+				{
+					$this->notify->all('patchMessage', clienttranslate('${player_name} already used their hammer(s)'), array(
+						'player_id' => $playerId,
+						'player_name' => $this->getPlayerNameById((int) $playerId),
+					));
+				}
 			}
 		}
+		else
+			// The player still needs to draw COUNTER > 0 more cards! Draw another!
+			$again = true;
 
+		// If $again, then the player is not done completing this action yet. They may need to draw another card, discard card(s), or fix something!
+		// Otherwise, safely move on to the next action
+		($again) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
+	}
+	
+	// TODO problem expected: actDraw is verifying that $cardId is in a list of possibleDrawIds but our argResolveFire is giving it possibleToDraw, plus there is a type mismatch. The act is expecting an int, but the arg is giving an array that is the whole card (stemming from a relatively new concept that we should give the front end the full cards not just ids so they can highlight the card properly)
+	public function actDrawMultiple(#[IntArrayParam(min: 1, max: 6)] array $cardIds, string $location, bool $exactly = true)
+	{
+		$currentState = $this->getStateName();
+		$argFunction = 'arg' . ucfirst($currentState);
+		$args = $this->$argFunction();
+		$counter = (int) $this->globals->get('COUNTER');
+
+		$message = '';
+		if (!in_array('DrawMultiple', $args['possibleActions']))
+			$message = 'actDrawMultiple called, not in possibleMoves';
+		if ($cardIds == null)
+			$message = "actDrawMultiple called with null cardIds";
+		else if (count($cardIds) == 0)
+			$message = "actDrawMultiple called with empty cardIds";
+		else if ($exactly && count($cardIds) !== $counter)
+			$message = "actDrawMultiple called with ${count($cardIds)} cards, expected exactly $counter cards";
+		else if (!$exactly && count($cardIds) > $counter)
+			$message = "actDrawMultiple called with ${count($cardIds)} cards, expected $counter cards or fewer";
+		else if (count($cardIds) !== count(array_count_values($cardIds)))
+			$message = "actDrawMultiple called with duplicate cardIds";
+
+		if ($message !== '')
+		{
+			$cardIdsString = implode(',', $cardIds);
+			throw new \BgaSystemException("actDrawMultiple: cardIds: <$cardIdsString>, location: '$location', exactly: $exactly not allowed in state {$this->getStateName()}\n($message)");
+		}
+
+		foreach ($cardIds as $cardId)
+			$this->actDraw($cardId.'', $location);
+	}
+
+	public function actTemptingTune()
+	{
+		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$args = $this->argResolvePlunder(); 
+		
+		if (!in_array('TemptingTune', $args['possibleActions']))
+			throw new \BgaSystemException("actTemptingTune: not allowed right now in state {$this->getStateName()}");
+
+		$card = $this->water->pickCard('deck', $playerId);
+		$this->notifyForCardsDrawn(intval($playerId), [$card]);
+
+		// Give the player a chance to do something if their turn is not done 
+		// (when they still need to do their Draw action or they have a second Tempting Tune to resolve)
+		($this->globals->inc('SIRENS_TEMPTING_TUNE', -1) > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
 
 	public function actDiscard(int $cardId)
@@ -671,34 +802,254 @@ class Game extends \Table
 			throw new \BgaSystemException("actDiscard: cardId: '$cardId' not allowed in state {$this->getStateName()}\n($message)");
 		
 		// Proceed now that all input has been verified: Move the indicated card to the discard pile
-		$playerId = $this->getActivePlayerId();
+		$playerId = $this->gamestate->getActivePlayerList()[0];
 		$card = $this->water->getCard($cardId);
-		$this->notifyForCardsDiscarded(intval($playerId), array($card));
+		$this->notifyForCardsDiscarded(array($card), intval($playerId));
 		$this->discard($cardId);
 		
 		// Handles specific states
+		$again = false;
 		if ($this->getStateName() === 'resolveBucket')
 		{
-			if($this->globals->inc('COUNTER', -1) == 0)
+			if($this->globals->inc('COUNTER', -1) <= 0)
 			{
 				// Done with this player's turn!
 				// Update FLAG to get it ready for the next helper state
+				// TODO when do i really need to reset the FLAG for a new state? Can this be done in the game state that handles player changes?
 				$this->globals->set('FLAG', true);
-				$this->gamestate->nextState('next');
 			}
+			else
+				$again = true;
 		}
 		else if ($this->getStateName() === 'resolvePatch')
 		{
-			// TODO This should actually be false just a temp fix for now
-			//$this->globals->set('FLAG', false);
-			$this->globals->set('FLAG', true);
-			$this->gamestate->nextState('next');
+			// Only give the player a chance to patch if they have a hammer left!
+			if (in_array($playerId, $this->globals->get('LIST')['availableHammers']))
+			{
+				$this->globals->set('FLAG', false);
+				$again = true; 
+			}
+			else
+			{
+				$this->notify->all('patchMessage', clienttranslate('${player_name} already used their hammer(s)'), array(
+					'player_id' => $playerId,
+					'player_name' => $this->getPlayerNameById((int) $playerId),
+				));
+			}
 		}
-
+		$again ? $this->gamestate->nextState('again') : $this->gamestate->nextState('next');
 	}
 
-	public function actPatch()
+	public function actDiscardMultiple(#[IntArrayParam(min: 1)] array $cardIds)
 	{
+		$currentState = $this->getStateName();
+		$argFunction = 'arg' . ucfirst($currentState);
+		$args = $this->$argFunction();
+		$counter = (int) $this->globals->get('COUNTER');
+
+		$message = '';
+		if (!in_array('DiscardMultiple', $args['possibleActions']))
+			$message = 'actDiscardMultiple called, not in possibleMoves';
+		if ($cardIds == null)
+			$message = "actDiscardMultiple called with null cardIds";
+		else if (count($cardIds) == 0)
+			$message = "actDiscardMultiple called with empty cardIds";
+
+		if ($message !== '')
+		{
+			$cardIdsString = implode(',', $cardIds);
+			throw new \BgaSystemException("actDiscardMultiple: cardIds: <$cardIdsString> not allowed in state {$this->getStateName()}\n($message)");
+		}
+
+		foreach ($cardIds as $cardId)
+			$this->actDiscard($cardId);
+	}
+
+	// Handle different types of problems differently (cannon vs breach vs TODO chest)
+	public function actPatch(int $cardId, string $type)
+	{
+		$this->debug("\n\nactPatch: cardId: $cardId, type: $type\n\n");
+		$problem = 'cannon';
+		if (strlen($type) > 1)
+			$problem = 'breach';
+
+		// Safety checks first!
+		$args = $this->argResolvePatch();
+		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$message = '';
+		if (!in_array('Patch', $args['possibleActions']))
+			$message = 'Patch is not in the possible actions';
+		else if (count($args['possibleToPatch']['cannon']) + count($args['possibleToPatch']['breach']) == 0)
+			$message = 'There is nothing broken right now that can be patched!';
+		else if (!in_array($cardId, ($possibleToPatch = array_column($args['possibleToPatch'][$problem], 'id'))))
+		{
+			$possibleIds = implode(',', $possibleToPatch);
+			$message = "Problem: $problem, Actual cardId: $cardId, Expected to be one of <$possibleIds>";
+		}
+
+		if ($message !== '')
+			throw new \BgaSystemException("Patch not allowed in state {$this->getStateName()}\n($message)");
+
+		$again = false;
+		switch ($problem)
+		{
+			case 'cannon':
+				// All cannons can be fixed with one hammer!
+				$this->addToColumn('cannonsColumn', null, $cardId);
+				$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problemName}'), array(
+					'player_name' => $this->getPlayerNameById((int) $playerId),
+					'player_id' => $playerId,
+					'problemName' => $this->tokens['cannons'][$type], 
+					'card' => $this->cannons->getCard($cardId),
+					'problem' => $problem,
+				));
+				break;
+			
+			case 'breach':
+				$scale = $this->tokens['breaches'][$type]['scale'];
+				if ($scale == 1)
+				{
+					// Good news! We can fix it with just one mallet!
+					$this->breaches->insertCardOnExtremePosition($cardId, 'deck', false);
+					$this->notify->all('actPatch', clienttranslate('${player_name} repaired a ${problemName}'), array(
+						'player_name' => $this->getPlayerNameById((int) $playerId),
+						'player_id' => $playerId,
+						'problemName' => $this->tokens['breaches'][$type]['name'],
+						'card' => $this->breaches->getCard($cardId),
+						'problem' => $problem,
+					));
+				}
+				else
+				{
+					// If the breach requires multiple hammers to patch, we need to give other players a chance to assist
+					$again = true;
+
+					// breachInProgress: id of the breach card
+					// pledgeHammers: a list of hammers pledged (indicated by player id)
+					// pledgeIndex: the index of hammer to seek a pledge from next (indexing availableHammers)
+					$list = (array) $this->globals->get('LIST');
+					$list['breachInProgress'] = $cardId;
+					$list['pledgedHammers'] = [$playerId];
+					$list['pledgeIndex'] = 1;
+					$this->globals->set('LIST', $list);
+
+					$this->notify->all('actPatchMessage', clienttranslate('${player_name} requests assistance to repair the ${problemName}'), array(
+						'player_id' => $playerId,
+						'player_name' => $this->getPlayerNameById((int) $playerId),
+						'problemName' => $this->tokens['breaches'][$this->breaches->getCard($cardId)['type']]['name'],
+					));
+
+					$this->gamestate->setPlayersMultiactive(array($list['availableHammers'][$list['pledgeIndex']]), null, true);
+				}
+				break;
+		}
+	
+		if (!$again)
+		{
+			$list = (array) $this->globals->get('LIST');
+			array_splice($list['availableHammers'], array_search($playerId, $list['availableHammers']), 1);
+			$this->globals->set('LIST', $list);
+			
+			$this->gamestate->setAllPlayersNonMultiactive('next');
+		}
+		else
+			$this->gamestate->nextState('again');
+	}
+
+	public function actContributeHammer(bool $contribute)
+	{
+		// Safety checks
+		$args = $this->argResolvePatch();
+		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$message = '';
+		if (!in_array('ContributeHammer', $args['possibleActions']))
+			$message = 'ContributeHammer is not in the possible actions';
+
+		if ($message !== '')
+			throw new \BgaSystemException("Patch not allowed in state {$this->getStateName()}\n($message)");
+
+		$list = (array) $this->globals->get('LIST');
+		$card = $this->breaches->getCard($list['breachInProgress']);
+		$scale = $this->tokens['breaches'][$card['type']]['scale'];	
+		$problemName = $this->tokens['breaches'][$card['type']]['name'];
+
+		$this->notify->all('actPatchMessage', clienttranslate('${player_name} ${response} contribute their dial towards the ${problemName}'), array(
+			'player_id' => $playerId,
+			'player_name' => $this->getPlayerNameById((int) $playerId),
+			'response' => $contribute ? clienttranslate('will') : clienttranslate('will not'),
+			'problemName' => $problemName,
+		));
+
+		// Adjust accordingly
+		$again = true;
+		$letTheNextPlayerContribute = true;
+		if ($contribute)
+		{
+			$list['pledgedHammers'][] = $playerId;
+
+			if (count($list['pledgedHammers']) == $scale)
+			{
+				// Yay! We can fix the breach!
+				$this->breaches->insertCardOnExtremePosition($card['id'], 'deck', false);
+				$card['location'] = 'deck'; // Without this the card doesn't flip to the backside in the animation
+				$again = false;
+				$letTheNextPlayerContribute = false;
+
+				// Indicate we succeeded and give credit to all players who contributed!
+				$this->notify->all('actPatch', clienttranslate('We repaired a ${problemName}'), array(
+					'problemName' => $problemName,
+					'card' => $card, 
+					'problem' => 'breach',
+				));
+				foreach ($list['pledgedHammers'] as $id)
+				{
+					$this->notify->all('actPatchMessage', clienttranslate('${player_name} helped fix the ${problemName}'), array(
+						'problemName' => $problemName,
+						'player_id' => $id,
+						'player_name' => $this->getPlayerNameById((int) $id),
+					));
+				}
+
+				// Adjust list
+				// Remove all the hammers that went towards this breach from availableHammers
+				// Remove the LIST elements that pertain to the big breach
+				$list['availableHammers'] = array_diff($list['availableHammers'], $list['pledgedHammers']);
+				unset($list['breachInProgress']);
+				unset($list['pledgedHammers']);
+				unset($list['pledgeIndex']);
+			}
+		}
+		// If it is impossible to repair with the remaining available hammers, then indicate patching the breach failed and give the original player another chance
+		// The -1 is because pledgeIndex is zero-indexed, if it were one-indexed it wouldn't need the -1
+		else if (count($list['pledgedHammers']) + count($list['availableHammers']) - $list['pledgeIndex'] - 1 < $scale)
+		{
+			$originalPlayerId = $list['availableHammers'][0];
+			$this->notify->all('actPatchMessage', clienttranslate('Patching the ${problemName} failed, {player_name} gets a chance to Patch something else.'), array(
+				'problemName' => $problemName, 
+				'player_id' => $originalPlayerId,
+				'player_name' => $this->getPlayerNameById((int) $originalPlayerId),
+			));
+
+			// Adjust LIST
+			$list['failedBreaches'][] = $card['id'];
+			unset($list['breachInProgress']);
+			unset($list['pledgedHammers']);
+			unset($list['pledgeIndex']);
+			
+			$letTheNextPlayerContribute = false;
+		}
+
+		// letTheNextPlayerContribute is nearly the same thing as again but not quite:
+		// again controls the FSM flow 
+		// letTheNextPlayerContribute is a flag for active player control, again isnt quite enough on its own
+		if ($letTheNextPlayerContribute)
+			$this->gamestate->setPlayersMultiactive(array($list['availableHammers'][++$list['pledgeIndex']]), null, true);
+		else if ($again)
+			$this->gamestate->setPlayersMultiactive(array($originalPlayerId), null, true);
+
+		// Progress game state either way
+		$this->globals->set('LIST', $list);
+		$again ? $this->gamestate->nextState('again') : $this->gamestate->setAllPlayersNonMultiactive('next');
 	}
 
 	public function actFire()
@@ -716,6 +1067,7 @@ class Game extends \Table
 
 		$this->fireCannons($args['operableCannons']);
 		$this->globals->set('FLAG', false);		
+		($this->globals->get('ENEMY_HP') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('endGame');
 	}
 
 	public function actShootYeTreasure(int $cardId, int $cannonId)
@@ -730,9 +1082,9 @@ class Game extends \Table
 			$possibleActions = implode(',', $args['possibleActions']);
 			$message = "ShootYeTreasure not in possibleActions: <$possibleActions>";
 		}
-		else if (!in_array((int) $cardId, $args['possibleIdsDiscard'], true))
+		else if (!in_array($cardId . '', array_column($args['possibleDiscard'], 'id'), true))
 		{
-			$possibleIds = implode(',', $args['possibleIdsDiscard']);
+			$possibleIds = implode(',', array_column($args['possibleDiscard'], 'id'));
 			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
 		}
 		else if (!in_array($cannonId, $args['operableCannons']))
@@ -743,17 +1095,41 @@ class Game extends \Table
 		if ($message !== '')
 			throw new \BgaSystemException("ShootYeTreasure: cardId: '$cardId' not allowed in state {$this->getStateName()}\n($message)");
 
+		// Actually execute the action now that we have verified the input
+		// If it was a miss, mark that the cannon was activated (if successful, it was marked as activated by fireCannons)
+		$this->notifyForCardsDiscarded(array($this->water->getCard($cardId)), intval($this->getActivePlayerId()));
 		$this->discard($cardId);
-		if (!$this->fireCannons([$cannonId]))
-			// If it was a miss, mark that the cannon was activated (if successful, it was marked as activated by fireCannons)
-			$this->addToActivatedCannons($cannonId);
+		if (!$this->fireCannons(array($cannonId)))
+			$this->addToLIST($cannonId);
+
+		($this->globals->get('ENEMY_HP') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('endGame');
 	}
 
 	public function actPass()
 	{
+		$state = $this->gamestate->getCurrentMainStateId();
+		// Passing is complicated when you add drawing from the Skullsairs stash into the mix (especially with the already complicated action of firing)
+		if ($state === STATE_RESOLVE_FIRE && $this->globals->get('COUNTER') > 0)
+		{
+			// We need to distinguish between two possible passes: 
+			//	 1. A pass to forgo shooting treasure (and move on to selecting treasure from the stash)
+			//	 2. A pass to forgo selecting treasure from the stash (and move on to the next state)
+			$args = $this->argResolveFire();
+			if (in_array('ShootYeTreasure', $args['possibleActions']))
+			{
+				// We adjust the LIST to indicate to argResolveFire what part of the fire action we need to do now
+				$activeCannons = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `cannon` WHERE `card_location`='cannonsColumn'"));
+				$this->globals->set('LIST', $activeCannons);
+				$this->gamestate->nextState('again');
+				return null;
+			}
+		}	
+		
+		// Most common pass logic: Resets all globals
 		$this->globals->set('FLAG', true);
 		$this->globals->set('COUNTER', 0);
 		$this->globals->set('LIST', []);
+		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
 		$this->gamestate->nextState('next');
 	}
 	
@@ -787,12 +1163,14 @@ class Game extends \Table
 		else
 			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->getActivePlayerId()));
 
+		$args['nbr'] = $this->globals->get('COUNTER');
 		$args['possibleActions'] = [$flag ? 'Draw' : 'Discard'];
+		if ($args['nbr'] == 2)
+			$args['possibleActions'][] = $flag ? 'DrawMultiple': 'DiscardMultiple';
 
 		// We're creating the perfect balance of simplicity and informative descriptionmyturn
 		// descriptionmyturn = '${you} must ${verb} ${nbr} card(s)${ending}'
 		$args['verb'] = $flag ? 'draw' : 'discard';
-		$args['nbr'] = $this->globals->get('COUNTER');
 		$args['ending'] = $flag ? ' from the Water Column' : '';
 		
 		return $args;
@@ -800,11 +1178,36 @@ class Game extends \Table
 
 	public function argResolvePlunder()
 	{
+		$activePlayer = $this->globals->get('PREVIOUS_PLAYER');
 		$args = [];
-		$args['possibleActions'] = ['Draw'];
-		$args['location'] = 'treasureColumn';
-		$args['possibleIdsDraw'] = array_keys($this->water->getCardsInLocation('treasureColumn'));
+
+		// Determine if the player may Tempting Tune: 
+		//	 (is Tempting Tune active AND have they finished their plundering action AND is this the last player to resolve a plunder action?
+		$canTemptingTune = false;
+		if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0 && $this->globals->get('COUNTER') <= 0)
+		{
+			$plunderers = array_keys($this->getCollectionFromDB("SELECT `player_id` FROM `player` WHERE `dial_value`='plunder' ORDER BY `custom_order`"));
+			$treasureNbr = $this->water->countCardInLocation('treasureColumn');
+			$lastPlunderer = $plunderers[count($plunderers) - 1];
 			
+			if (count($plunderers) === 1 || ($lastPlunderer === $activePlayer && $treasureNbr < count($plunderers))) 
+				$canTemptingTune = true;
+		}
+		if ($canTemptingTune)
+		{
+			$args['possibleActions'] = ['TemptingTune', 'Pass'];
+			$nbr = $this->globals->get('SIRENS_TEMPTING_TUNE');
+			$args['message'] = "may draw up to $nbr card(s) from the Water Deck with Tempting Tune";
+			$args['possibleIdsDraw'] = [$this->water->getCardOnTop('deck')['id']];
+		}
+		else
+		{
+			$args['possibleActions'] = ['Draw'];
+			$args['location'] = 'treasureColumn';
+			$args['possibleIdsDraw'] = array_keys($this->water->getCardsInLocation('treasureColumn'));
+			$args['message'] = 'must draw 1 card from the Treasure Column';
+		}
+
 		return $args;
 	}
 
@@ -812,21 +1215,45 @@ class Game extends \Table
 	{
 		// Indicates which action the player needs to do right now (True for draw/discard 1, false for patch)
 		$flag = $this->globals->get('FLAG'); 
+		$list = (array) $this->globals->get('LIST');
 
 		$args = [];
-		$args['possibleActions'] = $flag ? ['Draw', 'Discard'] : ['Patch'];
-		$args['location'] = $flag ? 'deck' : 'breachesColumn';
-		
+		$args['possibleActions'] = [];
 		if ($flag)
 		{
+			$args['possibleActions'] = ['Draw', 'Discard'];
+			$args['actiondescription'] = clienttranslate('draw a card from the Water Deck or Discard a card from your hand');
+			
 			$topCard = $this->water->getCardOnTop('deck');
 			$args['possibleIdsDraw'] = [intval($topCard['id'])];
-			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->getActivePlayerId()));
+			$args['possibleIdsDiscard'] = array_keys($this->water->getPlayerHand($this->gamestate->getActivePlayerList()[0]));
+		}
+		else if (!array_key_exists('breachInProgress', $list))
+		{
+			$args['possibleActions'] = ['Patch'];
+			// TODO come up with something better for this actiondescription...
+			$args['actiondescription'] = clienttranslate('use your hammer to Patch');
+			
+			$cannons = array_values($this->cannons->getCardsInLocation('breachesColumn'));
+			$breaches = array_values($this->breaches->getCardsInLocation('breachesColumn'));
+
+			// Filter out the breaches that have failed or are too big for the current number of hammers
+			$breaches = array_values(array_filter($breaches, function($card, $key) {
+				return !in_array($card['id'], $this->globals->get('LIST')['failedBreaches']) &&
+					$this->tokens['breaches'][$card['type']]['scale'] <= count($this->globals->get('LIST')['availableHammers']); 
+			}, ARRAY_FILTER_USE_BOTH));
+
+			$args['possibleToPatch'] = ['cannon' => $cannons, 'breach' => $breaches];
 		}
 		else
-			$args['possibleIdsPatch'] = [];
+		{
+			$args['possibleActions'] = ['ContributeHammer'];
+			$args['card'] = $this->cannons->getCard($this->globals->get('LIST')['breachInProgress']);
+			$args['actiondescription'] = clienttranslate('Do you want to use your hammer to help fix this breach?');
+		}
 
-		$args['actiondescription'] = $flag ? clienttranslate('draw a card from the Water Deck or Discard a card from your hand') : clienttranslate('use your hammer to Patch');
+		$args['location'] = $flag ? 'deck' : 'breachesColumn';
+		
 		return $args;
 	}
 
@@ -834,34 +1261,60 @@ class Game extends \Table
 	{
 		$args = [];
 		$flag = $this->globals->get('FLAG');
+		$activePlayer = $this->getActivePlayerId();
 		
-		$args['operableCannons'] = array_keys($this->getNonEmptyCollectionFromDB("SELECT dice.die_id FROM `dice` INNER JOIN `cannon` ON dice.die_id = cannon.card_id WHERE cannon.card_location = 'cannonsColumn'"));
+		$operableCannons = $this->getNonEmptyCollectionFromDB("SELECT dice.die_id id, cannon.card_type, cannon.card_type_arg FROM `dice` INNER JOIN `cannon` ON dice.die_id = cannon.card_id WHERE cannon.card_location = 'cannonsColumn'");
+		$args['operableCannons'] = array_keys($operableCannons);
 
+		// First action of fire action: Fire all cannons!
 		if ($flag)
 		{
 			$args['possibleActions'] = ['Fire'];
 			$args['instruction'] = clienttranslate('must fire');
+			return $args;
 		}
-		else
+
+		$treasure = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `water` WHERE `card_location`='hand' AND `card_location_arg`='$activePlayer' AND `card_type` != 'clearWater'"));
+		$alreadyActivated = (array) $this->globals->get('LIST');
+		
+		// nbr indicates how many more times the player can shoot their treasure
+		// This is either the number of treasure cards they have or the number of active cannons they haven't re-rolled yet, whichever is less
+		$nbr = min(count($treasure), count($args['operableCannons']) - count($alreadyActivated));
+
+		// If nbr > 0, then the player must be given a chance to Shoot Ye Treasure
+		if ($nbr > 0)
 		{
-			$ivePlayer = $this->getActivePlayerId();
-			$treasure = array_keys($this->getCollectionFromDB("SELECT `card_id` FROM `water` WHERE `card_location`='hand' AND `card_location_arg`='$ivePlayer' AND `card_type` != 'clearWater'"));
-			$alreadyActivated = (array) $this->globals->get('LIST');
-			
-			// nbr indicates how many more times the player can shoot their treasure
-			// This is either the number of treasure cards they have or the number of ive cannons they haven't re-rolled yet, whichever is less
-			$treasureNbr = count($treasure);
-			$operableCannonsNbr = count($args['operableCannons']);
-			
-			$alreadyActivatedNbr = count($alreadyActivated);
+			$notYetActivated = [];
+			foreach (array_diff(array_keys($operableCannons), $alreadyActivated) as $id)
+				$notYetActivated[] = $operableCannons[$id];
 
-			$nbr = min(count($treasure), count($args['operableCannons']) - count($alreadyActivated));
+			$args['possibleActions'] = ['ShootYeTreasure', 'Pass'];
+			$args['possibleDiscard'] = array_values($this->water->getCards($treasure));
+			$args['possibleToFireCannons'] = $notYetActivated;
+			$args['instruction'] = clienttranslate("may shoot ye treasure up to $nbr times");
+			return $args;
+		}
+		
+		// Skullsairs stash: If they should and can draw from the Skullsairs' stash because damage was done this turn
+		// TODO Make sure this condition makes sense? I think COUNTER needs to have the number of damage dealt this turn, and we must allow the player to draw up to that number from the skullsairs stash (e.g. make sure COUNTER isnt used for anything else during the fire action so it doesnt get muddied)
+		if (($nbr = $this->globals->get('COUNTER')) > 0 && count($cards = $this->water->getCardsInLocation('skullsairsStash')) > 0)
+		{
+			// If they are supposed to draw more cards than the stash currently has, then you can draw at most the number of cards in the stash
+			$nbr = min($nbr, count($cards));
 
-			$args['possibleActions'] = $nbr > 0 ? ['ShootYeTreasure', 'Pass'] : ['Pass'];
-			$args['possibleIdsDiscard'] = $treasure;
-			$args['instruction'] = $nbr > 0 ? clienttranslate("may shoot ye treasure up to $nbr times") : clienttranslate('must pass');
+			// TODO Im not certain Draw is right, to implement what Joseph requested of selecting multiple at once we might need a different kind of draw? Or maybe we should refactor the normal draw to draw a flexible number of cards? Maybe we make a DrawMultiple for this?
+			// We are attempting to overload Draw to have an array version for variable number of cards, well see if it works...
+			$args['possibleActions'] = ['Draw', 'DrawMultiple', 'Pass'];
+			$args['instruction'] = "may draw up to $nbr card(s) from the Skullsairs' Stash";
+			$args['possibleToDraw'] = array_values($cards);
+			$args['nbr'] = $nbr;
+			$args['location'] = 'skullsairsStash';
+			return $args;
 		}
 
+		// Everything that could be done was done, and the player must now pass.
+		$args['possibleActions'] = ['Pass'];
+		$args['instruction'] = clienttranslate('must pass');
 		return $args;
 	}
 
@@ -942,30 +1395,6 @@ class Game extends \Table
 		// Dials!
 		// Tell the client what dials to place where, and what value they should display
 		// This is a bit trickier than it sounds. We have to be careful not to tell the client more than the player should know at the current moment. This means hiding the value of the dial of other players if it is too early (or if the sirens' screech attack is active)
-		//
-//			define('STATE_START_GAME', 1);
-//		
-//			define('STATE_CHECK_FOR_BREACHES', 11);
-//			define('STATE_CHECK_WATER_THRESHOLD', 12);
-//			define('STATE_DEAL_WATER_AND_TREASURE', 13);
-//			define('STATE_ROLL_ENEMY_DICE', 14);
-//			define('STATE_RESOLVE_ENEMY_DICE', 15);
-	//			define('STATE_DECLARE_DIAL_HELPER', 20);
-	//			define('STATE_DECLARE_DIAL', 22);
-//			define('STATE_REVEAL_DIAL', 24);
-//			define('STATE_RESOLVE_BUCKET_HELPER', 26);	
-//			define('STATE_RESOLVE_BUCKET', 28);
-//			define('STATE_RESOLVE_PLUNDER_HELPER', 30);
-//			define('STATE_RESOLVE_PLUNDER', 32);
-//			define('STATE_RESOLVE_PATCH_HELPER', 34);
-//			define('STATE_RESOLVE_PATCH', 36);
-//			define('STATE_RESOLVE_FIRE_HELPER', 38);
-//			define('STATE_RESOLVE_FIRE', 40);
-//			define('STATE_UPKEEP', 50);
-//		
-//			define('STATE_END_GAME_SCORING', 98);
-//			define('STATE_END_GAME', 99);
-//
 		$dialsInfo = $this->getCollectionFromDb('SELECT `player_id` `id`, `dial_location`, `dial_value` FROM `player`');
 		$dials = [];
 		foreach ($dialsInfo as $id => $details)
@@ -994,11 +1423,22 @@ class Game extends \Table
 		$result['dials'] = $dials;
 		
         // Gather all information about current game situation (visible by player $currentPlayerId).
-		$globals['threshold'] = $this->globals->get('THRESHOLD_LEVEL');
 		$globals['enemy'] = $this->globals->get('ENEMY');
 		$globals['enemyHP'] = $this->globals->get('ENEMY_HP');
+		$globals['threshold'] = $this->globals->get('THRESHOLD_LEVEL');
+		if ($globals['threshold'] > 4) 
+			$globals['threshold'] = 4;
 		$globals['permanentBreaches'] = $this->globals->get('PERMANENT_BREACHES');
 		$globals['firstMate'] = $this->globals->get('FIRST_MATE');
+
+		if ($globals['enemy'] === 'Shark')
+			$globals['specialLocation'] = $this->water->countCardInLocation('sharksBelly'); 
+		else if ($globals['enemy'] === 'Sirens')
+			$globals['screech'] = $this->globals->get('SIRENS_SCREECH');
+		else if ($globals['enemy'] === 'Skullsairs')
+			$globals['specialLocation'] = $this->water->getCardsInLocation('skullsairsStash', null, 'location_arg'); //$this->water->getCardOnTop('skullsairsStash'); 
+		// TODO Should we only display the top card? Or should we display all the cards in a faceup slightly messy discard deck so you mostly see the top card but see the edges of some other ones to get a sense of how full the pile is
+
 		$result['globals'] = $globals;
 
 		// Cards in the discard deck
@@ -1007,12 +1447,13 @@ class Game extends \Table
 			$discardDeck[] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
 		$result['discardDeck'] = $discardDeck;
 
+		// NOTE: I had to reverse the cards sent to columns to get the proper order! Keep an eye on this...
 		// Cards in the waterColumn, either 'backside' or a clear water
 		// It is important we only tell the client backside or face up clear water. Anything more would be revealing more info than we should,
 		// telling them information hidden to the players (known to the backend of course)
 		// TODO Actually we might be telling them more than we want by showing the card_type_arg... Do we need to obfuscate this?
 		$waterColumn = array();
-		$cards = $this->getCollectionFromDB("SELECT `card_id`, `card_face_up`, `card_type_arg` FROM `water` WHERE `card_location`='waterColumn' ORDER BY `card_location_arg`");
+		$cards = $this->getCollectionFromDB("SELECT `card_id`, `card_face_up`, `card_type_arg`, `card_location_arg` FROM `water` WHERE `card_location`='waterColumn' ORDER BY `card_location_arg`");
 		foreach ($cards as $id => $details)
 		{
 			if ($details['card_face_up'] === "1")
@@ -1020,24 +1461,28 @@ class Game extends \Table
 			else
 				$waterColumn[$id] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
 		}
-		$result['waterColumn'] = $waterColumn;
+		$result['waterColumn'] = array_reverse(array_values($waterColumn));
 
 		// We can tell the client all details of the treasureColumn, breachColumn, and cannonsColumn
 		// since all cards in these locations are known. We are not revealing any info the players should not have.
 
 		// Treasure column
-		$result['treasureColumn'] = $this->water->getCardsInLocation('treasureColumn');
+		$result['treasureColumn'] = array_reverse($this->water->getCardsInLocation('treasureColumn', null, 'location_arg'));
 
 		// Breaches
-		$result['breaches'] = $this->breaches->getCardsInLocation('breachesColumn');
+		$result['breaches'] = array_reverse($this->breaches->getCardsInLocation('breachesColumn', null, 'location_arg'));
 
 		// Cannons
-		$result['bustedCannons'] = $this->cannons->getCardsInLocation('breachesColumn');
-		$result['operationalCannons'] = $this->cannons->getCardsInLocation('cannonsColumn');
+		$cannons = [
+			'busted' => $this->cannons->getCardsInLocation('breachesColumn', null, 'location_arg'),
+			'operational' => $this->cannons->getCardsInLocation('cannonsColumn', null, 'location_arg'),
+		];
+		$result['bustedCannons'] = array_reverse($cannons['busted']);
+		$result['operationalCannons'] = array_reverse($cannons['operational']);
 		
 		// This player's hand
 		$result['hand'] = $this->water->getPlayerHand($currentPlayerId);
-
+		
 		// Deck info
 		$result['deckCount'] = [
 			'water' => $this->water->countCardInLocation('deck'),
@@ -1050,9 +1495,9 @@ class Game extends \Table
 		foreach (['busted', 'operational'] as $cannonType)
 		{
 			$dice = [];
-			foreach (array_keys($result[$cannonType . 'Cannons']) as $id)
+			foreach ($cannons[$cannonType] as $card)
 			{
-				$dice[] = ['id' => $id, 'color' => 'Cannon' . $diceInfo[$id]['type'], 'face' => $diceInfo[$id]['value']];
+				$dice[] = ['id' => $card['id'], 'color' => 'Cannon' . $diceInfo[$card['id']]['type'], 'face' => $diceInfo[$card['id']]['value']];
 			}
 			$result[$cannonType . 'Dice'] = $dice;
 		}
@@ -1076,6 +1521,20 @@ class Game extends \Table
 
 		// Developer Help: (may want to delete or comment for final version)
 		$result['constants'] = get_defined_constants(true)['user'];
+
+		// Straight from the docs on how to handle end game scoring (https://en.doc.boardgamearena.com/BgaScoreSheet)
+		$result['endScores'] = null;
+		$result['otherHands'] = null;
+		if (intval($this->gamestate->state_id()) >= STATE_END_GAME)
+		{
+			$result['endScores'] = $this->getEndScores();
+			$result['otherHands'] = array();
+			foreach (array_keys($result['players']) as $id)
+			{
+				if ($id !== $currentPlayerId)
+					$result['otherHands'][$id] = $this->water->getPlayerHand($id);	
+			}
+		}
 
         return $result;
     }
@@ -1134,7 +1593,6 @@ class Game extends \Table
         $this->reloadPlayersBasicInfos();
 
 		// Init global values with their initial values.
-
         // Dummy content.
         $this->setGameStateInitialValue("my_first_global_variable", 0);
 		
@@ -1158,10 +1616,14 @@ class Game extends \Table
 		$this->globals->set('FLAG', true);
 		$this->globals->set('LIST', []); 
 		
-		// Lingering enemy effects are currently in effect iff their value is true (nonzero)
+		// Lingering enemy effects are currently in effect iff their value is positive 
 		// Ones with multiplicity are indicated by their value (double angered would be KRAKEN_ANGERED: 2)
-		// Kraken's Angered (corresponds to resolveKrakenAttack2)
+		// Items that can ignore lingering effects simply adjust the global value (by decrementing)
 		$this->globals->set('KRAKEN_ANGERED', 0);
+		$this->globals->set('SHARK_CHOMP_CHOMP', 0);
+		$this->globals->set('SHARK_SUBMERGED', 0);
+		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+		$this->globals->set('SIRENS_SCREECH', false);
 
 		$this->populateDatabase();
 
@@ -1240,14 +1702,15 @@ class Game extends \Table
 		// Exactly what we need for the treasure column!
 		// (and mark them as faceup for information control/obfuscation later)
 		$this->water->shuffle('deck');
-		$this->water->pickCardsForLocation(2, 'deck', 'treasureColumn');
+		$this->addToColumn('treasureColumn');
+		$this->addToColumn('treasureColumn');
 		$this->DbQuery("UPDATE `water` SET `card_face_up`=TRUE WHERE `card_location`='treasureColumn'");
 
 		// STEP I, J: Assemble waterDeck and water column
 		// Now we just need to add the clear waters back into the deck, shuffle, and put one in the water column.
 		$this->water->moveAllCardsInLocation('clearWaterDeck', 'deck');
 		$this->water->shuffle('deck');
-		$this->water->pickCardForLocation('deck', 'waterColumn');
+		$this->addToColumn('waterColumn');
 
 		// Now create the breaches deck ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// STEP K: Create the breaches deck and place one minor breah in the breaches column
@@ -1272,8 +1735,7 @@ class Game extends \Table
 		$this->breaches->createCards($breachDeckCards, 'deck');
 		// Put one minor breach into the breachs column
 		$minorBreaches = $this->breaches->getCardsOfType('minor');
-		$initialBreach = array_pop($minorBreaches);
-		$this->breaches->moveCard($initialBreach['id'], 'breachesColumn');
+		$this->addToColumn('breachesColumn', $this->breaches, (int) array_pop($minorBreaches)['id']);
 		$this->breaches->shuffle('deck');
 
 		// Assemble Cannons! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1286,9 +1748,9 @@ class Game extends \Table
 		$this->cannons->createCards($cannons, 'deck');
 		$singleShots = $this->cannons->getCardsOfType(1);
 		$doubleShots = $this->cannons->getCardsOFType(2);
-		$this->cannons->moveCard(array_pop($singleShots)['id'], 'breachesColumn');
-		$this->cannons->moveCard(array_pop($doubleShots)['id'], 'breachesColumn');
-		$this->addToCannonsColumn((int) array_pop($singleShots)['id']);
+		$this->addToColumn('breachesColumn', null, (int) array_pop($singleShots)['id']);
+		$this->addToColumn('breachesColumn', null, (int) array_pop($doubleShots)['id']);
+		$this->addToColumn('cannonsColumn', null, (int) array_pop($singleShots)['id']);
 
 		// Dice!!!! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// All dice are initialized with a random value. 
@@ -1308,8 +1770,7 @@ class Game extends \Table
 			$dice[] = "('$die_id', 'special', '$value')";
 		}
 
-		// Create the basic attack die
-		$enemy = $this->globals->get('ENEMY');
+		// Create the basic attack die (yes we still have the enemy from setting up the cards)
 		for ($x = 0; $x < $this->tokens['enemyInfo'][$enemy]['basicDice']; $x++, $die_id++)
 		{
 			$value = \bga_rand(1, 6);
@@ -1397,6 +1858,25 @@ class Game extends \Table
 		));
 	}
 
+	#[Debug(reload: true)]
+	public function debug_randomizeHands()
+	{
+		$this->water->moveAllCardsInLocation('hand', 'deck');
+		$this->water->moveAllCardsInLocation('discard', 'deck');
+		$this->water->shuffle('deck');
+		
+		foreach (array_keys($this->loadPlayersBasicInfos()) as $id)
+			$this->water->pickCardsForLocation(\bga_rand(2,10), 'deck', 'hand', $id);
+	}
+
+	#[Debug(reload: true)]
+	public function debug_gameEnd()
+	{
+		$this->pickCardsForWaterColumn(10);
+		$this->globals->set('ENEMY_HP', 1);
+		$this->globals->set('THRESHOLD_LEVEL', 4);
+	}
+
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public function getStateName()
 	{
@@ -1450,55 +1930,87 @@ class Game extends \Table
 		return (int) $nextPlayer;
 	}
 	
-	public function pickCardsForWaterColumn(int $number): array
-	{
-		$cardIds = [];
-		while ($number > 0)
-		{
-			$cardId = $this->water->getCardOnTop('deck')['id'];
-			$this->water->insertCardOnExtremePosition($cardId, 'waterColumn', COLUMN_BOTTOM);
-			$cardIds[] = $cardId;
-			$number--;
-		}
-		
-		$implodedCardIds = implode(',', $cardIds);	
-		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id` IN ($implodedCardIds)");
-		return $cardIds;
-	}
-
-	public function addToTreasureColumn(int $cardId)
-	{
-		$this->water->insertCardOnExtremePosition($cardId, 'treasureColumn', COLUMN_BOTTOM);
-		if ($this->water->countCardInLocation('treasureColumn') > 5)
-			$this->discard((int) $this->water->getCardOnTop('treasureColumn')['id']);
-	}
-
 	public function discard(int $cardId): array
 	{
-		$this->water->playCard($cardId);
-		if ($this->globals->get('KRAKEN_ANGERED'))
+		if ($this->globals->get('KRAKEN_ANGERED') > 0)
 		{
-			// TODO Implement Kraken angered!
-			$this->debug('KrakenAngered here...');
+			$this->debug('KrakenAngered!');
+			// The card does properly discard, but then it triggers basic die rolling and resolving
+			$this->water->playCard($cardId);
+			$dice = array_slice(array_keys($this->getCollectionFromDB("SELECT `die_id` FROM `dice` WHERE `type`='basic'")), 0, $this->globals->get('KRAKEN_ANGERED'));
+			$sqlFilter = implode(',', $dice); 
+			$diceRollMapping = []; $cases = ''; $attacks = [];
+			while (count($dice) > 0)
+			{
+				$die = array_pop($dice);
+				$roll = \bga_rand(1,6);
+				$diceRollMapping[$die] = $roll;
+				$cases .= "WHEN $die THEN $roll ";
+				$attacks[$die] = $this->tokens['diceMappings']['basic'][$roll] ?? clienttranslate('Blank');
+			}
+			$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $cases END WHERE `die_id` IN ($sqlFilter)"); 
+			$this->notify->all('rollEnemyDice', clienttranslate('Rolled ${rollResult}'), array(
+				'rollResult' => implode(', ', array_values($attacks)),
+				'diceRollMapping' => $diceRollMapping,
+			));
+
+			// TODO somehow the player should have a way to ignore a result if they have the right item (stickyStarfish or decoyCannon)
+			// It would prompt them here: after the dice rolled notif, but before it is resolved
+			// Probably we need to break and give the player a chance to give input, and then resolve somehow after their input is given
+
+			// Now actually resolve the rolls!
+			foreach ($attacks as $id => $result)
+			{
+				if ($result !== 'Blank')
+				{
+					$attack = "resolveBasic$result";
+					$this->$attack();
+				}
+			}
 		}
+		else if ($this->globals->get('SHARK_CHOMP_CHOMP') > 0)
+		{
+			$this->water->insertCardOnExtremePosition($cardId, 'sharksBelly', true);
+			$this->notify->all('sharkChompChompMessage', clienttranslate('A card was discarded into the Shark\'s Belly.'), array());
+		}
+		else
+			$this->water->playCard($cardId);
+
 		return $this->water->getCard($cardId);
 	}
 
-	public function addToCannonsColumn(int $cardId)
+	public function addToColumn(string $column, \Deck $component = null, $cardId = null): int
 	{
-		$this->cannons->insertCardOnExtremePosition($cardId, 'cannonsColumn', COLUMN_BOTTOM);
+		if ($component == null)
+			$component = ($column === 'waterColumn' || $column === 'treasureColumn') ? $this->water : $this->cannons;
+		if ($cardId == null)
+			$cardId = $component->getCardOnTop('deck')['id'];
+		$component->insertCardOnExtremePosition($cardId, $column, COLUMN_BOTTOM);
+
+		if ($column === 'treasureColumn' && $this->water->countCardInLocation('treasureColumn') > 5)
+			$this->discard((int) $this->water->getCardOnTop('treasureColumn')['id']);
+		return (int) $cardId;
 	}
 
-	public function removeFromCannonsColumn(): int
+	public function setCardOrientation(int $cardId, bool $faceUp = false)
 	{
-		$topCannon = $this->cannons->getCardOnTop('cannonsColumn');
-		if ($topCannon == null)
-			return -1;
+		$faceUp = $faceUp ? 1 : 0;
+		$this->DbQuery("UPDATE `water` SET `card_face_up`='$faceUp' WHERE `card_id`='$cardId'");
+	}
 
-		$topCannonId = (int) $topCannon['id'];
-		$this->debug("Top cannon id: $topCannonId;");
-		$this->cannons->moveCard($topCannonId, 'breachesColumn');
-		return $topCannonId;
+	public function setCardsOrientation(array $cardIds, bool $faceUp = false)
+	{
+		$faceUp = $faceUp ? 1 : 0;
+		$sqlData = implode(',', $cardIds);	
+		$this->DbQuery("UPDATE `water` SET `card_face_up`='$faceUp' WHERE `card_id` IN ($sqlData)");
+	}
+	
+	public function pickCardsForWaterColumn(int $number): array
+	{
+		$cardIds = [];
+		while ($number-- > 0)
+			$cardIds[] = $this->addToColumn('waterColumn');
+		return $cardIds;
 	}
 
 	public function getRandomCardFrom(int $playerId)
@@ -1519,27 +2031,40 @@ class Game extends \Table
 		else
 		{
 			$updateString = '';
-			for ($i = 0; $i < count($cannonIds); $i++)
-				$updateString .= "WHEN {$cannonIds[$i]} THEN " . \bga_rand(1,6) . ' ';
+			foreach ($cannonIds as $id) 
+				$updateString .= "WHEN $id THEN " . \bga_rand(1,6) . ' ';
 			$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` IN ('". implode("','", $cannonIds)."')");
 		}
 	
 		// Deal a damage to the enemy for each successful hit!
 		$rolls = $this->getNonEmptyCollectionFromDB("SELECT `die_id`, `type`, `value` FROM `dice` WHERE `die_id` in ('" . implode("','", $cannonIds) . "')"); 
-		$success = false;
+		$successes = 0;
+
 		foreach ($rolls as $id => $details) 
 		{
-			// A single shot cannon succeeds when the value is 1, A double shot
-			// cannon succeeds when the value is a 1 or 2, A triple shot cannon
-			// succeeds when the value is a 1, 2, or 3
+			// A single shot cannon succeeds when the value is 1, 
+			// A double shot cannon succeeds when the value is a 1 or 2, 
+			// A triple shot cannon succeeds when the value is a 1, 2, or 3,
+			// Except that Single shots always fail if the Shark is submerged.
 			if ((int) $details['value'] <= (int) $details['type'])
 			{
-				$success = true;
-				$this->damageEnemy();
-				$this->addToActivatedCannons($id);
+				if ($this->globals->get('SHARK_SUBMERGED') > 0 && (int) $details['type'] === 1)
+					$this->notify->all('sharkSubmergedMessage', clienttranslate('A single shot cannon missed because the Shark is submerged!'), array());
+				else
+				{
+					$successes++;
+					$this->damageEnemy();
+					$this->addToLIST($id);
+				}
 			}
 		}
-		return $success;
+		$this->notify->all('firedCannons', clienttranslate('Fired ${totalNbr} cannons, ${hitNbr} enemy hits'), array(
+			'totalNbr' => count($cannonIds),
+			'rolls' => $rolls,
+			'hitNbr' => $successes,
+			'newHp' => $this->globals->get('ENEMY_HP'),
+		));
+		return $successes > 0;
 	}
 	
 	public function damageEnemy()
@@ -1557,7 +2082,7 @@ class Game extends \Table
 				$dieIds = array_map('intval', $dieIds);
 				$maxDieId = max($dieIds);
 
-				switch($enemyInfo['adjustBasicDice'][$hp])
+				switch ($enemyInfo['adjustBasicDice'][$hp])
 				{
 					case 1:
 						$maxDieId++;
@@ -1567,23 +2092,17 @@ class Game extends \Table
 					case -1:
 						$this->DbQuery("DELETE FROM `dice` WHERE `die_id` = '$maxDieId'");
 						break;
-
-					default:
-						var_dump($enemyInfo['adjustBasicDice'][$hp]);
 				}
 			}
 
 			// Enemy reaction
-			$reaction = "the{$enemy}ReactsToDamage";
-			$this->$reaction();
+			// If this enemy has triggers (meaning it has an effect that can be triggered by taking damage) and its triggers contains $hp, then the enemy reacts to damage!
+			if (array_key_exists('triggers', $enemyInfo) && array_search($hp, $enemyInfo['triggers']) !== false)
+			{
+				$reaction = "the{$enemy}ReactsToDamage";
+				$this->$reaction();
+			}
 		}
-	}
-
-	public function addToActivatedCannons(int $cannonId)
-	{
-		$activatedCannons = (array) $this->globals->get('LIST');
-		array_push($activatedCannons, $cannonId);
-		$this->globals->set('LIST', $activatedCannons);
 	}
 
 	public function notifyForCardsDrawn(int $playerId, array $cards)
@@ -1608,7 +2127,7 @@ class Game extends \Table
 			$this->notify->all('actDraw', clienttranslate('${player_name} drew ${card_description}'), array(
 				'player_id' => $playerId,
 				'card_description' => $cardDescriptionObfuscated,
-				'player_name' => $this->getPlayerNameById($playerId),
+				'player_name' => $this->getPlayerNameById((int) $playerId),
 				'card' => $cardObfuscated,	
 			));	
 			$this->notify->player(intval($playerId), 'actDrawPrivate', clienttranslate('You drew ${card_description}'), array(
@@ -1618,82 +2137,412 @@ class Game extends \Table
 		}
 	}
 
-	// In all cases, the card discarded is unknown to everyone except for $playerId
-	// Therefore all sensitive info must be obfuscated from everyone else	
-	public function notifyForCardsDiscarded(int $playerId, array $cards)
+	// If $hidden, all sensitive info must be hidden from everyone else	
+	public function notifyForCardsDiscarded(array $cards, int $playerId = -1, string $location = 'discard', bool $private = true)
 	{
+		if ($this->globals->get('SHARK_CHOMP_CHOMP') > 0)
+			$location = 'sharksBelly';
+
 		foreach ($cards as $card)
 		{
-			// Make an obfuscated version for the other players
 			$cardDescription = $this->tokens['waterDeck'][$card['type']]['name'];
-			$cardObfuscated = $card;
-			$cardObfuscated['type'] = 'backside';
-			$cardObfuscated['type_arg'] = 0;
 
-			$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
-				'player_id' => $playerId,
-				'player_name' => $this->getPlayerNameById($playerId),
-				'card' => $cardObfuscated,	
-			));	
-			$this->notify->player($playerId, 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
-				'card_description' => $cardDescription,
-				'card' => $card,
-			));
+			if ($private)
+			{
+				// Make a private version for the other players
+				$privateCard = $card;
+				$privateCard['type'] = 'backside';
+				$privateCard['type_arg'] = 0;
+
+				$this->notify->all('actDiscard', clienttranslate('${player_name} discarded a card'), array(
+					'player_id' => $playerId,
+					'player_name' => $this->getPlayerNameById((int) $playerId),
+					'card' => $privateCard,	
+					'location' => $location,
+				));	
+				$this->notify->player($playerId, 'actDiscardPrivate', clienttranslate('You discarded ${card_description}'), array(
+					'card_description' => $cardDescription,
+					'card' => $card,
+					'location' => $location,
+				));
+			}
+			else if ($playerId < 0)
+				$this->notify->all('discard', clienttranslate('Discarded ${card_description}'), array(
+					'card_description' => $cardDescription,
+					'card' => $card,
+					'location' => $location,
+				));
+			else
+				$this->notify->all('discard', clienttranslate('${player_name} discarded a ${card_description}'), array(
+					'player_id' => $playerId,
+					'player_name' => $this->getPlayerNameById((int) $playerId),
+					'card_description' => $cardDescription,
+					'card' => $card,
+					'location' => $location,
+				));
 		}
 	}
 
-//	define('RED', 'ff5165');
-//	define('ORANGE','f19c27');
-//	define('GREEN','00c398');
-//	define('BLUE','4ccaf2');
-//	define('PURPLE', 'af73b1');
-//	define('GRAY', '646D74');
-//
-//	public function colorCodeToName(string $code)
-//	{
-//		$mapping = [
-//			'ff5165' => 'red',
-//			'f19c27' => 'orange',
-//			'00c398' => 'green',
-//			'4ccaf2' => 'blue',
-//			'af73b1' => 'purple',
-//			'646D74' => 'gray',
-//		];
-//		return $mapping[$code];
-//	}
+	public function addToLIST($element)
+	{
+		$list = (array) $this->globals->get('LIST');
+		$list[] = $element;
+		$this->globals->set('LIST', $list);
+	}
+
+	public function removeFromLIST($element): bool
+	{
+		$list = (array) $this->globals->get('LIST');
+		$key = array_search($element, $list);
+		if ($key === false)
+			return false;
+		array_splice($list, $key, 1);
+		$this->globals->set('LIST', $list);
+		return true;
+	}
 	
+//	public function obfuscateCard(int $id)
+//	{
+//		return ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
+//	}
+//
+//	public function obfuscateCards(array $ids)
+//	{
+//		$cards = [];
+//		foreach ($ids as $id)
+//			$cards[] = $this->obfuscateCard($id);
+//		return $cards;
+	//	}
+	
+	public function getEndScores(): array	
+	{
+		$endScores = array();
+		foreach (array_keys($this->loadPlayersBasicInfos()) as $id)
+		{
+			$playerHand = array_column($this->water->getPlayerHand($id), 'type');
+			$counts = array_count_values($playerHand);
+			$endScores[$id] = ['handCount' => count($playerHand), 'pointCount' => 0];
+			foreach ($playerHand as $cardName)
+			{
+				$value = $this->tokens['waterDeck'][$cardName]['value'];
+				if (is_numeric($value))
+					$endScores[$id]['pointCount'] += $value;
+				else if ($value === '*')
+				{
+					switch ($cardName)
+					{
+						case 'waterFlask':
+							if (array_key_exists('clearWater', $counts))
+								$endScores[$id]['pointCount'] += $counts['clearWater'];
+							break;
+						case 'treasureMap':
+							if (!array_key_exists('clearWater', $counts))
+								$endScores[$id]['pointCount'] += 5;
+							break;
+
+						// We score the first cursed amulet for the whole collection and score all the other amulets at 0
+						case 'cursedAmulet':
+							$endScores[$id]['pointCount'] += [0 => 0, 1 => 1, 2 => 4, 3 => 4, 4 => 12, 5 => 12, 6 => 24][$counts['cursedAmulet']];
+							$counts['cursedAmulet'] = 0;
+							break;
+					}
+				}
+				else
+					throw new \BgaSystemException("stEndGameScoring: value of $cardName is <$value>, neither numeric nor '*'");
+
+				if ($cardName === 'rubberDucky' && array_key_exists('clearWater', $counts))
+					$endScores[$id]['handCount'] -= $counts['clearWater'];
+			}
+		}
+		return $endScores;
+	}	
+
+	// (End of Helper functions)
+
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Basic Enemy Dice:
 	public function resolveBasicWater(): void
 	{
 		$this->debug("\nResolving basic water...\n");
-		$id = $this->pickCardsForWaterColumn(1)[0];
-		$this->notify->all('resolveBasicWater', 'Resolved water die result: Dealt a card to water column', array(
-			'card' => ['id' => $id, 'type' => 'backside', 'type_arg' => 0],
+		$this->notify->all('resolveBasicWater', clienttranslate('Resolved water die result: Dealt a card to water column'), array(
+			'card' => ['id' => $this->addToColumn('waterColumn'), 'type' => 'backside', 'type_arg' => 0],
 		));
 	}
 
 	public function resolveBasicBreach(): void
 	{
+		if ($this->removeFromLIST('ignoreBreach'))
+		{
+			$this->notify->all('resolveBasicBreach', clienttranslate('Successfully ignored 1 breach die roll'), array());
+			return;
+		}
 		$this->debug("\nResolving basic breach...\n");
-		$id = $this->breaches->pickCardForLocation('deck', 'breachesColumn');
-		$this->notify->all('resolveBasicBreach', 'Resolved breach die result: Dealt a new breach', array(
-			'ids' => [$id],	
+		$id = $this->addToColumn('breachesColumn', $this->breaches);
+		$card = $this->breaches->getCard($id);
+		$this->notify->all('resolveBasicBreach', clienttranslate('Resolved breach die result: Dealt a ${type} to the Breaches Column'), array(
+			'id' => $id,
+			'card' => $card,
+			'type' => $this->tokens['breaches'][$card['type']]['name'],
 		));
 	}
 
 	public function resolveBasicCannon(): void
 	{
 		$this->debug("\nResolving basic cannon...\n");
-		if ($this->cannons->countCardsInLocation('cannonsColumn') == 0)
-		{
+		if ($this->removeFromLIST('ignoreCannon'))
+			$this->notify->all('resolveBasicCannonFailed', clienttranslate('Sucessfully ignored one cannon die roll'), array());	
+		else if ($this->cannons->countCardsInLocation('cannonsColumn') == 0)
 			$this->notify->all('resolveBasicCannonFailed', clienttranslate('Resolved basic cannon die result (no cannons in cannon column)'), array()); 
-			return;
+		else
+		{
+			$card = $this->cannons->getCardOnTop('cannonsColumn');
+			$id = (int) $card['id'];
+			$this->cannons->moveCard($id, 'breachesColumn');
+			$this->notify->all('resolveBasicCannon', clienttranslate('Resolved basic cannon die result: a ${type} was damaged'), array(
+				'type' => $this->tokens['cannons'][$this->cannons->getCard($id)['type']],
+				'card' => $card,
+				'dieValue' => $this->getUniqueValueFromDB("SELECT `value` FROM `dice` WHERE `die_id`='$id'"),
+			));
+		}
+	}
+
+	// Items!?!
+	// All items with actual effects (not just points), in alphabetical order.
+	// I'll slowly fill in the logic for each... sounds like fun!
+	public function itemsDoStuffIGuess(array $input): bool 
+	{
+		$message = ''; 
+		$item = $input['item']; 
+		$itemId = $input['itemId'];
+		$card = $this->water->getCard($itemId);
+
+		if ($item == null || !array_key_exists($item, $tokens['waterDeck']))
+			$message = 'Item does not exist!';
+		else if ($card['location'] != 'hand' || $card['location_arg'] != $input['sourcePlayer'])
+			$message = "Source player does not have the card in their hand!";
+		else if (!$in_array($input['condition'], $tokens['waterDeck'][$item]['condition']))
+			$message = "Item must be played in reaction to the condition {$tokens['waterDeck'][$item]['condition']}, not {input['condition']}";
+		// TODO check that the needed player input are incliuded in $input (a player, a dial value, etc)
+
+		if ($message !== '')
+		{
+			$this->dump('input', $input);
+			throw new \BgaSystemException("itemsDoStuffIGuess: item: {$item}, sourcePlayer: {$input['sourcePlayer']} not allowed in state {$this->getStateName()}\n($message)");
 		}
 
-		$id = $this->removeFromCannonsColumn();
-		$this->notify->all('resolveBasicCannon', clienttranslate('Resolved basic cannon die result'), ['id' => $id,]);
+		switch ($item)
+		{
+			// Heavily based on bottleORum
+			case 'boneClub':
+				if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0 || $this->DbQuery("SELECT `dial_value` FROM `player` WHERE `player_id`='{$input['targetPlayer']}'", true) != 'plunder')
+					return false;
+				$newCard = $this->getRandomCardFrom($input['targetPlayer']);
+				$this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
+				// TODO notif???
+				break;
+
+			// Very similar to boneClub
+			case 'bottleORum':
+				// If the target player has any cards, get a random one, and swap it with the bottleORum
+				if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0)
+					return false;
+				$newCard = $this->getRandomCardFrom($input['targetPlayer']);
+				$this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
+				$this->water->moveCard($itemId, 'hand', $input['targetPlayer']);
+				// TODO notif???
+				break;
+
+			case 'captainsKey':
+				break;
+
+			case 'cheekyChum':
+				$this->globals->inc('SHARK_SUBMERGED', -2);
+				break;
+
+			case 'crackedCompass':
+				break;
+
+			case 'cutlass':
+				break;
+
+			case 'decoyCannon':
+				$this->addToLIST('ignoreCannon');
+				break;
+
+			case 'fishingNet':
+				break;
+
+			case 'fishingRod':
+				break;
+
+			case 'fishyBait':
+				break;
+
+			case 'flintPistol':
+				break;
+
+			case 'gemSifter':
+				break;
+
+			case 'grabbyCrabby':
+				break;
+
+			case 'grenado':
+				break;
+
+			case 'harpoon':
+				break;
+
+			case 'hurdyGurdy':
+				$this->globals->inc('KRAKEN_ANGERED', -1);
+				break;
+
+			case 'metalMallet':
+				break;
+
+			case 'moldyMop':
+				break;
+
+			case 'silverDoubloon':
+				break;
+
+			case 'sirenShiner':
+				$dice = $this->getCollectionFromDB("SELECT `die_id`, `value` FROM `dice` WHERE `type`='basic'", true);
+				$updateString = '';
+				foreach (array_keys($dice) as $id)
+				{
+					$dice[$id] = 7 - intval($dice[$id]);
+					$updateString .= "WHEN $id THEN {$dice[$id]} ";
+				}
+				$ids = implode(',', $array_keys($dice));
+				$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` IN ($ids)");
+				break;
+
+			case 'sirenSilencers':
+				$this->globals->inc('SIREN_SCREECH', -2);
+				break;
+
+			case 'smellySponge':
+				break;
+
+			case 'spareBarrel':
+				break;
+
+			case 'spyGlass':
+				break;
+
+			case 'stickyStarfish':
+				$this->addToLIST('ignoreBreach');
+				break;
+
+			case 'trustyCarrot':
+				break;
+
+			case 'warDrum':
+				$this->globals->set('FLAG', true);
+				break;
+
+			case 'waterPistol':
+				break;
+
+			case 'woodenMallet':
+				break;
+		}
 	}
+
+// Well just save that there in case we need that later... maybe for setting up their args? or a helper function?
+//	public function itemsDoStuffIGuess($item)
+//	{
+//		switch ($item)
+//		{
+//			case 'boneClub':
+//				break;
+//
+//			case 'bottleORum':
+//				break;
+//
+//			case 'captainsKey':
+//				break;
+//
+//			case 'cheekyChum':
+//				break;
+//
+//			case 'crackedCompass':
+//				break;
+//
+//			case 'cutlass':
+//				break;
+//
+//			case 'decoyCannon':
+//				break;
+//
+//			case 'fishingNet':
+//				break;
+//
+//			case 'fishingRod':
+//				break;
+//
+//			case 'fishyBait':
+//				break;
+//
+//			case 'flintPistol':
+//				break;
+//
+//			case 'gemSifter':
+//				break;
+//
+//			case 'grabbyCrabby':
+//				break;
+//
+//			case 'grenado':
+//				break;
+//
+//			case 'harpoon':
+//				break;
+//
+//			case 'hurdyGurdy':
+//				break;
+//
+//			case 'metalMallet':
+//				break;
+//
+//			case 'moldyMop':
+//				break;
+//
+//			case 'silverDoubloon':
+//				break;
+//
+//			case 'sirenShiner':
+//				break;
+//
+//			case 'sirenSilencers':
+//				break;
+//
+//			case 'smellySponge':
+//				break;
+//
+//			case 'spareBarrel':
+//				break;
+//
+//			case 'spyGlass':
+//				break;
+//
+//			case 'stickyStarfish':
+//				break;
+//
+//			case 'trustyCarrot':
+//				break;
+//
+//			case 'warDrum':
+//				break;
+//
+//			case 'waterPistol':
+//				break;
+//
+//			case 'woodenMallet':
+//				break;
+//		}
+//	}
 
 	// Special Enemy Dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// The Kraken	
@@ -1701,9 +2550,13 @@ class Game extends \Table
 	public function resolveKrakenAttack1(): void
 	{
 		$this->debug("\nResolving Kraken's special attack #1!\n");
-		$treasureCard = $this->water->getCardOnTop('treasureColumn')['id'];
-		$this->water->insertCardOnExtremePosition($treasureCard, 'waterColumn', COLUMN_BOTTOM);
-		$this->DbQuery("UPDATE `water` SET `card_face_up`=FALSE WHERE `card_id`=$treasureCard");
+		$card = $this->water->getCardOnTop('treasureColumn');
+		$this->addToColumn('waterColumn', null, $card['id']);
+		$this->setCardOrientation((int) $card['id'], false);
+		$this->notify->all('resolveKrakenSplash', clienttranslate('Resolved Splash die result: Moved ${card_description} from the top of the Treasure Column face-down into the Water Column'), array(
+			'id' => $card['id'],
+			'card_description' => $this->tokens['waterDeck'][$card['type']]['name'],
+		));
 	}
 	
 	// Angered: When a card is added to the discard pile this round, immediately roll and resolve 1 Basic Attack Die. (Place this die on the discard pile as a reminder.)
@@ -1711,22 +2564,126 @@ class Game extends \Table
 	{
 		$this->debug("\nResolving Kraken's special attack #2!\n");
 		$this->globals->inc('KRAKEN_ANGERED', 1);
+		// TODO put something in the notif to indicate the multiplicity of the attack (are there one or two angered attacks this round?)
+		// I'm thinking where it says "roll and resolve 1 Basic Attack Die", replace the 1 with multiplicity?
+		$this->notify->all('resolveKrakenAngered', clienttranslate('Resolved Angered die result: ${explanation}'), array(
+			'explanation' => $this->tokens['enemySheets']['Kraken']['specialAttack2']['effect'],
+		));
 	}
-
-	public function theKrakenReactsToDamage(): void { return; }
 	
 	// The Shark!
-	public function resolveSharkAttack1(): void {}
-	public function resolveSharkAttack2(): void {}
-	public function theSharkReactsToDamage(): void { return; }
+	// Chomp, Chomp!: All cards discarded this round go to the Shark's Belly face-down
+	public function resolveSharkAttack1(): void 
+	{
+		if ($this->globals->inc('SHARK_CHOMP_CHOMP', 1) == 1)
+			$this->notify->all('resolveSharkChompChomp', clienttranslate('Resolved Chomp, Chomp! die result: ${explanation}'), array(
+				'explanation' => $this->tokens['enemySheets']['Shark']['specialAttack1']['effect'],
+			));
+	}
+
+	// Submerged: When firing at the Shark this round, only Double-shot and Triple-Shot cannons can deal damage
+	public function resolveSharkAttack2(): void 
+	{
+		if ($this->globals->inc('SHARK_SUBMERGED', 1) == 1)
+			$this->notify->all('resolveSharkSubmerged', clienttranslate('Resolved Submerged die result: ${explanation}'), array(
+				'explanation' => $this->tokens['enemySheets']['Shark']['specialAttack2']['effect'],
+			));
+	}
+
+	// When the shark receives damage and there is an *, the shark reacts to taking damage by moving all cards from the shark's belly to the water column
+	public function theSharkReactsToDamage(): void 
+	{
+		$sharksBelly = $this->water->getCardsInLocation('sharksBelly', null, 'location_arg');	
+		foreach ($sharksBelly as $card)
+			$this->addToColumn('waterColumn', null, $card['id']);
+		$this->notify->all('theSharkReactsToDamage', clienttranslate('${explanation} Moved ${nbr} cards to the Water Column.'), array(
+			'explanation' => $this->tokens['enemySheets']['Shark']['reactToDamage'],
+			'nbr' => count($sharksBelly),
+			'cardIds' => array_column($sharksBelly, 'id'),
+		));
+	}
 
 	// The Sirens!
-	public function resolveSirensAttack1(): void {}
-	public function resolveSirensAttack2(): void {}
-	public function theSirensReactsToDamage(): void { return; }
+	// Tempting Tune: The last player to resolve a Plunder this round may also draw 2 cards from the Water Deck.
+	public function resolveSirensAttack1(): void
+	{
+		$this->globals->inc('SIRENS_TEMPTING_TUNE', 2);
+		$this->notify->all('resolveTemptingTune', clienttranslate('Resolved Tempting Tune die result: ${explanation}'), array(
+			'explanation' => $this->tokens['enemySheets']['Sirens']['specialAttack1']['effect'],
+		));
+	}
+
+	// Screech! Players cannot talk until Dials are revealed. Players declare actions by placing their Dials in front of them instead of in columns. Once all Dials are revealed, place them in their matching columns in player order, starting with the First Mate.
+	public function resolveSirensAttack2(): void
+	{
+		$this->globals->set('SIRENS_SCREECH', true);
+		$this->notify->all('resolveScreech', clienttranslate('Resolved Screech! die result: ${explanation}'), array(
+			'explanation' => $this->tokens['enemySheets']['Sirens']['specialAttack2']['effect'],
+		));
+	}
+
 
 	// The Skullsairs!	
-	public function resolveSkullsairsAttack1(): void {}
-	public function resolveSkullsairsAttack2(): void {}
-	public function theSkullsairsReactsToDamage(): void { return; }
+	// Cursed Search: All players must reveal 1 Cursed Amulet in their hand if able. If they have one, they must reveal a card at random from their hand. If its a Treasure, add it to the Skullsairs' Stash.
+	public function resolveSkullsairsAttack1(): void 
+	{
+		// Is it better to get a list of players with amulets, and then only load cards in their hands individually, or to get all players hands and then use that to determine who has the cursed amulets?
+		// Basically is it better to let SQL do the bulk of the work or a simple for loop and call it done? Which is more efficient? Which is more understandable?
+
+		// Im going to go with SQL. I think its plenty efficient and understandable, and it plays nicely with the getRandomCardFrom function
+		
+		$this->notify->all('resolveCursedSearchMessage', clienttranslate('Resolving Cursed Search'), array());
+		$allPlayers = array_keys($this->loadPlayersBasicInfos());
+		$playersWithAmulets = array_unique(array_values($this->getCollectionFromDB("SELECT `card_id`, `card_location_arg` FROM `water` WHERE `card_type`='cursedAmulet' AND `card_location`='hand'", true)));
+		foreach (array_diff($allPlayers, $playersWithAmulets) as $playerId)
+			$this->notify->all('resolveCursedSearchMessage', clienttranslate('${player_name} does not have a Cursed Amulet.'), array(
+				'player_id' => $playerId,
+				'player_name' => $this->getPlayerNameById((int) $playerId),	
+			));
+
+		foreach ($playersWithAmulets as $playerId)
+		{
+			$card = $this->water->getCard($this->getRandomCardFrom(intval($playerId)));
+			$this->notify->all('resolveCursedSearchMessage', clienttranslate('${player_name} has a Cursed Amulet! They reveal they have a ${card_description} in their hand!'), array(
+				'player_id' => $playerId,
+				'player_name' => $this->getPlayerNameById((int) $playerId),	
+				'card_description' => $this->tokens['waterDeck'][$card['type']]['name'],
+			));
+
+			if ($card['type'] !== 'clearWater')
+			{
+				$this->water->insertCardOnExtremePosition('skullsairsStash', $card['id'], true);
+				$this->notifyForCardsDiscarded([$card], intval($playerId), 'skullsairsStash', false);
+			}
+		}
+	}
+	
+	// Boarding Party: Move the lowest card in the Treasure column to the Skullsairs' Stash.
+	public function resolveSkullsairsAttack2(): void 
+	{
+		$treasureColumn = $this->water->getCardsInLocation('treasureColumn', null, 'location_arg');
+		// Safety measure but probably not necessary 
+		// (this function call should always immediately follow putting at least two treasure cards into the treasure column so this should never matter)
+		if (count($treasureColumn) == 0)
+			return;
+		$card = $treasureColumn[0];
+		$this->water->insertCardOnExtremePosition($card['id'], 'skullsairsStash', true);
+		$this->notify->all('resolveBoardingParty', clienttranslate('Resolved Boarding Party die result: ${explanation}. Moved ${card_description} to the Skullsairs\' Stash.'), array(
+			'explanation' => $this->tokens['enemySheets']['Skullsairs']['specialAttack2']['effect'],
+			'card' => $card,
+			'card_description' => $this->tokens['waterDeck'][$card['type']]['name'],
+		));
+	}
+
+	public function theSkullsairsReactsToDamage(): void 
+	{
+		$playerId = $this->getActivePlayerId();
+		$nbr = $this->globals->inc('COUNTER', 1);
+		// TODO Maybe it would make more sense to move this notif elsewhere? If the player deals multiple damage in one turn then this would display for each damage with different values of nbr...
+		$this->notify->all('theSkullsairsReactsToDamageMessage', clienttranslate('${player_name} may choose ${nbr} card(s) from the Skullsairs\' Stash'), array(
+			'player_id' => $playerId,
+			'player_name' => $this->getPlayerNameById((int) $playerId),
+			'nbr' => $nbr,
+		));
+	}
 }

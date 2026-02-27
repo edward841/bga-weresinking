@@ -162,6 +162,10 @@ $this->tokens = [
 	// 'adjustBasicDice': indicates exactly when to add/remove basic dice. 
 	// 		Think of it as 'when the enemy is damaged and now has x HP, add y basic dice' for the entry x => y
 	// 	'triggers': at what HP levels does the enemy react with some secondary effect (the * at the bottom of the sheet)
+	//
+//			if (array_key_exists('triggers', $this->tokens['enemyInfo'][$enemy]) === true 
+//				&& array_search($hp, $this->tokens['enemyInfo'][$enemy]['triggers']) !== false)
+//
 	'enemyInfo' => [
 		'Kraken' => [
 			'basicDice' => 2,
@@ -197,6 +201,12 @@ $this->tokens = [
 	// This implementation strictly enforces this order: special 1, special 2, Water, Breach, Cannon, Blank
 	'diceOrder' => ['1' => 0, '2' => 1, 'Water' => 2, 'Breach' => 3, 'Cannon' => 4, null => 5],
 
+	'cannons' => [
+		1 => clienttranslate('Single-Shot Cannon'),
+		2 => clienttranslate('Double-Shot Cannon'),
+		3 => clienttranslate('Triple-Shot Cannon'),		
+	],
+
 	// Critical info needed for the breaches: Organized by type of breach:
 	// 	name, scale, and player counts. The player counts element is designed
 	// 	for setting up a new game. An n player game would need the breaches from
@@ -215,7 +225,7 @@ $this->tokens = [
 	//  for every player count, the breach deck has two minor breaches (the array's length) and the associated image is located at index 0 for both.
 	'breaches' => [
 		'minor' => [
-			'name' => 'Minor Breach',
+			'name' => clienttranslate('Minor Breach'),
 			'scale' => 1,
 			'player counts' => [
 				'all' => [0, 0],
@@ -225,7 +235,7 @@ $this->tokens = [
 				]
 			],
 		'major' => [
-			'name' => 'Major Breach',
+			'name' => clienttranslate('Major Breach'),
 			'scale' => 2,
 			'player counts' => [
 				'all' => [4, 4, 4],
@@ -233,7 +243,7 @@ $this->tokens = [
 				]
 			],
 		'massive' => [
-			'name' => 'Massive Breach',
+			'name' => clienttranslate('Massive Breach'),
 			'scale' => 3,
 			'player counts' => [
 				5 => [6, 7, 7],
@@ -241,7 +251,7 @@ $this->tokens = [
 				]
 			],
 		'monster' => [
-			'name' => 'Monster Breach',
+			'name' => clienttranslate('Monster Breach'),
 			'scale' => 4,
 			'player counts' => [
 				6 => [8, 8]
@@ -255,6 +265,7 @@ $this->tokens = [
 		'clearWater' => [
 			'name' => clienttranslate('Clear Water'),
 			'type' => 'water',
+			'value' => 0,
 			'remove' => [
 				3 => 15,
 				4 => 10,
@@ -418,14 +429,14 @@ $this->tokens = [
 		'treasureMap' => [
 			'name' => clienttranslate('Treasure Map'),
 			'type' => 'item',
-			'value' => -1,
+			'value' => '*',
 			'trigger' => 'none',
 			'text' => clienttranslate('Worth 5 Victory points if you have no Clear Water cards in your hand.'),
 			],
 		'waterFlask' => [
 			'name' => clienttranslate('Water Flask'),
 			'type' => 'item',
-			'value' => -1,
+			'value' => '*',
 			'trigger' => 'none',
 			'text' => clienttranslate('Worth 1 Victory point for each Clear Water card in your hand.'),
 			],
@@ -439,7 +450,7 @@ $this->tokens = [
 		'woodenMallet' => [
 			'name' => clienttranslate('Wooden Mallet'),
 			'type' => 'item',
-			'value' => 0,
+			'value' => 1,
 			'trigger' => 'reveal patch',
 			'text' => clienttranslate('Gain 1 extra Hammer this round.'),
 			],
@@ -508,7 +519,7 @@ $this->tokens = [
 			'type' => 'enemy item',
 			'enemy' => 'Skullsairs',
 			'quantity' => 6,
-			'value' => 0,
+			'value' => '*',
 			'trigger' => 'none',
 			'text' => clienttranslate('Collect more for a combined value: 1=1VP, 2=4VP, 4=12VP, 6=24VP.'),
 			],
