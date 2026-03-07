@@ -82,14 +82,14 @@
 			"type": "int"
 		},
 
-		"special_attack_1_rolls":
+		"special_1_rolls":
 		{
 			"id": 30,
 			"name": "Number of times the special die rolled special attack 1",
 			"type": "int"
 		},
 
-		"special_attack_2_rolls":
+		"special_2_rolls":
 		{
 			"id": 32,
 			"name": "Number of times the special die rolled special attack 2",
@@ -104,35 +104,35 @@
 		},
 
 
-		"regular_blank_rolls":
+		"basic_blank_rolls":
 		{
 			"id": 36,
 			"name": "Number of times the attack die rolled blank",
 			"type": "int"
 		},
 
-		"regular_water_rolls":
+		"basic_water_rolls":
 		{
 			"id": 38,
 			"name": "Number of times the attack die rolled water",
 			"type": "int"
 		},
 
-		"regular_breach_rolls":
+		"basic_breach_rolls":
 		{
 			"id": 40,
 			"name": "Number of times the attack die rolled breach",
 			"type": "int"
 		},
 
-		"regular_cannon_rolls":
+		"basic_cannon_rolls":
 		{
 			"id": 42,
 			"name": "Number of times the attack die rolled cannon",
 			"type": "int"
 		},
 
-		"regular_rolls":
+		"basic_rolls":
 		{
 			"id": 44,
 			"name": "Number of times the attack die rolled",
