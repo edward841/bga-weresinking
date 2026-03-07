@@ -1626,6 +1626,7 @@ class Game extends \Table
 		$this->globals->set('SIRENS_SCREECH', false);
 
 		$this->populateDatabase();
+		$this->initStats();
 
         // Activate first player once everything has been initialized and ready.
         //$this->activeNextPlayer();
@@ -2256,6 +2257,58 @@ class Game extends \Table
 		}
 		return $endScores;
 	}	
+
+	public function initStats()
+	{
+// table
+		$this->bga->tableStats->init("enemy", 0);
+		$this->bga->tableStats->init("enemy_defeated", false);
+		$this->bga->tableStats->init("rounds_number", 0);
+		// THE BATTLE
+		$this->bga->tableStats->init("water_taken_on", 0);
+		$this->bga->tableStats->init("plunder_revealed", 0);
+		$this->bga->tableStats->init("cannons_damaged", 0);
+		$this->bga->tableStats->init("breaches", 0);
+		// DICE INFO
+		$this->bga->tableStats->init("special_blank_rolls", 0);
+		$this->bga->tableStats->init("special_water_rolls", 0);
+		$this->bga->tableStats->init("special_breach_rolls", 0);
+		$this->bga->tableStats->init("special_attack_1_rolls", 0);
+		$this->bga->tableStats->init("special_attack_2_rolls", 0);
+		$this->bga->tableStats->init("special_rolls", 0);
+		$this->bga->tableStats->init("regular_blank_rolls", 0);
+		$this->bga->tableStats->init("regular_water_rolls", 0);
+		$this->bga->tableStats->init("regular_breach_rolls", 0);
+		$this->bga->tableStats->init("regular_cannon_rolls", 0);
+		$this->bga->tableStats->init("regular_rolls", 0);
+		$this->bga->tableStats->init("total_cannon_rolls", 0);
+		$this->bga->tableStats->init("single_cannon_rolls", 0);
+		$this->bga->tableStats->init("single_cannon_hits", 0);
+		$this->bga->tableStats->init("double_cannon_rolls", 0);
+		$this->bga->tableStats->init("double_cannon_hits", 0);
+		$this->bga->tableStats->init("triple_cannon_rolls", 0);
+		$this->bga->tableStats->init("triple_cannon_hits", 0);
+		// THE EFFORT
+		$this->bga->tableStats->init("water_bucketed", 0);
+		$this->bga->tableStats->init("treasure_plundered", 0);
+		$this->bga->tableStats->init("breaches_repaired", 0);
+		$this->bga->tableStats->init("cannons_repaired", 0);
+// player 
+		// TURN BREAKDOWN
+		$this->bga->playerStats->init("bucket_turns", 0);
+		$this->bga->playerStats->init("plunder_turns", 0);
+		$this->bga->playerStats->init("patch_turns", 0);
+		$this->bga->playerStats->init("fire_turns", 0);
+		// HAND MANAGEMENT
+		$this->bga->playerStats->init("final_value_of_treasure", 0);
+		$this->bga->playerStats->init("final_hand_size`", 0);
+		$this->bga->playerStats->init("cards_drawn", 0);
+		$this->bga->playerStats->init("cards_discarded", 0);
+		$this->bga->playerStats->init("items_used", 0);
+		$this->bga->playerStats->init("shoot_ye_treasure", 0);
+		// MISC
+		$this->bga->playerStats->init("times_dial_value_and_column_differed", 0);
+	}
 
 	// (End of Helper functions)
 
