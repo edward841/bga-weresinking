@@ -36,6 +36,7 @@ class EndGameScoring extends GameState
 		$shipSinks = $this->game->globals->get('THRESHOLD_LEVEL') > 4;
 		if (!$enemyDefeated && !$shipSinks)
 			throw new \BgaSystemException('EndGameScoring onEnteringState: Enemy not defeated and ship not sunk! Should not be here!');
+		$this->game->bga->tableStats->set("enemy_defeated", $enemyDefeated);
 		
 		$endScores = $this->game->getEndScores();
 

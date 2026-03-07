@@ -300,5 +300,16 @@
 			"name": "Number of times their dial column and actual value were different",
 			"type": "int"
 		}
+	},
+
+	"value_labels" :
+	{
+		"10": 
+		[
+			"Kraken",
+			"Shark",
+			"Sirens",
+			"Skullsairs"
+		]
 	}
 }

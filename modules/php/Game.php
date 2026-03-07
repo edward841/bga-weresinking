@@ -133,7 +133,7 @@ class Game extends \Table
 		$thresholdLevel = (int) $this->globals->get('THRESHOLD_LEVEL');
 		$thresholdPanelInfo = $this->tokens['thresholdSheets']["{$this->getPlayersNumber()} players"]["level $thresholdLevel"];
 		
-		// Pick the correct number of cards for the water column according to the threshold panel
+		// Pick the correct number of cards for the water column according to the threshold sheet
 		$waterIds = $this->pickCardsForWaterColumn((int) $thresholdPanelInfo['water']);
 		foreach ($waterIds as $id)
 			$cards[] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
@@ -520,6 +520,9 @@ class Game extends \Table
 
 	public function stUpkeep()
 	{
+		// Update round counter
+		$this->bga->tableStats->inc("rounds_number", 1);
+
 		// Check hand size
 		$playerCardNbr = $this->water->countCardsByLocationArgs('hand');
 		foreach ($playerCardNbr as $playerId => $nbr)
@@ -1591,6 +1594,8 @@ class Game extends \Table
 
         $this->reattributeColorsBasedOnPreferences($players, $gameinfos["player_colors"]);
         $this->reloadPlayersBasicInfos();
+		
+		$this->initStats();
 
 		// Init global values with their initial values.
         // Dummy content.
@@ -1602,6 +1607,7 @@ class Game extends \Table
 			$enemyNumber = \bga_rand(1,4);
 		$enemies = [1=>'Kraken', 2=>'Shark', 3=>'Sirens', 4=>'Skullsairs'];
 		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
+		$this->bga->tableStats->set('enemy', $enemyNumber);
 
 		// Initialize globals	
 		// Basic universal info
@@ -1626,7 +1632,6 @@ class Game extends \Table
 		$this->globals->set('SIRENS_SCREECH', false);
 
 		$this->populateDatabase();
-		$this->initStats();
 
         // Activate first player once everything has been initialized and ready.
         //$this->activeNextPlayer();
@@ -1982,12 +1987,22 @@ class Game extends \Table
 
 	public function addToColumn(string $column, \Deck $component = null, $cardId = null): int
 	{
+		// Primary work
 		if ($component == null)
 			$component = ($column === 'waterColumn' || $column === 'treasureColumn') ? $this->water : $this->cannons;
 		if ($cardId == null)
 			$cardId = $component->getCardOnTop('deck')['id'];
 		$component->insertCardOnExtremePosition($cardId, $column, COLUMN_BOTTOM);
 
+		// Stats work
+		if ($column === 'waterColumn')
+			$this->bga->tableStats->inc('water_taken_on', 1);
+		else if ($column === 'treasureColumn')
+			$this->bga->tableStats->inc('plunder_revealed', 1);
+		else if ($component == $this->breaches)
+			$this->bga->tableStats->inc('breaches', 1);
+
+		// Treasure column max length enforcement
 		if ($column === 'treasureColumn' && $this->water->countCardInLocation('treasureColumn') > 5)
 			$this->discard((int) $this->water->getCardOnTop('treasureColumn')['id']);
 		return (int) $cardId;
@@ -2261,14 +2276,15 @@ class Game extends \Table
 	public function initStats()
 	{
 // table
+		// UNIVERSAL  
 		$this->bga->tableStats->init("enemy", 0);
 		$this->bga->tableStats->init("enemy_defeated", false);
 		$this->bga->tableStats->init("rounds_number", 0);
 		// THE BATTLE
-		$this->bga->tableStats->init("water_taken_on", 0);
-		$this->bga->tableStats->init("plunder_revealed", 0);
-		$this->bga->tableStats->init("cannons_damaged", 0);
-		$this->bga->tableStats->init("breaches", 0);
+		$this->bga->tableStats->init("water_taken_on", 1);
+		$this->bga->tableStats->init("plunder_revealed", 2);
+		$this->bga->tableStats->init("cannons_damaged", 2);
+		$this->bga->tableStats->init("breaches", 1);
 		// DICE INFO
 		$this->bga->tableStats->init("special_blank_rolls", 0);
 		$this->bga->tableStats->init("special_water_rolls", 0);
@@ -2356,6 +2372,8 @@ class Game extends \Table
 				'card' => $card,
 				'dieValue' => $this->getUniqueValueFromDB("SELECT `value` FROM `dice` WHERE `die_id`='$id'"),
 			));
+			$this->bga->tableStats->inc('cannons_damaged', 1);
+
 		}
 	}
 
