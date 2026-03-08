@@ -318,6 +318,14 @@ class Game extends \Table
 			'dials' => $playerInfo,
 			'screech' => $this->globals->get('SIRENS_SCREECH'),
 		));
+		
+		// Stats work
+		// Since fire is the only action that can end the game, it is the only one that needs treated differently for counting turns
+		foreach ($playerInfo as $id => $details)
+		{
+			if ($details['dial_value'] !== 'fire')
+				$this->bga->playerStats->inc("{$details['dial_value']}_turns", 1, $id);
+		}
 
 		$this->gamestate->nextState('resolveBucketHelper');
 	}
@@ -370,8 +378,8 @@ class Game extends \Table
 				// 3. Treasure nbr < plundering players nbr, discard all treasure and move on to the next action
 				if ($this->globals->get('FLAG'))
 				{
-					$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
-					$dialValues = array_column(array_values($playerInfo), 'dial_location'); 
+					$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_value` FROM `player` ORDER BY `custom_order`');
+					$dialValues = array_column(array_values($playerInfo), 'dial_value'); 
 					$plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
 					$treasureNbr = $this->water->countCardInLocation('treasureColumn');
 					$moveOnToNextAction = false;
@@ -1086,7 +1094,12 @@ class Game extends \Table
 			throw new \BgaSystemException("Fire not allowed in state {$this->getStateName()}\n($message)");
 
 		$this->fireCannons($args['operableCannons']);
-		$this->globals->set('FLAG', false);		
+		$this->globals->set('FLAG', false);
+
+		// Stats work
+		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$this->bga->playerStats->inc('fire_turns', 1, $playerId);
+
 		($this->globals->get('ENEMY_HP') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('endGame');
 	}
 
@@ -1624,7 +1637,7 @@ class Game extends \Table
 			$enemyNumber = \bga_rand(1,4);
 		$enemies = [1=>'Kraken', 2=>'Shark', 3=>'Sirens', 4=>'Skullsairs'];
 		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
-		$this->bga->tableStats->set('enemy', $enemyNumber);
+		$this->bga->tableStats->set('enemy', $enemyNumber - 1);
 
 		// Initialize globals	
 		// Basic universal info
