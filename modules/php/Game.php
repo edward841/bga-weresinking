@@ -707,6 +707,7 @@ class Game extends \Table
 			$this->bga->tableStats->inc('water_bucketed', 1);
 		else if ($location === 'treasureColumn')
 			$this->bga->tableStats->inc('treasure_plundered', 1);
+		$this->bga->playerStats->inc('cards_drawn', 1, $playerId);
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
 		$again = false;
@@ -797,6 +798,7 @@ class Game extends \Table
 
 		$card = $this->water->pickCard('deck', $playerId);
 		$this->notifyForCardsDrawn(intval($playerId), [$card]);
+		$this->bga->playerStats->inc('cards_drawn', 1, $playerId);
 
 		// Give the player a chance to do something if their turn is not done 
 		// (when they still need to do their Draw action or they have a second Tempting Tune to resolve)
@@ -831,6 +833,7 @@ class Game extends \Table
 		$card = $this->water->getCard($cardId);
 		$this->notifyForCardsDiscarded(array($card), intval($playerId));
 		$this->discard($cardId);
+		$this->bga->playerStats->inc('cards_discarded', 1, $playerId);
 		
 		// Handles specific states
 		$again = false;
@@ -1135,6 +1138,11 @@ class Game extends \Table
 		if (!$this->fireCannons(array($cannonId)))
 			$this->addToLIST($cannonId);
 
+		// Stats work
+		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$this->bga->playerStats->inc('shoot_ye_treasure', 1, $playerId);
+		$this->bga->playerStats->inc('cards_discarded', 1, $playerId);
+
 		($this->globals->get('ENEMY_HP') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('endGame');
 	}
 
@@ -1220,10 +1228,7 @@ class Game extends \Table
 		if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0 && $this->globals->get('COUNTER') <= 0)
 		{
 			$plunderers = array_keys($this->getCollectionFromDB("SELECT `player_id` FROM `player` WHERE `dial_value`='plunder' ORDER BY `custom_order`"));
-			$treasureNbr = $this->water->countCardInLocation('treasureColumn');
-			$lastPlunderer = $plunderers[count($plunderers) - 1];
-			
-			if (count($plunderers) === 1 || ($lastPlunderer === $activePlayer && $treasureNbr < count($plunderers))) 
+			if ($activePlayer === $plunderers[count($plunderers) - 1])
 				$canTemptingTune = true;
 		}
 		if ($canTemptingTune)
@@ -1335,8 +1340,6 @@ class Game extends \Table
 			// If they are supposed to draw more cards than the stash currently has, then you can draw at most the number of cards in the stash
 			$nbr = min($nbr, count($cards));
 
-			// TODO Im not certain Draw is right, to implement what Joseph requested of selecting multiple at once we might need a different kind of draw? Or maybe we should refactor the normal draw to draw a flexible number of cards? Maybe we make a DrawMultiple for this?
-			// We are attempting to overload Draw to have an array version for variable number of cards, well see if it works...
 			$args['possibleActions'] = ['Draw', 'DrawMultiple', 'Pass'];
 			$args['instruction'] = "may draw up to $nbr card(s) from the Skullsairs' Stash";
 			$args['possibleToDraw'] = array_values($cards);
@@ -2350,7 +2353,7 @@ class Game extends \Table
 		$this->bga->playerStats->init("fire_turns", 0);
 		// HAND MANAGEMENT
 		$this->bga->playerStats->init("final_value_of_treasure", 0);
-		$this->bga->playerStats->init("final_hand_size`", 0);
+		$this->bga->playerStats->init("final_hand_size", 0);
 		$this->bga->playerStats->init("cards_drawn", 0);
 		$this->bga->playerStats->init("cards_discarded", 0);
 		$this->bga->playerStats->init("items_used", 0);

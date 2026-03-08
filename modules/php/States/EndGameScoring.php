@@ -53,6 +53,13 @@ class EndGameScoring extends GameState
 			$hands[$id] = $this->game->water->getPlayerHand($id);	
 		$this->game->notify->all('endScores', '', ['endScores' => $endScores, 'hands' => $hands, 'enemyDefeated' => $enemyDefeated]);
 
+		// Stats work
+		foreach ($endScores as $id => $details)
+		{
+			$this->game->bga->playerStats->set('final_hand_size', $details['handCount']);
+			$this->game->bga->playerStats->set('final_value_of_treasure', $details['pointCount']);
+		}
+
 		// Straight from the docs for how to handle reverse scoring or reverse aux scoring (https://en.doc.boardgamearena.com/Main_game_logic:_Game.php#Tie_breaker)
 		$playersDb = $this->game->getCollectionFromDB("SELECT * FROM `player`");
 		$players = Player::fromPlayersDb($playersDb);

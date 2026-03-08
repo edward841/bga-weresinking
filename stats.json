@@ -244,7 +244,7 @@
 			"type": "int"
 		},
 
-		"final_hand_size`":
+		"final_hand_size":
 		{
 			"id": 21,
 			"name": "Number of cards in hand at game end",
