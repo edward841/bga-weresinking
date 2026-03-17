@@ -36,7 +36,7 @@ class EndGameScoring extends GameState
 		$shipSinks = $this->game->globals->get('THRESHOLD_LEVEL') > 4;
 		if (!$enemyDefeated && !$shipSinks)
 			throw new \BgaSystemException('EndGameScoring onEnteringState: Enemy not defeated and ship not sunk! Should not be here!');
-		$this->game->bga->tableStats->set("enemy_defeated", $enemyDefeated);
+		$this->game->bga->tableStats->set("enemy_defeated", $enemyDefeated ? 1 : 0);
 		
 		$endScores = $this->game->getEndScores();
 
@@ -56,8 +56,8 @@ class EndGameScoring extends GameState
 		// Stats work
 		foreach ($endScores as $id => $details)
 		{
-			$this->game->bga->playerStats->set('final_hand_size', $details['handCount']);
-			$this->game->bga->playerStats->set('final_value_of_treasure', $details['pointCount']);
+			$this->game->bga->playerStats->set('final_hand_size', $details['handCount'], $id);
+			$this->game->bga->playerStats->set('final_value_of_treasure', $details['pointCount'], $id);
 		}
 
 		// Straight from the docs for how to handle reverse scoring or reverse aux scoring (https://en.doc.boardgamearena.com/Main_game_logic:_Game.php#Tie_breaker)

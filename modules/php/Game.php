@@ -707,7 +707,7 @@ class Game extends \Table
 			$this->bga->tableStats->inc('water_bucketed', 1);
 		else if ($location === 'treasureColumn')
 			$this->bga->tableStats->inc('treasure_plundered', 1);
-		$this->bga->playerStats->inc('cards_drawn', 1, $playerId);
+		$this->bga->playerStats->inc('cards_drawn', 1, (int) $playerId);
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
 		$again = false;
@@ -798,7 +798,7 @@ class Game extends \Table
 
 		$card = $this->water->pickCard('deck', $playerId);
 		$this->notifyForCardsDrawn(intval($playerId), [$card]);
-		$this->bga->playerStats->inc('cards_drawn', 1, $playerId);
+		$this->bga->playerStats->inc('cards_drawn', 1, (int) $playerId);
 
 		// Give the player a chance to do something if their turn is not done 
 		// (when they still need to do their Draw action or they have a second Tempting Tune to resolve)
@@ -833,7 +833,7 @@ class Game extends \Table
 		$card = $this->water->getCard($cardId);
 		$this->notifyForCardsDiscarded(array($card), intval($playerId));
 		$this->discard($cardId);
-		$this->bga->playerStats->inc('cards_discarded', 1, $playerId);
+		$this->bga->playerStats->inc('cards_discarded', 1, (int) $playerId);
 		
 		// Handles specific states
 		$again = false;
@@ -1101,7 +1101,7 @@ class Game extends \Table
 
 		// Stats work
 		$playerId = $this->gamestate->getActivePlayerList()[0];
-		$this->bga->playerStats->inc('fire_turns', 1, $playerId);
+		$this->bga->playerStats->inc('fire_turns', 1, (int) $playerId);
 
 		($this->globals->get('ENEMY_HP') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('endGame');
 	}
@@ -1139,7 +1139,7 @@ class Game extends \Table
 			$this->addToLIST($cannonId);
 
 		// Stats work
-		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$playerId = (int) $this->gamestate->getActivePlayerList()[0];
 		$this->bga->playerStats->inc('shoot_ye_treasure', 1, $playerId);
 		$this->bga->playerStats->inc('cards_discarded', 1, $playerId);
 
