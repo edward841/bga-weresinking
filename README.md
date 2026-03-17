@@ -8,8 +8,8 @@ Implement all game rules, frontend is complete enough for the player to play the
 ### Backend:
 - [x] Fire Action
 - [x] Patching Action
-- [ ] Special Attacks
-- [ ] Game end condition/scoring
+- [x] Special Attacks
+- [x] Game end condition/scoring
 - [ ] Item plays
 - [ ] Chests
 

@@ -1,0 +1,48 @@
+//"table": 
+		"enemy":
+		"enemy_defeated":
+		"rounds_number":
+		// THE BATTLE
+		"water_taken_on":
+		"plunder_revealed":
+		"cannons_damaged":
+		"breaches":
+		// DICE INFO
+		"special_blank_rolls":
+		"special_water_rolls":
+		"special_breach_rolls":
+		"special_attack_1_rolls":
+		"special_attack_2_rolls":
+		"special_rolls":
+		"regular_blank_rolls":
+		"regular_water_rolls":
+		"regular_breach_rolls":
+		"regular_cannon_rolls":
+		"regular_rolls":
+		"total_cannon_rolls":
+		"single_cannon_rolls":
+		"single_cannon_hits":
+		"double_cannon_rolls":
+		"double_cannon_hits":
+		"triple_cannon_rolls":
+		"triple_cannon_hits":
+		// THE EFFORT
+		"water_bucketed":
+		"treasure_plundered":
+		"breaches_repaired":
+		"cannons_repaired":
+//	"player": 
+		// TURN BREAKDOWN
+		"bucket_turns":
+		"plunder_turns":
+		"patch_turns":
+		"fire_turns":
+		// HAND MANAGEMENT
+		"final_value_of_treasure":
+		"final_hand_size`":
+		"cards_drawn":
+		"cards_discarded":
+		"items_used":
+		"shoot_ye_treasure":
+		// MISC
+		"times_dial_value_and_column_differed":

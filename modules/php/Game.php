@@ -133,7 +133,7 @@ class Game extends \Table
 		$thresholdLevel = (int) $this->globals->get('THRESHOLD_LEVEL');
 		$thresholdPanelInfo = $this->tokens['thresholdSheets']["{$this->getPlayersNumber()} players"]["level $thresholdLevel"];
 		
-		// Pick the correct number of cards for the water column according to the threshold panel
+		// Pick the correct number of cards for the water column according to the threshold sheet
 		$waterIds = $this->pickCardsForWaterColumn((int) $thresholdPanelInfo['water']);
 		foreach ($waterIds as $id)
 			$cards[] = ['id' => $id, 'type' => 'backside', 'type_arg' => 0];
@@ -177,7 +177,7 @@ class Game extends \Table
 
 		// Get the ids of all the attack die (both basic and special attack dice)
 		// Generate the correct number of random values 
-		// $$\forall x \in $rolls, x \in [1,6] $$
+		// $$\forall x \in $rolls, x \in {1,2,3,4,5,6} $$
 		$diceIds = $this->getCollectionFromDB("SELECT `die_id`, `type` FROM `dice` WHERE `type` IN ('basic', 'special')");
 		$rolls = array();
 		for ($x = 0; $x < count($diceIds); $x++)
@@ -203,13 +203,19 @@ class Game extends \Table
 		$attacks = array();
 		foreach (array_keys($diceIds) as $id)
 		{
-			$attack = $this->tokens['diceMappings'][$diceIds[$id]['type']][$diceRollMapping[$id]];
+			$dieType = $diceIds[$id]['type'];
+			$attack = $this->tokens['diceMappings'][$dieType][$diceRollMapping[$id]];
 			if ($attack == null)
-				$attack = clienttranslate('Blank');
-			else if (strlen($attack) == 1)
-				$attack = $this->tokens['enemySheets'][$enemy]["specialAttack$attack"]['name'];	
+				$attack = 'Blank';
+			
+			// Stats work
+			$attackLowercase = strtolower($attack);
+			$this->bga->tableStats->inc("{$dieType}_rolls", 1);	
+			$this->bga->tableStats->inc("{$dieType}_{$attackLowercase}_rolls", 1);	
 
-			$attacks[] = $attack;
+			if (strlen($attack) == 1)
+				$attack = $this->tokens['enemySheets'][$enemy]["specialAttack$attack"]['name'];	
+			$attacks[] = clienttranslate($attack);
 		}
 		$this->notify->all('rollEnemyDice', clienttranslate('Rolled ${rollResult}'), array(
 			'rollResult' => implode(', ', $attacks),
@@ -312,6 +318,14 @@ class Game extends \Table
 			'dials' => $playerInfo,
 			'screech' => $this->globals->get('SIRENS_SCREECH'),
 		));
+		
+		// Stats work
+		// Since fire is the only action that can end the game, it is the only one that needs treated differently for counting turns
+		foreach ($playerInfo as $id => $details)
+		{
+			if ($details['dial_value'] !== 'fire')
+				$this->bga->playerStats->inc("{$details['dial_value']}_turns", 1, $id);
+		}
 
 		$this->gamestate->nextState('resolveBucketHelper');
 	}
@@ -364,8 +378,8 @@ class Game extends \Table
 				// 3. Treasure nbr < plundering players nbr, discard all treasure and move on to the next action
 				if ($this->globals->get('FLAG'))
 				{
-					$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
-					$dialValues = array_column(array_values($playerInfo), 'dial_location'); 
+					$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_value` FROM `player` ORDER BY `custom_order`');
+					$dialValues = array_column(array_values($playerInfo), 'dial_value'); 
 					$plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
 					$treasureNbr = $this->water->countCardInLocation('treasureColumn');
 					$moveOnToNextAction = false;
@@ -388,6 +402,9 @@ class Game extends \Table
 						$this->setCardsOrientation(array_column($cardsDrawn, 'id'), false);
 
 						$moveOnToNextAction = true;
+
+						// Stats work
+						$this->bga->tableStats->inc('treasure_plundered', count($cardsDrawn));
 					}
 					// 2. Several plunderers with enough to go around
 					else if ($treasureNbr >= $plunderingPlayersNbr)
@@ -520,6 +537,9 @@ class Game extends \Table
 
 	public function stUpkeep()
 	{
+		// Update round counter
+		$this->bga->tableStats->inc("rounds_number", 1);
+
 		// Check hand size
 		$playerCardNbr = $this->water->countCardsByLocationArgs('hand');
 		foreach ($playerCardNbr as $playerId => $nbr)
@@ -682,6 +702,12 @@ class Game extends \Table
 		else
 			$this->water->moveCard($cardId, 'hand', $playerId);
 
+		// Stats work
+		if ($location === 'waterColumn')
+			$this->bga->tableStats->inc('water_bucketed', 1);
+		else if ($location === 'treasureColumn')
+			$this->bga->tableStats->inc('treasure_plundered', 1);
+		$this->bga->playerStats->inc('cards_drawn', 1, (int) $playerId);
 
 		// If COUNTER decremented is 0, then move on to whatever comes next
 		$again = false;
@@ -772,6 +798,7 @@ class Game extends \Table
 
 		$card = $this->water->pickCard('deck', $playerId);
 		$this->notifyForCardsDrawn(intval($playerId), [$card]);
+		$this->bga->playerStats->inc('cards_drawn', 1, (int) $playerId);
 
 		// Give the player a chance to do something if their turn is not done 
 		// (when they still need to do their Draw action or they have a second Tempting Tune to resolve)
@@ -806,6 +833,7 @@ class Game extends \Table
 		$card = $this->water->getCard($cardId);
 		$this->notifyForCardsDiscarded(array($card), intval($playerId));
 		$this->discard($cardId);
+		$this->bga->playerStats->inc('cards_discarded', 1, (int) $playerId);
 		
 		// Handles specific states
 		$again = false;
@@ -903,6 +931,7 @@ class Game extends \Table
 					'card' => $this->cannons->getCard($cardId),
 					'problem' => $problem,
 				));
+				$this->bga->tableStats->inc('cannons_repaired', 1);
 				break;
 			
 			case 'breach':
@@ -918,10 +947,11 @@ class Game extends \Table
 						'card' => $this->breaches->getCard($cardId),
 						'problem' => $problem,
 					));
+					$this->bga->tableStats->inc('breaches_repaired', 1);
 				}
 				else
 				{
-					// If the breach requires multiple hammers to patch, we need to give other players a chance to assist
+					// If the breach requires multiple hammers to patch, we need to ask other patching players to assist
 					$again = true;
 
 					// breachInProgress: id of the breach card
@@ -990,6 +1020,7 @@ class Game extends \Table
 			if (count($list['pledgedHammers']) == $scale)
 			{
 				// Yay! We can fix the breach!
+				$this->bga->tableStats->inc('breaches_repaired', 1);
 				$this->breaches->insertCardOnExtremePosition($card['id'], 'deck', false);
 				$card['location'] = 'deck'; // Without this the card doesn't flip to the backside in the animation
 				$again = false;
@@ -1066,7 +1097,12 @@ class Game extends \Table
 			throw new \BgaSystemException("Fire not allowed in state {$this->getStateName()}\n($message)");
 
 		$this->fireCannons($args['operableCannons']);
-		$this->globals->set('FLAG', false);		
+		$this->globals->set('FLAG', false);
+
+		// Stats work
+		$playerId = $this->gamestate->getActivePlayerList()[0];
+		$this->bga->playerStats->inc('fire_turns', 1, (int) $playerId);
+
 		($this->globals->get('ENEMY_HP') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('endGame');
 	}
 
@@ -1101,6 +1137,11 @@ class Game extends \Table
 		$this->discard($cardId);
 		if (!$this->fireCannons(array($cannonId)))
 			$this->addToLIST($cannonId);
+
+		// Stats work
+		$playerId = (int) $this->gamestate->getActivePlayerList()[0];
+		$this->bga->playerStats->inc('shoot_ye_treasure', 1, $playerId);
+		$this->bga->playerStats->inc('cards_discarded', 1, $playerId);
 
 		($this->globals->get('ENEMY_HP') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('endGame');
 	}
@@ -1187,10 +1228,7 @@ class Game extends \Table
 		if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0 && $this->globals->get('COUNTER') <= 0)
 		{
 			$plunderers = array_keys($this->getCollectionFromDB("SELECT `player_id` FROM `player` WHERE `dial_value`='plunder' ORDER BY `custom_order`"));
-			$treasureNbr = $this->water->countCardInLocation('treasureColumn');
-			$lastPlunderer = $plunderers[count($plunderers) - 1];
-			
-			if (count($plunderers) === 1 || ($lastPlunderer === $activePlayer && $treasureNbr < count($plunderers))) 
+			if ($activePlayer === $plunderers[count($plunderers) - 1])
 				$canTemptingTune = true;
 		}
 		if ($canTemptingTune)
@@ -1302,8 +1340,6 @@ class Game extends \Table
 			// If they are supposed to draw more cards than the stash currently has, then you can draw at most the number of cards in the stash
 			$nbr = min($nbr, count($cards));
 
-			// TODO Im not certain Draw is right, to implement what Joseph requested of selecting multiple at once we might need a different kind of draw? Or maybe we should refactor the normal draw to draw a flexible number of cards? Maybe we make a DrawMultiple for this?
-			// We are attempting to overload Draw to have an array version for variable number of cards, well see if it works...
 			$args['possibleActions'] = ['Draw', 'DrawMultiple', 'Pass'];
 			$args['instruction'] = "may draw up to $nbr card(s) from the Skullsairs' Stash";
 			$args['possibleToDraw'] = array_values($cards);
@@ -1591,6 +1627,8 @@ class Game extends \Table
 
         $this->reattributeColorsBasedOnPreferences($players, $gameinfos["player_colors"]);
         $this->reloadPlayersBasicInfos();
+		
+		$this->initStats();
 
 		// Init global values with their initial values.
         // Dummy content.
@@ -1602,6 +1640,7 @@ class Game extends \Table
 			$enemyNumber = \bga_rand(1,4);
 		$enemies = [1=>'Kraken', 2=>'Shark', 3=>'Sirens', 4=>'Skullsairs'];
 		$this->globals->set('ENEMY', $enemies[$enemyNumber]);
+		$this->bga->tableStats->set('enemy', $enemyNumber - 1);
 
 		// Initialize globals	
 		// Basic universal info
@@ -1981,12 +2020,22 @@ class Game extends \Table
 
 	public function addToColumn(string $column, \Deck $component = null, $cardId = null): int
 	{
+		// Primary work
 		if ($component == null)
 			$component = ($column === 'waterColumn' || $column === 'treasureColumn') ? $this->water : $this->cannons;
 		if ($cardId == null)
 			$cardId = $component->getCardOnTop('deck')['id'];
 		$component->insertCardOnExtremePosition($cardId, $column, COLUMN_BOTTOM);
 
+		// Stats work
+		if ($column === 'waterColumn')
+			$this->bga->tableStats->inc('water_taken_on', 1);
+		else if ($column === 'treasureColumn')
+			$this->bga->tableStats->inc('plunder_revealed', 1);
+		else if ($component == $this->breaches)
+			$this->bga->tableStats->inc('breaches', 1);
+
+		// Treasure column max length enforcement
 		if ($column === 'treasureColumn' && $this->water->countCardInLocation('treasureColumn') > 5)
 			$this->discard((int) $this->water->getCardOnTop('treasureColumn')['id']);
 		return (int) $cardId;
@@ -2023,9 +2072,7 @@ class Game extends \Table
 	{
 		// Roll each given cannon and update the database with the new values
 		if ($cannonIds == null)
-		{
 			throw new \BgaSystemException('Null cannonIds');
-		}
 		else if (count($cannonIds) == 1)
 			$this->DbQuery("UPDATE `dice` SET `value` = " . \bga_rand(1,6) . " WHERE `die_id` = '{$cannonIds[0]}'");
 		else
@@ -2042,12 +2089,17 @@ class Game extends \Table
 
 		foreach ($rolls as $id => $details) 
 		{
+			$cannon = ['single', 'double', 'triple'][((int) $details['type']) - 1];
+			$this->bga->tableStats->inc("{$cannon}_cannon_rolls", 1);
+			$this->bga->tableStats->inc("total_cannon_rolls", 1);
+
 			// A single shot cannon succeeds when the value is 1, 
 			// A double shot cannon succeeds when the value is a 1 or 2, 
 			// A triple shot cannon succeeds when the value is a 1, 2, or 3,
 			// Except that Single shots always fail if the Shark is submerged.
 			if ((int) $details['value'] <= (int) $details['type'])
 			{
+				$this->bga->tableStats->inc("{$cannon}_cannon_hits", 1);
 				if ($this->globals->get('SHARK_SUBMERGED') > 0 && (int) $details['type'] === 1)
 					$this->notify->all('sharkSubmergedMessage', clienttranslate('A single shot cannon missed because the Shark is submerged!'), array());
 				else
@@ -2257,6 +2309,59 @@ class Game extends \Table
 		return $endScores;
 	}	
 
+	public function initStats()
+	{
+// table
+		// UNIVERSAL  
+		$this->bga->tableStats->init("enemy", 0);
+		$this->bga->tableStats->init("enemy_defeated", false);
+		$this->bga->tableStats->init("rounds_number", 0);
+		// THE BATTLE
+		$this->bga->tableStats->init("water_taken_on", 1);
+		$this->bga->tableStats->init("plunder_revealed", 2);
+		$this->bga->tableStats->init("cannons_damaged", 2);
+		$this->bga->tableStats->init("breaches", 1);
+		// DICE INFO
+		$this->bga->tableStats->init("special_blank_rolls", 0);
+		$this->bga->tableStats->init("special_water_rolls", 0);
+		$this->bga->tableStats->init("special_breach_rolls", 0);
+		$this->bga->tableStats->init("special_1_rolls", 0);
+		$this->bga->tableStats->init("special_2_rolls", 0);
+		$this->bga->tableStats->init("special_rolls", 0);
+		$this->bga->tableStats->init("basic_blank_rolls", 0);
+		$this->bga->tableStats->init("basic_water_rolls", 0);
+		$this->bga->tableStats->init("basic_breach_rolls", 0);
+		$this->bga->tableStats->init("basic_cannon_rolls", 0);
+		$this->bga->tableStats->init("basic_rolls", 0);
+		$this->bga->tableStats->init("total_cannon_rolls", 0);
+		$this->bga->tableStats->init("single_cannon_rolls", 0);
+		$this->bga->tableStats->init("single_cannon_hits", 0);
+		$this->bga->tableStats->init("double_cannon_rolls", 0);
+		$this->bga->tableStats->init("double_cannon_hits", 0);
+		$this->bga->tableStats->init("triple_cannon_rolls", 0);
+		$this->bga->tableStats->init("triple_cannon_hits", 0);
+		// THE EFFORT
+		$this->bga->tableStats->init("water_bucketed", 0);
+		$this->bga->tableStats->init("treasure_plundered", 0);
+		$this->bga->tableStats->init("breaches_repaired", 0);
+		$this->bga->tableStats->init("cannons_repaired", 0);
+// player 
+		// TURN BREAKDOWN
+		$this->bga->playerStats->init("bucket_turns", 0);
+		$this->bga->playerStats->init("plunder_turns", 0);
+		$this->bga->playerStats->init("patch_turns", 0);
+		$this->bga->playerStats->init("fire_turns", 0);
+		// HAND MANAGEMENT
+		$this->bga->playerStats->init("final_value_of_treasure", 0);
+		$this->bga->playerStats->init("final_hand_size", 0);
+		$this->bga->playerStats->init("cards_drawn", 0);
+		$this->bga->playerStats->init("cards_discarded", 0);
+		$this->bga->playerStats->init("items_used", 0);
+		$this->bga->playerStats->init("shoot_ye_treasure", 0);
+		// MISC
+		$this->bga->playerStats->init("times_dial_value_and_column_differed", 0);
+	}
+
 	// (End of Helper functions)
 
 	// Enemies! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2303,6 +2408,8 @@ class Game extends \Table
 				'card' => $card,
 				'dieValue' => $this->getUniqueValueFromDB("SELECT `value` FROM `dice` WHERE `die_id`='$id'"),
 			));
+			$this->bga->tableStats->inc('cannons_damaged', 1);
+
 		}
 	}
 

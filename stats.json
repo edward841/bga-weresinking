@@ -1,1 +1,300 @@
-{}
+{
+	"table": 
+	{
+		"enemy":
+		{
+			"id": 10,
+			"name": "Enemy faced",
+			"type": "int"
+		},
+
+		"enemy_defeated":
+		{
+			"id": 12,
+			"name": "Enemy was defeated",
+			"type": "bool"
+		},
+
+		"rounds_number":
+		{
+			"id": 14,
+			"name": "Number of rounds",
+			"type": "int"
+		},
+
+		"water_taken_on":
+		{
+			"id": 16,
+			"name": "Total number of water dealt to the Bucket column",
+			"type": "int"
+		},
+
+		"plunder_revealed":
+		{
+			"id": 18,
+			"name": "Total number of plunder revealed in the Treasure column",
+			"type": "int"
+		},
+
+		"cannons_damaged":
+		{
+			"id": 20,
+			"name": "Total number of damaged cannons",
+			"type": "int"
+		},
+
+		"breaches":
+		{
+			"id": 22,
+			"name": "Total number of breaches recieved",
+			"type": "int"
+		},
+
+		"special_blank_rolls":
+		{
+			"id": 24,
+			"name": "Number of times the special attack die rolled blank",
+			"type": "int"
+		},
+
+		"special_water_rolls":
+		{
+			"id": 26,
+			"name": "Number of times the special attack die rolled water",
+			"type": "int"
+		},
+
+		"special_breach_rolls":
+		{
+			"id": 28,
+			"name": "Number of times the special attack die rolled breach",
+			"type": "int"
+		},
+
+		"special_1_rolls":
+		{
+			"id": 30,
+			"name": "Number of times the special attack die rolled special attack 1",
+			"type": "int"
+		},
+
+		"special_2_rolls":
+		{
+			"id": 32,
+			"name": "Number of times the special attack die rolled special attack 2",
+			"type": "int"
+		},
+
+		"special_rolls":
+		{
+			"id": 34,
+			"name": "Number of times the special attack die rolled",
+			"type": "int"
+		},
+
+
+		"basic_blank_rolls":
+		{
+			"id": 36,
+			"name": "Number of times the basic attack die rolled blank",
+			"type": "int"
+		},
+
+		"basic_water_rolls":
+		{
+			"id": 38,
+			"name": "Number of times the basic attack die rolled water",
+			"type": "int"
+		},
+
+		"basic_breach_rolls":
+		{
+			"id": 40,
+			"name": "Number of times the basic attack die rolled breach",
+			"type": "int"
+		},
+
+		"basic_cannon_rolls":
+		{
+			"id": 42,
+			"name": "Number of times the basic attack die rolled cannon",
+			"type": "int"
+		},
+
+		"basic_rolls":
+		{
+			"id": 44,
+			"name": "Number of times the basic attack die rolled",
+			"type": "int"
+		},
+
+
+		"total_cannon_rolls":
+		{
+			"id": 46,
+			"name": "Total number of times the cannons fired",
+			"type": "int"
+		},
+
+		"single_cannon_rolls":
+		{
+			"id": 48,
+			"name": "Number of times single cannons fired",
+			"type": "int"
+		},
+
+		"single_cannon_hits":
+		{
+			"id": 50,
+			"name": "Number of times single cannons succeeded",
+			"type": "int"
+		},
+
+		"double_cannon_rolls":
+		{
+			"id": 52,
+			"name":  "Number of times double cannons fired",
+			"type": "int"
+		},
+
+		"double_cannon_hits":
+		{
+			"id": 54,
+			"name": "Number of times double cannons succeeded",
+			"type": "int"
+		},
+
+		"triple_cannon_rolls":
+		{
+			"id": 56,
+			"name": "Number of times triple cannons fired",
+			"type": "int"
+		},
+
+		"triple_cannon_hits":
+		{
+			"id": 58,
+			"name": "Number of times triple cannons succeeded",
+			"type": "int"
+		},
+
+		"water_bucketed":
+		{
+			"id": 60,
+			"name": "Total number of water bucketed",
+			"type": "int"
+		},
+
+		"treasure_plundered":
+		{
+			"id": 62,
+			"name": "Total number of treasures plundered",
+			"type": "int"
+		},
+
+		"breaches_repaired":
+		{
+			"id": 64,
+			"name": "Total number of breaches repaired",
+			"type": "int"
+		},
+
+		"cannons_repaired":
+		{
+			"id": 66,
+			"name": "Total number of cannons repaired",
+			"type": "int"
+		}
+	},
+
+	"player": 
+	{
+		"bucket_turns":
+		{
+			"id": 11,
+			"name": "Number of Bucket actions",
+			"type": "int"
+		},
+
+		"plunder_turns":
+		{
+			"id": 13,
+			"name": "Number of Plunder actions",
+			"type": "int"
+		},
+
+		"patch_turns":
+		{
+			"id": 15,
+			"name": "Number of Patch actions",
+			"type": "int"
+		},
+
+		"fire_turns":
+		{
+			"id": 17,
+			"name": "Number of Fire actions",
+			"type": "int"
+		},
+
+		"final_value_of_treasure":
+		{
+			"id": 19,
+			"name": "Value of treasure at game end",
+			"type": "int"
+		},
+
+		"final_hand_size":
+		{
+			"id": 21,
+			"name": "Number of cards in hand at game end",
+			"type": "int"
+		},
+
+		"cards_drawn":
+		{
+			"id": 23,
+			"name": "Total number of cards drawn",
+			"type": "int"
+		},
+
+		"cards_discarded":
+		{
+			"id": 25,
+			"name": "Total number of cards discarded",
+			"type": "int"
+		},
+
+		"items_used":
+		{
+			"id": 27,
+			"name": "Total number of items used",
+			"type": "int"
+		},
+
+		"shoot_ye_treasure":
+		{
+			"id": 29,
+			"name": "Number of times they did Shoot Ye Treasure",
+			"type": "int"
+		},
+
+		"times_dial_value_and_column_differed":
+		{
+			"id": 31,
+			"name": "Number of times their dial column and actual value were different",
+			"type": "int"
+		}
+	},
+
+	"value_labels" :
+	{
+		"10": 
+		[
+			"Kraken",
+			"Shark",
+			"Sirens",
+			"Skullsairs"
+		]
+	}
+}
