@@ -327,214 +327,249 @@ class Game extends \Table
 				$this->bga->playerStats->inc("{$details['dial_value']}_turns", 1, $id);
 		}
 
-		$this->gamestate->nextState('resolveBucketHelper');
+		$this->gamestate->nextState('next');
 	}
 
-	public function stResolveBucketHelper()
+	// This will be the new game state that will act as the brain of the operation. It shall manage round structure, turn order, updates to the database to reflect or prepare for game state changes
+	public function stBrain()
 	{
 		$nextPlayer = $this->getNextPlayer();
 		$nextAction = 'upkeep';
-		
+
 		if ($nextPlayer > 0)
 		{
 			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
-			if ($nextAction === 'bucket')
+			switch ($nextAction)
 			{
-				// Update active player
-				$this->gamestate->changeActivePlayer($nextPlayer);
-				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+				case 'bucket':
+					break;
 
-				// Set FLAG to true (indicates that the player needs to draw now)
-				$this->globals->set('FLAG', true);
+				case 'plunder':
+					break;
 
-				// Set COUNTER to indicate how many draws are needed
-				// (and remember $nextPlayer needs updated since we changed active player)
-				$nextPlayer = $this->getNextPlayer();
-				$scale = ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket') ? 1 : 2;
-				$this->globals->set('COUNTER', $scale);
-			}
-		}	
-
-		// Commence state change
-		// If the next player is doing a Bucket action, the prepwork is done and this moves to STATE_RESOLVE_BUCKET
-		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
-		// If there is not another player, goes to STATE_UPKEEP
-		$this->gamestate->nextState($nextAction);
-	}
-
-	public function stResolvePlunderHelper()
-	{
-		$nextPlayer = $this->getNextPlayer();
-		$nextAction = 'upkeep';
-		
-		if ($nextPlayer > 0)
-		{
-			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
-			if ($nextAction === 'plunder')
-			{
-				// If FLAG is true, then this is the first time here this round and we need to decide what happens:
-				// 1. If there is only 1 person plundering, they get all the treasure
-				// 2. Treasure nbr >= plundering players nbr, let the players select their treasure
-				// 3. Treasure nbr < plundering players nbr, discard all treasure and move on to the next action
-				if ($this->globals->get('FLAG'))
-				{
-					$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_value` FROM `player` ORDER BY `custom_order`');
-					$dialValues = array_column(array_values($playerInfo), 'dial_value'); 
-					$plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
-					$treasureNbr = $this->water->countCardInLocation('treasureColumn');
-					$moveOnToNextAction = false;
-
-					// 1. Only 1 plunderer! Give them all that precious treasure ARGH!!	
-					//    (no need for player states, just move on to the next helper state
-					if ($plunderingPlayersNbr == 1)
-					{
-						// We need the cards in question (in card format for the notifications)
-						$cardsDrawn = $this->water->getCardsInLocation('treasureColumn');
-
-						// Move the cards to the player's hand
-						$this->water->moveAllCardsInLocation('treasureColumn', 'hand', null, $nextPlayer);
-
-						// Notify the frontend of the cards drawn
-						$this->notifyForCardsDrawn($nextPlayer, $cardsDrawn);
+				case 'patch':
+					break;
 					
-						// Update the database so that those cards are facedown (minor but keeps the obfuscation right)
-						// Must occur AFTER the notification: since they were faceup, the cards drawn are not obfuscated from other players
-						$this->setCardsOrientation(array_column($cardsDrawn, 'id'), false);
+				case 'fire':
+					break;
 
-						$moveOnToNextAction = true;
-
-						// Stats work
-						$this->bga->tableStats->inc('treasure_plundered', count($cardsDrawn));
-					}
-					// 2. Several plunderers with enough to go around
-					else if ($treasureNbr >= $plunderingPlayersNbr)
-					{
-						// Setting FLAG to false indicates treasure is getting divided (Makes future stResolvePlunderHelper visits much simpler)
-						$this->globals->set('FLAG', false);	
-						$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
-						$this->globals->set('COUNTER', 1);
-						$this->gamestate->changeActivePlayer($nextPlayer);
-					}
-					// 3. Too many plunderers, not enough treasure! 
-					//    (no need for player states, just move on to the next helper state
-					else 
-					{
-						$cards = $this->water->getCardsInLocation('treasureColumn');
-						$this->notify->all('resolvePlunderMessage', clienttranslate('Since there are more plunderers than treasures, all the treasure is discarded.'), array());
-						$this->setCardsOrientation(array_column($cards, 'id'), false);
-						$this->notifyForCardsDiscarded(array_values($cards), -1, 'discard', false);
-						foreach ($cards as $card)
-							$this->discard(intval($card['id']));
-						$moveOnToNextAction = true;
-					}
-
-					// This action was resolved entirely in the game state (either 1 player or too many players plundered)
-					if ($moveOnToNextAction)
-					{
-						$lastPlunderer = array_keys($playerInfo)[count($dialValues) - 1 - array_search('plunder', array_reverse($dialValues))];
-						$this->globals->set('PREVIOUS_PLAYER', $lastPlunderer);
-
-						// Resolve Tempting Tune if active, else move on to the next state
-						if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0)
-						{
-							$this->globals->set('FLAG', false);	
-							$this->gamestate->changeActivePlayer($lastPlunderer);
-						}
-						else
-							$nextAction = 'patch';
-							// No need to update FLAG since it should still be true
-					}
-
-				}
-				// If FLAG is false: we're dividing treasure among several players. Give the next player a turn	
-				// This looks simple because the logic for determining whether it should loop around or not is all in the getNextPlayer
-				else
-				{
-					$this->gamestate->changeActivePlayer($nextPlayer);
-					$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
-					$this->globals->set('COUNTER', 1);
-				}
+				default:
+					// Log some error here
+					break;
 			}
-		}
+		}		
 
-		// Commence state change
-		// If the next player is doing a plunder action, the prepwork is done and this moves to STATE_RESOLVE_PLUNDER
-		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
+		// Commence state change, all prepwork completed
+		// Will direct to whichever active state handles the nextAction if there is another action to be done
 		// If there is not another player, goes to STATE_UPKEEP
 		$this->gamestate->nextState($nextAction);
 	}
 
-	public function stResolvePatchHelper()
-	{
-		$nextPlayer = $this->getNextPlayer();
-		$nextAction = 'upkeep';
-		
-		if ($nextPlayer > 0)
-		{
-			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
-			if ($nextAction === 'patch')
-			{
-				// Dont update active player (because its a multiactiveplayer state now)
-				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
-
-				// Set FLAG to true (indicates that the player needs to draw now)
-				$this->globals->set('FLAG', true);
-
-				// If this is the first patching player, set up the LIST to contain a list of all hammers
-				// failedBreaches should reset at the beginning of each patching player's turn 
-				// 		(maybe someone said no during someone elses turn because they want to do it on their turn?)
-				$list = (array) $this->globals->get('LIST');
-				$list['failedBreaches'] = array();
-				if (!array_key_exists('availableHammers', $list))
-				{
-					$patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
-					$list['availableHammers'] = array_values($patchingPlayers);
-					$this->globals->set('LIST', $list);
-				}
-			}
-			else 
-			{
-				$this->globals->set('LIST', array());
-			}
-		}	
-
-		// Commence state change
-		// If the next player is doing a Patch action, the prepwork is done and this moves to STATE_RESOLVE_PATCH
-		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
-		// If there is not another player, goes to STATE_UPKEEP
-		if ($nextAction === 'patch')
-		{
-			$this->gamestate->setPlayersMultiactive(array($nextPlayer), 'resolvePatch', true);
-		}
-		$this->gamestate->nextState($nextAction);
-	}
-
-	public function stResolveFireHelper()
-	{
-		$nextPlayer = $this->getNextPlayer();
-		$nextAction = 'upkeep';
-		
-		if ($nextPlayer > 0)
-		{
-			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
-			if ($nextAction === 'fire')
-			{
-				// Update active player
-				$this->gamestate->changeActivePlayer($nextPlayer);
-				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
-
-				// Set FLAG to true (indicates that the player needs to draw now)
-				$this->globals->set('FLAG', true);
-				$this->globals->set('COUNTER', 0);
-			}
-		}	
-
-		// Commence state change
-		// If the next player is doing a Fire action, the prepwork is done and this moves to STATE_RESOLVE_FIRE
-		// If there is not another player, goes to STATE_UPKEEP
-		$this->gamestate->nextState($nextAction);
-	}
-
+//	public function stResolveBucketHelper()
+//	{
+//		$nextPlayer = $this->getNextPlayer();
+//		$nextAction = 'upkeep';
+//		
+//		if ($nextPlayer > 0)
+//		{
+//			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
+//			if ($nextAction === 'bucket')
+//			{
+//				// Update active player
+//				$this->gamestate->changeActivePlayer($nextPlayer);
+//				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+//
+//				// Set FLAG to true (indicates that the player needs to draw now)
+//				$this->globals->set('FLAG', true);
+//
+//				// Set COUNTER to indicate how many draws are needed
+//				// (and remember $nextPlayer needs updated since we changed active player)
+//				$nextPlayer = $this->getNextPlayer();
+//				$scale = ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket') ? 1 : 2;
+//				$this->globals->set('COUNTER', $scale);
+//			}
+//		}	
+//
+//		// Commence state change
+//		// If the next player is doing a Bucket action, the prepwork is done and this moves to STATE_RESOLVE_BUCKET
+//		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
+//		// If there is not another player, goes to STATE_UPKEEP
+//		$this->gamestate->nextState($nextAction);
+//	}
+//
+//	public function stResolvePlunderHelper()
+//	{
+//		$nextPlayer = $this->getNextPlayer();
+//		$nextAction = 'upkeep';
+//		
+//		if ($nextPlayer > 0)
+//		{
+//			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
+//			if ($nextAction === 'plunder')
+//			{
+//				// If FLAG is true, then this is the first time here this round and we need to decide what happens:
+//				// 1. If there is only 1 person plundering, they get all the treasure
+//				// 2. Treasure nbr >= plundering players nbr, let the players select their treasure
+//				// 3. Treasure nbr < plundering players nbr, discard all treasure and move on to the next action
+//				if ($this->globals->get('FLAG'))
+//				{
+//					$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_value` FROM `player` ORDER BY `custom_order`');
+//					$dialValues = array_column(array_values($playerInfo), 'dial_value'); 
+//					$plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
+//					$treasureNbr = $this->water->countCardInLocation('treasureColumn');
+//					$moveOnToNextAction = false;
+//
+//					// 1. Only 1 plunderer! Give them all that precious treasure ARGH!!	
+//					//    (no need for player states, just move on to the next helper state
+//					if ($plunderingPlayersNbr == 1)
+//					{
+//						// We need the cards in question (in card format for the notifications)
+//						$cardsDrawn = $this->water->getCardsInLocation('treasureColumn');
+//
+//						// Move the cards to the player's hand
+//						$this->water->moveAllCardsInLocation('treasureColumn', 'hand', null, $nextPlayer);
+//
+//						// Notify the frontend of the cards drawn
+//						$this->notifyForCardsDrawn($nextPlayer, $cardsDrawn);
+//					
+//						// Update the database so that those cards are facedown (minor but keeps the obfuscation right)
+//						// Must occur AFTER the notification: since they were faceup, the cards drawn are not obfuscated from other players
+//						$this->setCardsOrientation(array_column($cardsDrawn, 'id'), false);
+//
+//						$moveOnToNextAction = true;
+//
+//						// Stats work
+//						$this->bga->tableStats->inc('treasure_plundered', count($cardsDrawn));
+//					}
+//					// 2. Several plunderers with enough to go around
+//					else if ($treasureNbr >= $plunderingPlayersNbr)
+//					{
+//						// Setting FLAG to false indicates treasure is getting divided (Makes future stResolvePlunderHelper visits much simpler)
+//						$this->globals->set('FLAG', false);	
+//						$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+//						$this->globals->set('COUNTER', 1);
+//						$this->gamestate->changeActivePlayer($nextPlayer);
+//					}
+//					// 3. Too many plunderers, not enough treasure! 
+//					//    (no need for player states, just move on to the next helper state
+//					else 
+//					{
+//						$cards = $this->water->getCardsInLocation('treasureColumn');
+//						$this->notify->all('resolvePlunderMessage', clienttranslate('Since there are more plunderers than treasures, all the treasure is discarded.'), array());
+//						$this->setCardsOrientation(array_column($cards, 'id'), false);
+//						$this->notifyForCardsDiscarded(array_values($cards), -1, 'discard', false);
+//						foreach ($cards as $card)
+//							$this->discard(intval($card['id']));
+//						$moveOnToNextAction = true;
+//					}
+//
+//					// This action was resolved entirely in the game state (either 1 player or too many players plundered)
+//					if ($moveOnToNextAction)
+//					{
+//						$lastPlunderer = array_keys($playerInfo)[count($dialValues) - 1 - array_search('plunder', array_reverse($dialValues))];
+//						$this->globals->set('PREVIOUS_PLAYER', $lastPlunderer);
+//
+//						// Resolve Tempting Tune if active, else move on to the next state
+//						if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0)
+//						{
+//							$this->globals->set('FLAG', false);	
+//							$this->gamestate->changeActivePlayer($lastPlunderer);
+//						}
+//						else
+//							$nextAction = 'patch';
+//							// No need to update FLAG since it should still be true
+//					}
+//
+//				}
+//				// If FLAG is false: we're dividing treasure among several players. Give the next player a turn	
+//				// This looks simple because the logic for determining whether it should loop around or not is all in the getNextPlayer
+//				else
+//				{
+//					$this->gamestate->changeActivePlayer($nextPlayer);
+//					$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+//					$this->globals->set('COUNTER', 1);
+//				}
+//			}
+//		}
+//
+//		// Commence state change
+//		// If the next player is doing a plunder action, the prepwork is done and this moves to STATE_RESOLVE_PLUNDER
+//		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
+//		// If there is not another player, goes to STATE_UPKEEP
+//		$this->gamestate->nextState($nextAction);
+//	}
+//
+//	public function stResolvePatchHelper()
+//	{
+//		$nextPlayer = $this->getNextPlayer();
+//		$nextAction = 'upkeep';
+//		
+//		if ($nextPlayer > 0)
+//		{
+//			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
+//			if ($nextAction === 'patch')
+//			{
+//				// Dont update active player (because its a multiactiveplayer state now)
+//				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
+//
+//				// Set FLAG to true (indicates that the player needs to draw now)
+//				$this->globals->set('FLAG', true);
+//
+//				// If this is the first patching player, set up the LIST to contain a list of all hammers
+//				// failedBreaches should reset at the beginning of each patching player's turn 
+//				// 		(maybe someone said no during someone elses turn because they want to do it on their turn?)
+//				$list = (array) $this->globals->get('LIST');
+//				$list['failedBreaches'] = array();
+//				if (!array_key_exists('availableHammers', $list))
+//				{
+//					$patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
+//					$list['availableHammers'] = array_values($patchingPlayers);
+//					$this->globals->set('LIST', $list);
+//				}
+//			}
+//			else 
+//			{
+//				$this->globals->set('LIST', array());
+//			}
+//		}	
+//
+//		// Commence state change
+//		// If the next player is doing a Patch action, the prepwork is done and this moves to STATE_RESOLVE_PATCH
+//		// If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
+//		// If there is not another player, goes to STATE_UPKEEP
+//		if ($nextAction === 'patch')
+//		{
+//			$this->gamestate->setPlayersMultiactive(array($nextPlayer), 'resolvePatch', true);
+//		}
+//		$this->gamestate->nextState($nextAction);
+//	}
+//
+//	public function stResolveFireHelper()
+//	{
+//		$nextPlayer = $this->getNextPlayer();
+//		$nextAction = 'upkeep';
+//		
+//		if ($nextPlayer > 0)
+//		{
+//			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
+//			if ($nextAction === 'fire')
+//			{
+//				// Update active player
+//				$this->gamestate->changeActivePlayer($nextPlayer);
+//				$this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
+//
+//				// Set FLAG to true (indicates that the player needs to draw now)
+//				$this->globals->set('FLAG', true);
+//				$this->globals->set('COUNTER', 0);
+//			}
+//		}	
+//
+//		// Commence state change
+//		// If the next player is doing a Fire action, the prepwork is done and this moves to STATE_RESOLVE_FIRE
+//		// If there is not another player, goes to STATE_UPKEEP
+//		$this->gamestate->nextState($nextAction);
+//	}
+//
 	public function stUpkeep()
 	{
 		// Update round counter

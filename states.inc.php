@@ -64,13 +64,10 @@ if (!defined('STATE_END_GAME'))
 	define('STATE_DECLARE_DIAL_HELPER', 20);
 	define('STATE_DECLARE_DIAL', 22);
 	define('STATE_REVEAL_DIAL', 24);
-	define('STATE_RESOLVE_BUCKET_HELPER', 26);	
+	define('STATE_BRAIN', 26);	
 	define('STATE_RESOLVE_BUCKET', 28);
-	define('STATE_RESOLVE_PLUNDER_HELPER', 30);
 	define('STATE_RESOLVE_PLUNDER', 32);
-	define('STATE_RESOLVE_PATCH_HELPER', 34);
 	define('STATE_RESOLVE_PATCH', 36);
-	define('STATE_RESOLVE_FIRE_HELPER', 38);
 	define('STATE_RESOLVE_FIRE', 40);
 	define('STATE_UPKEEP', 50);
 
@@ -153,23 +150,22 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stRevealDial',
-		'transitions' => ['resolveBucketHelper' => STATE_RESOLVE_BUCKET_HELPER],
+		'transitions' => ['next' => STATE_BRAIN],
 	), 
 
-	STATE_RESOLVE_BUCKET_HELPER => array(
-		'name' => 'resolveBucketHelper',
+	STATE_BRAIN => array(
+		'name' => 'brain',
 		'description' => '',
 		'type' => 'game',
-		'action' => 'stResolveBucketHelper',
-		'transitions' => [	
-			'bucket' => STATE_RESOLVE_BUCKET, 
-			'plunder' => STATE_RESOLVE_PLUNDER_HELPER,
-			'patch' => STATE_RESOLVE_PATCH_HELPER,
-			'fire' => STATE_RESOLVE_FIRE_HELPER, 
+		'action' => 'stBrain',
+		'transitions' => [
+			'bucket' => STATE_RESOLVE_BUCKET,
+			'plunder' => STATE_RESOLVE_PLUNDER,
+			'patch' => STATE_RESOLVE_PATCH,
+			'fire' => STATE_RESOLVE_FIRE,
 			'upkeep' => STATE_UPKEEP,
 		],
-		//'transitions' => ['resolveAction' => STATE_RESOLVE_BUCKET, 'nextAction' => STATE_RESOLVE_PLUNDER_HELPER],
-	), 
+	),
 
 	STATE_RESOLVE_BUCKET => array(
 		'name' => 'resolveBucket',
@@ -178,20 +174,7 @@ $machinestates = [
 		'type' => 'activeplayer',
 		'possibleactions' => ['actDraw', 'actDiscard', 'actDrawMultiple', 'actDiscardMultiple'],
 		'args' => 'argResolveBucket',
-		'transitions' => ['next' => STATE_RESOLVE_BUCKET_HELPER, 'again' => STATE_RESOLVE_BUCKET],
-	), 
-
-	STATE_RESOLVE_PLUNDER_HELPER => array(
-		'name' => 'resolvePlunderHelper',
-		'description' => '',
-		'type' => 'game',
-		'action' => 'stResolvePlunderHelper',
-		'transitions' => [	
-			'plunder' => STATE_RESOLVE_PLUNDER,
-			'patch' => STATE_RESOLVE_PATCH_HELPER,
-			'fire' => STATE_RESOLVE_FIRE_HELPER, 
-			'upkeep' => STATE_UPKEEP,
-		],
+		'transitions' => ['next' => STATE_BRAIN, 'again' => STATE_RESOLVE_BUCKET],
 	), 
 
 	STATE_RESOLVE_PLUNDER => array(
@@ -201,19 +184,7 @@ $machinestates = [
 		'type' => 'activeplayer',
 		'possibleactions' => ['actDraw', 'actTemptingTune', 'actPass'],
 		'args' => 'argResolvePlunder',
-		'transitions' => ['again' => STATE_RESOLVE_PLUNDER, 'next' => STATE_RESOLVE_PLUNDER_HELPER],
-	), 
-
-	STATE_RESOLVE_PATCH_HELPER => array(
-		'name' => 'resolvePatchHelper',
-		'description' => '',
-		'type' => 'game',
-		'action' => 'stResolvePatchHelper',
-		'transitions' => [	
-			'patch' => STATE_RESOLVE_PATCH,
-			'fire' => STATE_RESOLVE_FIRE_HELPER, 
-			'upkeep' => STATE_UPKEEP,
-		],
+		'transitions' => ['next' => STATE_BRAIN, 'again' => STATE_RESOLVE_PLUNDER],
 	), 
 
 	STATE_RESOLVE_PATCH => array(
@@ -223,18 +194,7 @@ $machinestates = [
 		'type' => 'multipleactiveplayer',
 		'possibleactions' => ['actDraw', 'actDiscard', 'actPatch', 'actContributeHammer'],
 		'args' => 'argResolvePatch',
-		'transitions' => ['next' => STATE_RESOLVE_PATCH_HELPER, 'again' => STATE_RESOLVE_PATCH],
-	),
-
-	STATE_RESOLVE_FIRE_HELPER => array(
-		'name' => 'resolveFireHelper',
-		'description' => '',
-		'type' => 'game',
-		'action' => 'stResolveFireHelper',
-		'transitions' => [
-			'fire' => STATE_RESOLVE_FIRE,
-			'upkeep' => STATE_UPKEEP,
-		],
+		'transitions' => ['next' => STATE_BRAIN, 'again' => STATE_RESOLVE_PATCH],
 	),
 
 	STATE_RESOLVE_FIRE => array(
@@ -244,7 +204,7 @@ $machinestates = [
 		'type' => 'activeplayer',
 		'possibleactions' => ['actFire', 'actShootYeTreasure', 'actDraw', 'actDrawMultiple', 'actPass'],
 		'args' => 'argResolveFire',
-		'transitions' => ['next' => STATE_RESOLVE_FIRE_HELPER, 'again' => STATE_RESOLVE_FIRE, 'endGame' => STATE_UPKEEP],
+		'transitions' => ['next' => STATE_BRAIN, 'again' => STATE_RESOLVE_FIRE, 'endGame' => STATE_UPKEEP],
 	),
 
 	STATE_UPKEEP => array(
@@ -255,6 +215,8 @@ $machinestates = [
 		'transitions' => ['anotherRound' => STATE_CHECK_FOR_BREACHES, 'gameEnd' => STATE_END_GAME_SCORING],
 	),
 
+// End game scoring state is a state class, the new paradigm to utilize the reverse scoring feature
+//
 //	STATE_END_GAME_SCORING => array(
 //		'name' => 'endGameScoring',
 //		'description' => '',
