@@ -342,9 +342,99 @@ class Game extends \Table
 			switch ($nextAction)
 			{
 				case 'bucket':
+					// Bucketing is straightforward, we just need to 
+					// 	1. Change active player
+					// 	2. Indicate they need to draw first (FLAG=true) 
+					// 	3. Indicate whether they are drawing 1 or 2 cards (COUNTER=1 or COUNTER=2)
+
+					// 1. Update active player
+					$this->gamestate->changeActivePlayer($nextPlayer);
+					$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+
+					// 2. Set FLAG to true (indicates that the player needs to draw now)
+					$this->globals->set('FLAG', true);
+
+					// 3. Set COUNTER to indicate how many draws are needed
+					// If there is another player to go and their action is bucketing then only draw 1, else draw 2
+					// (and remember $nextPlayer needs updated since we changed active player)
+					$nextPlayer = $this->getNextPlayer();
+					$scale = ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket') ? 1 : 2;
+					$this->globals->set('COUNTER', $scale);
 					break;
 
 				case 'plunder':
+					// Plundering is a lot more complicated. There are multiple possible outcomes. We need to decide which one we have and handle it appropriately.
+					// 	1. There is only one plunderer. Give them everything and move on
+					// 	2. There are several plunderers but theres is enough to go around
+					// 	3. There are more plunderers than treasure! All the treasure is lost and move on 
+					$playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_value` FROM `player` ORDER BY `custom_order`');
+					$dialValues = array_column(array_values($playerInfo), 'dial_value'); 
+					$plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
+					$treasureNbr = $this->water->countCardInLocation('treasureColumn');
+					$moveOnToNextAction = false;
+
+					// 1. Only 1 plunderer! Give them all that precious treasure ARGH!!	
+					//    (no need for player states, give them the treasure and restart the brain state
+					if ($plunderingPlayersNbr == 1)
+					{
+						// We need the cards in question (in card format for the notifications)
+						$cardsDrawn = $this->water->getCardsInLocation('treasureColumn');
+
+						// Move the cards to the player's hand
+						$this->water->moveAllCardsInLocation('treasureColumn', 'hand', null, $nextPlayer);
+
+						// Notify the frontend of the cards drawn
+						$this->notifyForCardsDrawn($nextPlayer, $cardsDrawn);
+					
+						// Update the database so that those cards are facedown (minor but keeps the obfuscation right)
+						// Must occur AFTER the notification: 
+						// 	Since they were faceup, these cards were not obfuscated from other players in the notification
+						$this->setCardsOrientation(array_column($cardsDrawn, 'id'), false);
+							
+						// Indicating the plundering is done and we can do a different action
+						$moveOnToNextAction = true;
+
+						// Stats work
+						$this->bga->tableStats->inc('treasure_plundered', count($cardsDrawn));
+					}
+					// 2. Several plunderers with enough to go around
+					else if ($treasureNbr >= $plunderingPlayersNbr)
+					{
+						// Setting FLAG to false indicates treasure is getting divided (Makes future brain visits for plundering much simpler)
+						$this->globals->set('FLAG', false);	
+						$this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+						$this->globals->set('COUNTER', 1);
+						$this->gamestate->changeActivePlayer($nextPlayer);
+					}
+					// 3. Too many plunderers, not enough treasure! 
+					//    (no need for player states, just move on to the next helper state
+					else 
+					{
+						$cards = $this->water->getCardsInLocation('treasureColumn');
+						$this->notify->all('resolvePlunderMessage', clienttranslate('Since there are more plunderers than treasures, all the treasure is discarded.'), array());
+						$this->setCardsOrientation(array_column($cards, 'id'), false);
+						$this->notifyForCardsDiscarded(array_values($cards), -1, 'discard', false);
+						foreach ($cards as $card)
+							$this->discard(intval($card['id']));
+						$moveOnToNextAction = true;
+					}
+
+					// This action was resolved entirely in the game state (either 1 player or too many players plundered)
+					if ($moveOnToNextAction)
+					{
+						$lastPlunderer = array_keys($playerInfo)[count($dialValues) - 1 - array_search('plunder', array_reverse($dialValues))];
+						$this->globals->set('PREVIOUS_PLAYER', $lastPlunderer);
+
+						// Resolve Tempting Tune if active, else move on to the next state
+						if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0)
+						{
+							$this->globals->set('FLAG', false);	
+							$this->gamestate->changeActivePlayer($lastPlunderer);
+						}
+						else
+							$nextAction = 'patch';
+							// No need to update FLAG since it should still be true
+					}
 					break;
 
 				case 'patch':
@@ -361,7 +451,7 @@ class Game extends \Table
 
 		// Commence state change, all prepwork completed
 		// Will direct to whichever active state handles the nextAction if there is another action to be done
-		// If there is not another player, goes to STATE_UPKEEP
+		// If there is not another action to be done, goes to STATE_UPKEEP
 		$this->gamestate->nextState($nextAction);
 	}
 
