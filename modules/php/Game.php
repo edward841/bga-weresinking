@@ -432,9 +432,10 @@ class Game extends \Table
 							$this->gamestate->changeActivePlayer($lastPlunderer);
 						}
 						else
-							$nextAction = 'patch';
+							$nextAction = 'again';
 							// No need to update FLAG since it should still be true
 					}
+					// Else we need the plunder active state to get player input and conveniently the value of $nextAction is still 'plunder'
 					break;
 
 				case 'patch':

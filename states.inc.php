@@ -77,15 +77,14 @@ if (!defined('STATE_END_GAME'))
 
 $machinestates = [
 
-    // The initial state. Please do not modify.
-
-    STATE_START_GAME => array(
-        "name" => "gameSetup",
-        "description" => "",
-        "type" => "manager",
-        "action" => "stGameSetup",
-        "transitions" => ["" => STATE_CHECK_FOR_BREACHES],
-    ),
+	// The initial state. Please do not modify.
+	STATE_START_GAME => array(
+	    "name" => "gameSetup",
+	    "description" => "",
+	    "type" => "manager",
+	    "action" => "stGameSetup",
+	    "transitions" => ["" => STATE_CHECK_FOR_BREACHES],
+	),
 
 	STATE_CHECK_FOR_BREACHES => array(
 		'name' => 'checkForBreaches',
@@ -164,6 +163,7 @@ $machinestates = [
 			'patch' => STATE_RESOLVE_PATCH,
 			'fire' => STATE_RESOLVE_FIRE,
 			'upkeep' => STATE_UPKEEP,
+			'again' => STATE_BRAIN,
 		],
 	),
 
@@ -227,13 +227,13 @@ $machinestates = [
 
     // Final state.
     // Please do not modify (and do not overload action/args methods).
-    STATE_END_GAME => [
-        "name" => "gameEnd",
-        "description" => clienttranslate("End of game"),
-        "type" => "manager",
-        "action" => "stGameEnd",
-        "args" => "argGameEnd"
-    ],
+	STATE_END_GAME => [
+	    "name" => "gameEnd",
+	    "description" => clienttranslate("End of game"),
+	    "type" => "manager",
+	    "action" => "stGameEnd",
+	    "args" => "argGameEnd"
+	],
 
 ];
 
