@@ -339,6 +339,11 @@ class Game extends \Table
 		if ($nextPlayer > 0)
 		{
 			$nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
+
+			// Reset the LIST if we are done with patching and doing something else
+			if ($nextAction !== 'patch' && array_key_exists('availableHammers', (array) $this->globals->get('LIST')))
+				$this->globals->set('LIST', array());
+
 			switch ($nextAction)
 			{
 				case 'bucket':
@@ -398,7 +403,7 @@ class Game extends \Table
 						$this->bga->tableStats->inc('treasure_plundered', count($cardsDrawn));
 					}
 					// 2. Several plunderers with enough to go around
-					else if ($treasureNbr >= $plunderingPlayersNbr)
+					else if ($treasureNbr >= $plunderingPlayersNbr || !$this->globals->get('FLAG'))
 					{
 						// Setting FLAG to false indicates treasure is getting divided (Makes future brain visits for plundering much simpler)
 						$this->globals->set('FLAG', false);	
@@ -439,9 +444,34 @@ class Game extends \Table
 					break;
 
 				case 'patch':
+					// Dont update active player because its a multiactiveplayer state 
+					$this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
+
+					// Set FLAG to true (indicates that the player needs to draw now)
+					$this->globals->set('FLAG', true);
+
+					// If this is the first patching player, set up the LIST to contain a list of all hammers
+					// failedBreaches should reset at the beginning of each patching player's turn 
+					// 		(maybe someone said no during someone elses turn because they want to do it on their turn?)
+					$list = (array) $this->globals->get('LIST');
+					$list['failedBreaches'] = array();
+					if (!array_key_exists('availableHammers', $list))
+					{
+						$patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
+						$list['availableHammers'] = array_values($patchingPlayers);
+					}
+					$this->globals->set('LIST', $list);
+					$this->gamestate->setPlayersMultiactive(array($nextPlayer), 'resolvePatch', true);
 					break;
 					
 				case 'fire':
+					// Update active player
+					$this->gamestate->changeActivePlayer($nextPlayer);
+					$this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
+
+					// Set FLAG to true (indicates that the player needs to draw now)
+					$this->globals->set('FLAG', true);
+					$this->globals->set('COUNTER', 0);
 					break;
 
 				default:
