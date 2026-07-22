@@ -69,7 +69,6 @@ if (!defined('STATE_END_GAME'))
 	define('STATE_RESOLVE_PLUNDER', 32);
 	define('STATE_RESOLVE_PATCH', 36);
 	define('STATE_RESOLVE_FIRE', 40);
-	define('STATE_UPKEEP', 50);
 
 	define('STATE_END_GAME_SCORING', 98);
 	define('STATE_END_GAME', 99);
@@ -99,7 +98,7 @@ $machinestates = [
 		'description' => '',
 		'type' => 'game',
 		'action' => 'stCheckWaterThreshold',
-		'transitions' => ['next' => STATE_DEAL_WATER_AND_TREASURE, 'endGame' => STATE_UPKEEP],
+		'transitions' => ['next' => STATE_DEAL_WATER_AND_TREASURE, 'endGame' => STATE_END_GAME_SCORING],
 	),
 
 	STATE_DEAL_WATER_AND_TREASURE => array(
@@ -162,8 +161,8 @@ $machinestates = [
 			'plunder' => STATE_RESOLVE_PLUNDER,
 			'patch' => STATE_RESOLVE_PATCH,
 			'fire' => STATE_RESOLVE_FIRE,
-			'upkeep' => STATE_UPKEEP,
 			'again' => STATE_BRAIN,
+			'nextRound' => STATE_CHECK_FOR_BREACHES,
 		],
 	),
 
@@ -204,15 +203,7 @@ $machinestates = [
 		'type' => 'activeplayer',
 		'possibleactions' => ['actFire', 'actShootYeTreasure', 'actDraw', 'actDrawMultiple', 'actPass'],
 		'args' => 'argResolveFire',
-		'transitions' => ['next' => STATE_BRAIN, 'again' => STATE_RESOLVE_FIRE, 'endGame' => STATE_UPKEEP],
-	),
-
-	STATE_UPKEEP => array(
-		'name' => 'upkeep',
-		'description' => '',
-		'type' => 'game',
-		'action' => 'stUpkeep',
-		'transitions' => ['anotherRound' => STATE_CHECK_FOR_BREACHES, 'gameEnd' => STATE_END_GAME_SCORING],
+		'transitions' => ['next' => STATE_BRAIN, 'again' => STATE_RESOLVE_FIRE, 'endGame' => STATE_END_GAME_SCORING],
 	),
 
 // End game scoring state is a state class, the new paradigm to utilize the reverse scoring feature

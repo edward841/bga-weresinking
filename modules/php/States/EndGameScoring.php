@@ -11,24 +11,22 @@ use Bga\GameFramework\GameResult\Player;
 
 class EndGameScoring extends GameState
 {
-    function __construct(
-        protected Game $game,
-    ) {
-        parent::__construct($game,
-            id: 98,
-            type: StateType::GAME,
-            description: '',
-            transitions: ['gameEnd' => 99],
-            updateGameProgression: false,
-            initialPrivate: null,
-        );
-    }
+	function __construct(protected Game $game,) {
+		parent::__construct($game,
+			id: 98,
+			type: StateType::GAME,
+			description: '',
+			transitions: ['gameEnd' => 99],
+			updateGameProgression: false,
+			initialPrivate: null,
+		);
+	}
 
-    public function getArgs(): array
-    {
-        // the data sent to the front when entering the state
-        return [];
-    } 
+	public function getArgs(): array
+	{
+		// the data sent to the front when entering the state
+		return [];
+	} 
 
 	function onEnteringState() 
 	{
@@ -37,7 +35,11 @@ class EndGameScoring extends GameState
 		if (!$enemyDefeated && !$shipSinks)
 			throw new \BgaSystemException('EndGameScoring onEnteringState: Enemy not defeated and ship not sunk! Should not be here!');
 		$this->game->bga->tableStats->set("enemy_defeated", $enemyDefeated ? 1 : 0);
-		
+
+		// Check hand sizes, either drawing up to 2 or discarding down to 10
+		$this->game->checkHandSize();
+
+		// Calculate the end game scores (everyones total treasure value and hand size)
 		$endScores = $this->game->getEndScores();
 
 		// If $enemyDefeated then greatest pointCount wins and least handCount is tiebreaker
@@ -65,5 +67,5 @@ class EndGameScoring extends GameState
 		$players = Player::fromPlayersDb($playersDb);
 		return $enemyDefeated ? GameResult::individualRanking($players, reverseScoreAux: true) : GameResult::individualRanking($players, reverseScore: true);
 
-    }   
+	}   
 }

@@ -334,7 +334,7 @@ class Game extends \Table
 	public function stBrain()
 	{
 		$nextPlayer = $this->getNextPlayer();
-		$nextAction = 'upkeep';
+		$nextAction = 'nextRound';
 
 		if ($nextPlayer > 0)
 		{
@@ -479,6 +479,45 @@ class Game extends \Table
 					break;
 			}
 		}		
+		// upkeep
+		else 
+		{
+			// Update round counter
+			$this->bga->tableStats->inc("rounds_number", 1);
+
+			// Check hand size
+			$this->checkHandSize();
+
+			// Pass First Mate to the left
+			$playerInfo = $this->getCollectionFromDB("SELECT `player_id`, `player_no` FROM player ORDER BY `player_no`", true);
+			$oldFirstMate = $this->globals->get('FIRST_MATE');
+			$newFirstMateIndex = $playerInfo[$oldFirstMate] % count($playerInfo); // Going from 1 indexed to 0 indexed, so we don't need the + 1 you'd expect here
+			$newFirstMate = array_keys($playerInfo)[$newFirstMateIndex];
+			$this->globals->set('FIRST_MATE', $newFirstMate);
+
+			// Update the custom_order field to reflect the new First mate
+			$updateString = '';
+			$newFirstMateIndex++; // Adjust for player_no and custom_order being 1 indexed instead of 0 indexed
+			for ($i = 1; $i <= count($playerInfo); $i++)
+				$updateString .= "WHEN $i THEN " . ($i - $newFirstMateIndex + 60) % count($playerInfo) + 1 . ' '; 
+			//  The + 60 is to avoid the negative domain of %, LCM({3,4,5,6}) = 60. Really it could have been any multiple of current player count
+				$this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_no` $updateString END");
+
+				// Reset globals for a new round
+				$this->DbQuery("UPDATE `player` SET `dial_location` = 'player'");
+				$this->globals->set('PREVIOUS_PLAYER', 'none');
+				$this->globals->set('FLAG', true);
+				$this->globals->set('COUNTER', 0);
+				$this->globals->set('LIST', []);
+
+				// Resetting enemy effects
+				$this->globals->set('KRAKEN_ANGERED', 0);
+				$this->globals->set('SHARK_CHOMP_CHOMP', 0);
+				$this->globals->set('SHARK_SUBMERGED', 0);
+				$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+				$this->globals->set('SIRENS_SCREECH', false);
+		}
+
 
 		// Commence state change, all prepwork completed
 		// Will direct to whichever active state handles the nextAction if there is another action to be done
@@ -486,12 +525,8 @@ class Game extends \Table
 		$this->gamestate->nextState($nextAction);
 	}
 
-	public function stUpkeep()
+	public function checkHandSize()
 	{
-		// Update round counter
-		$this->bga->tableStats->inc("rounds_number", 1);
-
-		// Check hand size
 		$playerCardNbr = $this->water->countCardsByLocationArgs('hand');
 		foreach ($playerCardNbr as $playerId => $nbr)
 		{
@@ -509,38 +544,6 @@ class Game extends \Table
 			}
 		}
 
-		// Pass First Mate to the left
-		$playerInfo = $this->getCollectionFromDB("SELECT `player_id`, `player_no` FROM player ORDER BY `player_no`", true);
-		$oldFirstMate = $this->globals->get('FIRST_MATE');
-		$newFirstMateIndex = $playerInfo[$oldFirstMate] % count($playerInfo); // Going from 1 indexed to 0 indexed, so we don't need the + 1 you'd expect here
-		$newFirstMate = array_keys($playerInfo)[$newFirstMateIndex];
-		$this->globals->set('FIRST_MATE', $newFirstMate);
-
-		// Update the custom_order field to reflect the new First mate
-		$updateString = '';
-		$newFirstMateIndex++; // Adjust for player_no and custom_order being 1 indexed instead of 0 indexed
-		for ($i = 1; $i <= count($playerInfo); $i++)
-			$updateString .= "WHEN $i THEN " . ($i - $newFirstMateIndex + 60) % count($playerInfo) + 1 . ' '; 
-		//  The + 60 is to avoid the negative domain of %, LCM({3,4,5,6}) = 60. Really it could have been any multiple of current player count
-		$this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_no` $updateString END");
-
-		// Reset globals for a new round
-		$this->DbQuery("UPDATE `player` SET `dial_location` = 'player'");
-		$this->globals->set('PREVIOUS_PLAYER', 'none');
-		$this->globals->set('FLAG', true);
-		$this->globals->set('COUNTER', 0);
-		$this->globals->set('LIST', []);
-
-		// Enemy items	
-		$this->globals->set('KRAKEN_ANGERED', 0);
-		$this->globals->set('SHARK_CHOMP_CHOMP', 0);
-		$this->globals->set('SHARK_SUBMERGED', 0);
-		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
-		$this->globals->set('SIRENS_SCREECH', false);
-
-		// If we have met either end game condition, proceed to game end. Else start a new round
-		($this->globals->get('ENEMY_HP') > 0 && $this->globals->get('THRESHOLD_LEVEL') <= 4) ? 
-			$this->gamestate->nextState('anotherRound') : $this->gamestate->nextState('gameEnd');
 	}
 
 //	public function stEndGameScoring()
