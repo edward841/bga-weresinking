@@ -1100,6 +1100,39 @@ class Game extends \Table
 		($this->globals->get('ENEMY_HP') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('endGame');
 	}
 
+	public function actPlayCard(int $cardId)
+	{
+		$args = $this->argPlayCard();
+
+		// Fail if actPlayCard is not allowed or the card in question is not viable
+		if (!in_array('PlayCard', $args['possibleActions']))
+		{
+			$possibleActions = implode(',', $args['possibleActions']);
+			$message = "PlayCard not in possibleActions: <$possibleActions>";
+		}
+		else if (!in_array($cardId, $args['possiblePlays']))
+		{
+			$possibleIds = implode(',', $args['possiblePlays']);
+			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
+		}
+
+
+		// If no additional information is required then immediately play the card!
+		if (true)
+			// This isnt right it wants an array?
+			$this->playCard($cardId);
+
+		// Additional information is required to play the card
+		else
+		{
+			$list = (array) $this->globals->get('LIST');
+			$list['playCardId'] = $cardId;
+			$list['playCardInfo'] = array();
+			$this->globals->set('LIST', $list);
+		}
+
+	}
+
 	public function actPass()
 	{
 		$state = $this->gamestate->getCurrentMainStateId();
@@ -1305,6 +1338,16 @@ class Game extends \Table
 		// Everything that could be done was done, and the player must now pass.
 		$args['possibleActions'] = ['Pass'];
 		$args['instruction'] = clienttranslate('must pass');
+		return $args;
+	}
+
+	public function argPlayCard()
+	{
+		$args = [];
+		$args['possibleActions'] = ['Pass'];
+
+		$args['possibleActions'][] = 'PlayCard';
+		
 		return $args;
 	}
 
@@ -2370,28 +2413,29 @@ class Game extends \Table
 	// Items!?!
 	// All items with actual effects (not just points), in alphabetical order.
 	// I'll slowly fill in the logic for each... sounds like fun!
-	public function itemsDoStuffIGuess(array $input): bool 
+	public function playCard($cardId): bool 
 	{
-		$message = ''; 
-		$item = $input['item']; 
-		$itemId = $input['itemId'];
-		$card = $this->water->getCard($itemId);
+		$card = $this->water->getCard($cardId);
+		$cardName = $card['type'];
 
-		if ($item == null || !array_key_exists($item, $tokens['waterDeck']))
-			$message = 'Item does not exist!';
+		$message = ''; 
+		if ($cardName == null || !array_key_exists($cardName, $tokens['waterDeck']))
+			$message = "Item $cardName does not exist!";
 		else if ($card['location'] != 'hand' || $card['location_arg'] != $input['sourcePlayer'])
 			$message = "Source player does not have the card in their hand!";
-		else if (!$in_array($input['condition'], $tokens['waterDeck'][$item]['condition']))
-			$message = "Item must be played in reaction to the condition {$tokens['waterDeck'][$item]['condition']}, not {input['condition']}";
+		else if (!$in_array($input['condition'], $tokens['waterDeck'][$cardName]['condition']))
+			$message = "Item must be played in reaction to the condition {$tokens['waterDeck'][$cardName]['condition']}, not {input['condition']}";
 		// TODO check that the needed player input are incliuded in $input (a player, a dial value, etc)
 
 		if ($message !== '')
 		{
 			$this->dump('input', $input);
-			throw new \BgaSystemException("itemsDoStuffIGuess: item: {$item}, sourcePlayer: {$input['sourcePlayer']} not allowed in state {$this->getStateName()}\n($message)");
+			throw new \BgaSystemException("playCard: item: {$cardName}, sourcePlayer: {$input['sourcePlayer']} not allowed in state {$this->getStateName()}\n($message)");
 		}
 
-		switch ($item)
+		$this->discard($cardId)
+
+		switch ($cardName)
 		{
 			// Heavily based on bottleORum
 			case 'boneClub':
@@ -2409,7 +2453,7 @@ class Game extends \Table
 					return false;
 				$newCard = $this->getRandomCardFrom($input['targetPlayer']);
 				$this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
-				$this->water->moveCard($itemId, 'hand', $input['targetPlayer']);
+				$this->water->moveCard($cardId, 'hand', $input['targetPlayer']);
 				// TODO notif???
 				break;
 
@@ -2512,7 +2556,7 @@ class Game extends \Table
 	}
 
 // Well just save that there in case we need that later... maybe for setting up their args? or a helper function?
-//	public function itemsDoStuffIGuess($item)
+//	public function playCard($item)
 //	{
 //		switch ($item)
 //		{

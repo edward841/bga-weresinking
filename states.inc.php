@@ -70,6 +70,8 @@ if (!defined('STATE_END_GAME'))
 	define('STATE_RESOLVE_PATCH', 36);
 	define('STATE_RESOLVE_FIRE', 40);
 
+	define('STATE_PLAY_CARD', 50);
+
 	define('STATE_END_GAME_SCORING', 98);
 	define('STATE_END_GAME', 99);
 }
@@ -173,7 +175,7 @@ $machinestates = [
 		'type' => 'activeplayer',
 		'possibleactions' => ['actDraw', 'actDiscard', 'actDrawMultiple', 'actDiscardMultiple'],
 		'args' => 'argResolveBucket',
-		'transitions' => ['next' => STATE_BRAIN, 'again' => STATE_RESOLVE_BUCKET],
+		'transitions' => ['next' => STATE_PLAY_CARD, 'again' => STATE_RESOLVE_BUCKET],
 	), 
 
 	STATE_RESOLVE_PLUNDER => array(
@@ -183,7 +185,7 @@ $machinestates = [
 		'type' => 'activeplayer',
 		'possibleactions' => ['actDraw', 'actTemptingTune', 'actPass'],
 		'args' => 'argResolvePlunder',
-		'transitions' => ['next' => STATE_BRAIN, 'again' => STATE_RESOLVE_PLUNDER],
+		'transitions' => ['next' => STATE_PLAY_CARD, 'again' => STATE_RESOLVE_PLUNDER],
 	), 
 
 	STATE_RESOLVE_PATCH => array(
@@ -193,7 +195,7 @@ $machinestates = [
 		'type' => 'multipleactiveplayer',
 		'possibleactions' => ['actDraw', 'actDiscard', 'actPatch', 'actContributeHammer'],
 		'args' => 'argResolvePatch',
-		'transitions' => ['next' => STATE_BRAIN, 'again' => STATE_RESOLVE_PATCH],
+		'transitions' => ['next' => STATE_PLAY_CARD, 'again' => STATE_RESOLVE_PATCH],
 	),
 
 	STATE_RESOLVE_FIRE => array(
@@ -203,7 +205,17 @@ $machinestates = [
 		'type' => 'activeplayer',
 		'possibleactions' => ['actFire', 'actShootYeTreasure', 'actDraw', 'actDrawMultiple', 'actPass'],
 		'args' => 'argResolveFire',
-		'transitions' => ['next' => STATE_BRAIN, 'again' => STATE_RESOLVE_FIRE, 'endGame' => STATE_END_GAME_SCORING],
+		'transitions' => ['next' => STATE_PLAY_CARD, 'again' => STATE_RESOLVE_FIRE, 'endGame' => STATE_END_GAME_SCORING],
+	),
+
+	STATE_PLAY_CARD => array(
+		'name' => 'playCard',
+		'description' => clienttranslate('${actplayer} may play a card'),
+		'descriptionmyturn' => clienttranslate('${you} may play a card'),
+		'type' => 'multipleactiveplayer',
+		'possibleactions' => ['actPlayCard', 'actContributeInformation', 'actPass'],
+		'args' => 'argPlayCard',
+		'transitions' => ['brain' => STATE_BRAIN],
 	),
 
 // End game scoring state is a state class, the new paradigm to utilize the reverse scoring feature
