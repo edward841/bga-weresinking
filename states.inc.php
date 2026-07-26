@@ -215,7 +215,7 @@ $machinestates = [
 		'type' => 'multipleactiveplayer',
 		'possibleactions' => ['actPlayCard', 'actContributeInformation', 'actPass'],
 		'args' => 'argPlayCard',
-		'transitions' => ['brain' => STATE_BRAIN],
+		'transitions' => ['again' => STATE_PLAY_CARD, 'next' => STATE_BRAIN],
 	),
 
 // End game scoring state is a state class, the new paradigm to utilize the reverse scoring feature

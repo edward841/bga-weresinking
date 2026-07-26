@@ -1118,19 +1118,54 @@ class Game extends \Table
 
 
 		// If no additional information is required then immediately play the card!
+		$nextAction = 'next';
 		if (true)
-			// This isnt right it wants an array?
 			$this->playCard($cardId);
 
 		// Additional information is required to play the card
 		else
 		{
+			$nextAction = 'again';
 			$list = (array) $this->globals->get('LIST');
-			$list['playCardId'] = $cardId;
-			$list['playCardInfo'] = array();
+			$list['playCardInfo'] = array('id' => $cardId, 'name' => '', 'input' => array());
 			$this->globals->set('LIST', $list);
 		}
 
+		$this->gamestate->nextState($nextAction);
+
+	}
+
+	public function actContributeInformation(int $information)
+	{
+		$args = $this->argPlayCard();
+
+		$message = '';
+		if (!in_array('ContributeInformation', $args['possibleMoves'])
+			$message = 'ContributeInformation not in possible moves';
+		else if (!in_array($information, $args['possibleValues'])
+		{
+			$expectedValues = implode(',', $args['possibleValues']);
+			$message = "Value given: $information, Expected to be one of: <$expectedValues>";
+		}
+		
+		if ($message !== '')
+			throw new \BgaSystemException("ContributeInformation Value of $information not allowed in state {$this->getStateName()}\n($message)");
+
+		// Update the list so it has this new information
+		$list = (array) $this->globals->get('LIST');
+		$list['playCardInfo']['input'][] = $information;
+		$this->globals->set('LIST', $list);
+
+		// If we have all of the required info then resolve the card play, else repeat!
+		$nextAction = 'again';
+		if (count($list['playCardInfo']['input']) > 100)
+		{
+			$nextAction = 'next';
+			$this->playCard($list['playCardInfo']['id']);
+		}
+
+		// TODO If we need input from a different player we need to give them activeplayer
+		$this->gamestate->nextState($nextAction);
 	}
 
 	public function actPass()
@@ -1345,7 +1380,6 @@ class Game extends \Table
 	{
 		$args = [];
 		$args['possibleActions'] = ['Pass'];
-
 		$args['possibleActions'][] = 'PlayCard';
 		
 		return $args;
