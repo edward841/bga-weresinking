@@ -1380,7 +1380,7 @@ class Game extends \Table
 	{
 		$args = [];
 		$args['possibleActions'] = ['Pass'];
-		$args['validPlays'] => [];
+		$args['validPlays'] = array(); 
 
 		$playerId = $this->globals->get('PREVIOUS_PLAYER');
 		$hand = $this->water->getPlayerHand($playerId);
@@ -1394,8 +1394,8 @@ class Game extends \Table
 		{
 			// If this item has a trigger AND that trigger is $trigger
 			// TODO Add a condition to check that the card specific conditons are met
-			if (key_exists('trigger', $tokens['waterDeck'][$details['type']]) 
-				&& $tokens['waterDeck'][$details['type']]['trigger'] === $trigger)
+			if (key_exists('trigger', $this->tokens['waterDeck'][$details['type']]) 
+				&& $this->tokens['waterDeck'][$details['type']]['trigger'] === $trigger)
 			{
 				$args['validPlays'][] = $id;
 			}
@@ -2486,12 +2486,12 @@ class Game extends \Table
 		$cardName = $card['type'];
 
 		$message = ''; 
-		if ($cardName == null || !array_key_exists($cardName, $tokens['waterDeck']))
+		if ($cardName == null || !array_key_exists($cardName, $this->tokens['waterDeck']))
 			$message = "Item $cardName does not exist!";
 		else if ($card['location'] != 'hand' || $card['location_arg'] != $input['sourcePlayer'])
 			$message = "Source player does not have the card in their hand!";
-		else if (!$in_array($input['condition'], $tokens['waterDeck'][$cardName]['condition']))
-			$message = "Item must be played in reaction to the condition {$tokens['waterDeck'][$cardName]['condition']}, not {input['condition']}";
+		else if (!$in_array($input['condition'], $this->tokens['waterDeck'][$cardName]['condition']))
+			$message = "Item must be played in reaction to the condition {$this->tokens['waterDeck'][$cardName]['condition']}, not {input['condition']}";
 		// TODO check that the needed player input are incliuded in $input (a player, a dial value, etc)
 
 		if ($message !== '')
