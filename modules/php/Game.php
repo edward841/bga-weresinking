@@ -1380,7 +1380,29 @@ class Game extends \Table
 	{
 		$args = [];
 		$args['possibleActions'] = ['Pass'];
-		$args['possibleActions'][] = 'PlayCard';
+		$args['validPlays'] => [];
+
+		$playerId = $this->globals->get('PREVIOUS_PLAYER');
+		$hand = $this->water->getPlayerHand($playerId);
+
+		// TODO Eventually trigger needs to be able to handle the other 3 cases
+		$trigger = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$playerId'");
+		$trigger = "resolve $trigger";
+	
+		// Determine which cards are playable right now
+		foreach ($hand as $id => $details)
+		{
+			// If this item has a trigger AND that trigger is $trigger
+			// TODO Add a condition to check that the card specific conditons are met
+			if (key_exists('trigger', $tokens['waterDeck'][$details['type']]) 
+				&& $tokens['waterDeck'][$details['type']]['trigger'] === $trigger)
+			{
+				$args['validPlays'][] = $id;
+			}
+		}
+
+		if (count($args['validPlays']) > 0)
+			$args['possibleActions'][] = 'PlayCard';
 		
 		return $args;
 	}
@@ -1945,6 +1967,17 @@ class Game extends \Table
 		$this->pickCardsForWaterColumn(10);
 		$this->globals->set('ENEMY_HP', 1);
 		$this->globals->set('THRESHOLD_LEVEL', 4);
+	}
+
+	#[Debug(reload: true)]
+	public function debug_getCard(string $cardName)
+	{
+		$player = $this->getCurrentPlayerId();
+		$cardId = $this->DbQuery("SELECT `card_id` FROM `water` WHERE `card_type`='$cardName'");
+		$card = $this->water->getCard($cardId);
+
+		$this->water->moveCard($cardId, 'hand', $player);
+		$this->notifyForCardsDrawn($player, array($card));
 	}
 
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
