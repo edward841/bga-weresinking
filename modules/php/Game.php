@@ -1140,9 +1140,9 @@ class Game extends \Table
 		$args = $this->argPlayCard();
 
 		$message = '';
-		if (!in_array('ContributeInformation', $args['possibleMoves'])
+		if (!in_array('ContributeInformation', $args['possibleMoves']))
 			$message = 'ContributeInformation not in possible moves';
-		else if (!in_array($information, $args['possibleValues'])
+		else if (!in_array($information, $args['possibleValues']))
 		{
 			$expectedValues = implode(',', $args['possibleValues']);
 			$message = "Value given: $information, Expected to be one of: <$expectedValues>";
@@ -2499,20 +2499,12 @@ class Game extends \Table
 			$this->dump('input', $input);
 			throw new \BgaSystemException("playCard: item: {$cardName}, sourcePlayer: {$input['sourcePlayer']} not allowed in state {$this->getStateName()}\n($message)");
 		}
+$this->discard($cardId);
 
-		$this->discard($cardId)
-
+		// Heres a big switch statement for all the cards and their descriptions 
 		switch ($cardName)
 		{
-			// Heavily based on bottleORum
-			case 'boneClub':
-				if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0 || $this->DbQuery("SELECT `dial_value` FROM `player` WHERE `player_id`='{$input['targetPlayer']}'", true) != 'plunder')
-					return false;
-				$newCard = $this->getRandomCardFrom($input['targetPlayer']);
-				$this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
-				// TODO notif???
-				break;
-
+			// Swap this card with 1 random card in another player's hand.
 			// Very similar to boneClub
 			case 'bottleORum':
 				// If the target player has any cards, get a random one, and swap it with the bottleORum
@@ -2525,60 +2517,129 @@ class Game extends \Table
 				break;
 
 			case 'captainsKey':
+			// Take 1 Chest Token from the Breaches Column.
 				break;
 
-			case 'cheekyChum':
-				$this->globals->inc('SHARK_SUBMERGED', -2);
-				break;
-
+			// Change your Dial to a different action.
 			case 'crackedCompass':
 				break;
 
-			case 'cutlass':
-				break;
-
+			// Ignore 1 cannon result.
 			case 'decoyCannon':
 				$this->addToLIST('ignoreCannon');
 				break;
 
+			// Peek at the top 5 cards of the Discard Pile. Reveal all Treasures and add them to your hand.
 			case 'fishingNet':
 				break;
 
+			// Peek at 1 random card in a player's hand. If it\'s a Treasure, swap it with a Treasure in your hand.
 			case 'fishingRod':
 				break;
 
-			case 'fishyBait':
-				break;
-
+			// Roll 1 Single-Shot die against the enemy for each cannon card in the Breaches Column.
 			case 'flintPistol':
 				break;
 
+			// Peek at the top 3 cards of the Water Deck. You may reveal 1 Gem and add it to your hand.
 			case 'gemSifter':
 				break;
 
+			// Swap this card with a card in the Treasure Column.
 			case 'grabbyCrabby':
 				break;
 
-			case 'grenado':
+			// Fix 1 Busted Cannon.
+			case 'metalMallet':
 				break;
 
-			case 'harpoon':
+			// Discard up to 3 face-up Clear Water cards from the Water Column.
+			case 'moldyMop':
 				break;
 
+			// Clear water cards from your hand do not count toward your end-game hand size.
+			case 'rubberDucky':
+				break;
+
+			// Give this card to another player. They must change their Dial to a different action.
+			case 'silverDoubloon':
+				break;
+
+			// Discard 1 face-up Clear Water card in the Water Column or from your hand.
+			case 'smellySponge':
+				break;
+
+			// "Just a dark reminder of your impending doom."
+			case 'somberSkull':
+				break;
+
+			// Upgrade a Cannon card in the Cannon Column.
+			case 'spareBarrel':
+				break;
+
+			// Ignore 1 Breach result.
+			case 'stickyStarfish':
+				$this->addToLIST('ignoreBreach');
+				break;
+
+			// Worth 5 Victory points if you have no Clear Water cards in your hand.
+			case 'treasureMap':
+				break;
+
+			// Worth 1 Victory point for each Clear Water card in your hand.
+			case 'waterFlask':
+				break;
+
+			// Give 1 Clear Water card in your hand to another player.
+			case 'waterPistol':
+				break;
+
+			// Gain 1 extra Hammer this round.
+			case 'woodenMallet':
+				break;
+
+
+			// Enemy Cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			// Kraken cards
+			// Ignore 1 Splash result this round.
+			case 'warDrum':
+				$this->globals->set('FLAG', true);
+				break;
+
+			// Ignore 1 Angered result this round.
 			case 'hurdyGurdy':
 				$this->globals->inc('KRAKEN_ANGERED', -1);
 				break;
 
-			case 'metalMallet':
+			// Shark cards  
+			// Move the top 3 cards from the Shark's Belly to the Discard.
+			case 'fishyBait':
+				$sharksBelly = $this->water->getCardsInLocation('sharksBelly', null, 'location_arg');	
+				$topCards = array_slice($sharksBelly, 0, 3);
+				foreach (array_keys($topCards) as $id)
+				{
+					// Moves the card to the discard pile
+					$this->water->playCard($id);
+
+					// Obfuscates it so we dont reveal hidden info to the frontend and ensures the animation is handled correctly 
+					$topCards[$id]['type'] = 'backside';
+					$topCards[$id]['type_arg'] = 0;
+				}
+
+				$this->notify->all('actPlayCard', clienttranslate('${nbr} cards moved from the Shark\'s Belly to the Discard.'), array(
+					'cards' => $topCards;
+				));
+				// TODO notif??
 				break;
 
-			case 'moldyMop':
+			// Ignore all Submerged results this round.
+			case 'cheekyChum':
+				$this->globals->inc('SHARK_SUBMERGED', -2);
 				break;
 
-			case 'silverDoubloon':
-				break;
-
-			case 'sirenShiner':
+			// Sirens' cards
+			// Ignore all Screech results this round.
+			case 'sirenSilencers':
 				$dice = $this->getCollectionFromDB("SELECT `die_id`, `value` FROM `dice` WHERE `type`='basic'", true);
 				$updateString = '';
 				foreach (array_keys($dice) as $id)
@@ -2590,130 +2651,196 @@ class Game extends \Table
 				$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` IN ($ids)");
 				break;
 
-			case 'sirenSilencers':
+			// Before resolving dice, flip all Basic Attack dice to their opposite sides.
+			case 'sirenShiner':
 				$this->globals->inc('SIREN_SCREECH', -2);
 				break;
 
-			case 'smellySponge':
+			// Skullsairs   
+			// Collect more for a combined value: 1=1VP, 2=4VP, 4=12VP, 6=24VP.
+			case 'cursedAmulet':
 				break;
 
-			case 'spareBarrel':
+
+			// Player cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
+			// Move your Dial to the top of the Treasure Column.
+			case 'cutlass':
 				break;
 
-			case 'spyGlass':
-				break;
-
-			case 'stickyStarfish':
-				$this->addToLIST('ignoreBreach');
-				break;
-
+			// Discard a Minor Breach from the Breaches Column.
 			case 'trustyCarrot':
 				break;
 
-			case 'warDrum':
-				$this->globals->set('FLAG', true);
+			// Steal 1 random card from a player who resolved a Treasure this round.
+			// Heavily based on bottleORum
+			case 'boneClub':
+				if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0 || $this->DbQuery("SELECT `dial_value` FROM `player` WHERE `player_id`='{$input['targetPlayer']}'", true) != 'plunder')
+				return false;
+				$newCard = $this->getRandomCardFrom($input['targetPlayer']);
+				$this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
+				// TODO notif???
 				break;
 
-			case 'waterPistol':
+			// Reveal a card in the Water Column. If it's a Treasure, add it to your hand.
+			case 'harpoon':
 				break;
 
-			case 'woodenMallet':
+			// Roll 1 Triple-Shot die against the enemy. On a miss, deal a Breach card to the Breaches Column.
+			case 'grenado':
+				break;
+
+			// Reveal a player's Dial. If they lied, draw 2 cards from the Water Deck. Otherwise, discard 2 cards.
+			case 'spyGlass':
 				break;
 		}
-	}
 
-// Well just save that there in case we need that later... maybe for setting up their args? or a helper function?
-//	public function playCard($item)
+
+//	// Heres a big switch statement for all the cards and their descriptions 
+//	switch ($cardName)
 //	{
-//		switch ($item)
-//		{
-//			case 'boneClub':
-//				break;
+//		// Swap this card with 1 random card in another player's hand.
+//		case 'bottleORum':
+//			break;
 //
-//			case 'bottleORum':
-//				break;
+//		case 'captainsKey':
+//		// Take 1 Chest Token from the Breaches Column.
+//			break;
 //
-//			case 'captainsKey':
-//				break;
+//		// Change your Dial to a different action.
+//		case 'crackedCompass':
+//			break;
 //
-//			case 'cheekyChum':
-//				break;
+//		// Ignore 1 cannon result.
+//		case 'decoyCannon':
+//			break;
 //
-//			case 'crackedCompass':
-//				break;
+//		// Peek at the top 5 cards of the Discard Pile. Reveal all Treasures and add them to your hand.
+//		case 'fishingNet':
+//			break;
 //
-//			case 'cutlass':
-//				break;
+//		// Peek at 1 random card in a player's hand. If it\'s a Treasure, swap it with a Treasure in your hand.
+//		case 'fishingRod':
+//			break;
 //
-//			case 'decoyCannon':
-//				break;
+//		// Roll 1 Single-Shot die against the enemy for each cannon card in the Breaches Column.
+//		case 'flintPistol':
+//			break;
 //
-//			case 'fishingNet':
-//				break;
+//		// Peek at the top 3 cards of the Water Deck. You may reveal 1 Gem and add it to your hand.
+//		case 'gemSifter':
+//			break;
 //
-//			case 'fishingRod':
-//				break;
+//		// Swap this card with a card in the Treasure Column.
+//		case 'grabbyCrabby':
+//			break;
 //
-//			case 'fishyBait':
-//				break;
+//		// Fix 1 Busted Cannon.
+//		case 'metalMallet':
+//			break;
 //
-//			case 'flintPistol':
-//				break;
+//		// Discard up to 3 face-up Clear Water cards from the Water Column.
+//		case 'moldyMop':
+//			break;
 //
-//			case 'gemSifter':
-//				break;
+//		// Clear water cards from your hand do not count toward your end-game hand size.
+//		case 'rubberDucky':
+//			break;
 //
-//			case 'grabbyCrabby':
-//				break;
+//		// Give this card to another player. They must change their Dial to a different action.
+//		case 'silverDoubloon':
+//			break;
 //
-//			case 'grenado':
-//				break;
+//		// Discard 1 face-up Clear Water card in the Water Column or from your hand.
+//		case 'smellySponge':
+//			break;
 //
-//			case 'harpoon':
-//				break;
+//		// "Just a dark reminder of your impending doom."
+//		case 'somberSkull':
+//			break;
 //
-//			case 'hurdyGurdy':
-//				break;
+//		// Upgrade a Cannon card in the Cannon Column.
+//		case 'spareBarrel':
+//			break;
 //
-//			case 'metalMallet':
-//				break;
+//		// Ignore 1 Breach result.
+//		case 'stickyStarfish':
+//			break;
 //
-//			case 'moldyMop':
-//				break;
+//		// Worth 5 Victory points if you have no Clear Water cards in your hand.
+//		case 'treasureMap':
+//			break;
 //
-//			case 'silverDoubloon':
-//				break;
+//		// Worth 1 Victory point for each Clear Water card in your hand.
+//		case 'waterFlask':
+//			break;
 //
-//			case 'sirenShiner':
-//				break;
+//		// Give 1 Clear Water card in your hand to another player.
+//		case 'waterPistol':
+//			break;
 //
-//			case 'sirenSilencers':
-//				break;
+//		// Gain 1 extra Hammer this round.
+//		case 'woodenMallet':
+//			break;
 //
-//			case 'smellySponge':
-//				break;
 //
-//			case 'spareBarrel':
-//				break;
+//		// Enemy Cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//		// Kraken cards
+//		// Ignore 1 Splash result this round.
+//		case 'warDrum':
+//			break;
 //
-//			case 'spyGlass':
-//				break;
+//		// Ignore 1 Angered result this round.
+//		case 'hurdyGurdy':
+//			break;
 //
-//			case 'stickyStarfish':
-//				break;
+//		// Shark cards  
+//		// Move the top 3 cards from the Shark's Belly to the Discard.
+//		case 'fishyBait':
+//			break;
 //
-//			case 'trustyCarrot':
-//				break;
+//		// Ignore all Submerged results this round.
+//		case 'cheekyChum':
+//			break;
 //
-//			case 'warDrum':
-//				break;
+//		// Sirens' cards
+//		// Ignore all Screech results this round.
+//		case 'sirenSilencers':
+//			break;
 //
-//			case 'waterPistol':
-//				break;
+//		// Before resolving dice, flip all Basic Attack dice to their opposite sides.
+//		case 'sirenShiner':
+//			break;
 //
-//			case 'woodenMallet':
-//				break;
-//		}
+//		// Skullsairs   
+//		// Collect more for a combined value: 1=1VP, 2=4VP, 4=12VP, 6=24VP.
+//		case 'cursedAmulet':
+//			break;
+//
+//
+//		// Player cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
+//		// Move your Dial to the top of the Treasure Column.
+//		case 'cutlass':
+//			break;
+//
+//		// Discard a Minor Breach from the Breaches Column.
+//		case 'trustyCarrot':
+//			break;
+//
+//		// Steal 1 random card from a player who resolved a Treasure this round.
+//		case 'boneClub':
+//			break;
+//
+//		// Reveal a card in the Water Column. If it's a Treasure, add it to your hand.
+//		case 'harpoon':
+//			break;
+//
+//		// Roll 1 Triple-Shot die against the enemy. On a miss, deal a Breach card to the Breaches Column.
+//		case 'grenado':
+//			break;
+//
+//		// Reveal a player's Dial. If they lied, draw 2 cards from the Water Deck. Otherwise, discard 2 cards.
+//		case 'spyGlass':
+//			break;
 //	}
 
 	// Special Enemy Dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2829,7 +2956,7 @@ class Game extends \Table
 			}
 		}
 	}
-	
+
 	// Boarding Party: Move the lowest card in the Treasure column to the Skullsairs' Stash.
 	public function resolveSkullsairsAttack2(): void 
 	{
