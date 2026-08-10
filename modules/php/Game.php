@@ -2484,6 +2484,7 @@ class Game extends \Table
 	{
 		$card = $this->water->getCard($cardId);
 		$cardName = $card['type'];
+		$sourcePlayer = $this->globals->get('PREVIOUS_PLAYER');
 
 		$message = ''; 
 		if ($cardName == null || !array_key_exists($cardName, $this->tokens['waterDeck']))
@@ -2531,6 +2532,26 @@ $this->discard($cardId);
 
 			// Peek at the top 5 cards of the Discard Pile. Reveal all Treasures and add them to your hand.
 			case 'fishingNet':
+				$topFive  = $this->water->getCardsOnTop(5, 'discard');
+				$treasures = array();
+				foreach ($topFive as $cardId => $details)
+				{
+					if ($details['type'] !== 'clearWater')
+						$treasures[$cardId] => $details;
+				}
+				
+				if (count($treasures) > 0)
+				{
+					$this->water->moveCards(array_keys($treasures), 'hand', $sourcePlayer);
+					$this->setCardsOrientation(array_keys($treasures), false);
+					$this->notifyForCardsDrawn($sourcePlayer, $treasures);
+				}
+				$this->notify->all('actPlayCard', clienttranslate('${player_name} drew ${nbr} cards from the Fishing Net'), array(
+					'player_name' => $this->getPlayerNameById($sourcePlayer),
+					'player_id' => $sourcePlayer,
+					'nbr' => count($treasures);
+				));
+				// Private notif for the animations work? With specifics of which cards they saw
 				break;
 
 			// Peek at 1 random card in a player's hand. If it\'s a Treasure, swap it with a Treasure in your hand.
@@ -2675,7 +2696,7 @@ $this->discard($cardId);
 			// Heavily based on bottleORum
 			case 'boneClub':
 				if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0 || $this->DbQuery("SELECT `dial_value` FROM `player` WHERE `player_id`='{$input['targetPlayer']}'", true) != 'plunder')
-				return false;
+					return false;
 				$newCard = $this->getRandomCardFrom($input['targetPlayer']);
 				$this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
 				// TODO notif???
