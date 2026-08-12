@@ -1330,10 +1330,153 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		{
 			console.log('notif_actPlayCard');
 			console.log(notif);
-
+			
+			// Heres a big switch statement for all the cards and their descriptions 
+			// Handles specific animations on a card by card basis
 			switch (notif.cardName)
 			{
-
+				// Swap this card with 1 random card in another player's hand.
+				case 'bottleORum':
+					break;
+		
+				case 'captainsKey':
+				// Take 1 Chest Token from the Breaches Column.
+					break;
+		
+				// Change your Dial to a different action.
+				case 'crackedCompass':
+					break;
+		
+				// Ignore 1 cannon result.
+				case 'decoyCannon':
+					break;
+		
+				// Peek at the top 5 cards of the Discard Pile. Reveal all Treasures and add them to your hand.
+				case 'fishingNet':
+					break;
+		
+				// Peek at 1 random card in a player's hand. If it\'s a Treasure, swap it with a Treasure in your hand.
+				case 'fishingRod':
+					break;
+		
+				// Roll 1 Single-Shot die against the enemy for each cannon card in the Breaches Column.
+				case 'flintPistol':
+					break;
+		
+				// Peek at the top 3 cards of the Water Deck. You may reveal 1 Gem and add it to your hand.
+				case 'gemSifter':
+					break;
+		
+				// Swap this card with a card in the Treasure Column.
+				case 'grabbyCrabby':
+					break;
+		
+				// Fix 1 Busted Cannon.
+				case 'metalMallet':
+					break;
+		
+				// Discard up to 3 face-up Clear Water cards from the Water Column.
+				case 'moldyMop':
+					break;
+		
+				// Clear water cards from your hand do not count toward your end-game hand size.
+				case 'rubberDucky':
+					break;
+		
+				// Give this card to another player. They must change their Dial to a different action.
+				case 'silverDoubloon':
+					break;
+		
+				// Discard 1 face-up Clear Water card in the Water Column or from your hand.
+				case 'smellySponge':
+					break;
+		
+				// "Just a dark reminder of your impending doom."
+				case 'somberSkull':
+					break;
+		
+				// Upgrade a Cannon card in the Cannon Column.
+				case 'spareBarrel':
+					break;
+		
+				// Ignore 1 Breach result.
+				case 'stickyStarfish':
+					break;
+		
+				// Worth 5 Victory points if you have no Clear Water cards in your hand.
+				case 'treasureMap':
+					break;
+		
+				// Worth 1 Victory point for each Clear Water card in your hand.
+				case 'waterFlask':
+					break;
+		
+				// Give 1 Clear Water card in your hand to another player.
+				case 'waterPistol':
+					break;
+		
+				// Gain 1 extra Hammer this round.
+				case 'woodenMallet':
+					break;
+		
+		
+				// Enemy Cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				// Kraken cards
+				// Ignore 1 Splash result this round.
+				case 'warDrum':
+					break;
+		
+				// Ignore 1 Angered result this round.
+				case 'hurdyGurdy':
+					break;
+		
+				// Shark cards  
+				// Move the top 3 cards from the Shark's Belly to the Discard.
+				case 'fishyBait':
+					break;
+		
+				// Ignore all Submerged results this round.
+				case 'cheekyChum':
+					break;
+		
+				// Sirens' cards
+				// Ignore all Screech results this round.
+				case 'sirenSilencers':
+					break;
+		
+				// Before resolving dice, flip all Basic Attack dice to their opposite sides.
+				case 'sirenShiner':
+					break;
+		
+				// Skullsairs   
+				// Collect more for a combined value: 1=1VP, 2=4VP, 4=12VP, 6=24VP.
+				case 'cursedAmulet':
+					break;
+		
+				// Player cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
+				// Move your Dial to the top of the Treasure Column.
+				case 'cutlass':
+					break;
+		
+				// Discard a Minor Breach from the Breaches Column.
+				case 'trustyCarrot':
+					break;
+		
+				// Steal 1 random card from a player who resolved a Treasure this round.
+				case 'boneClub':
+					break;
+		
+				// Reveal a card in the Water Column. If it's a Treasure, add it to your hand.
+				case 'harpoon':
+					break;
+		
+				// Roll 1 Triple-Shot die against the enemy. On a miss, deal a Breach card to the Breaches Column.
+				case 'grenado':
+					break;
+		
+				// Reveal a player's Dial. If they lied, draw 2 cards from the Water Deck. Otherwise, discard 2 cards.
+				case 'spyGlass':
+					break;
 			}
 		},
 

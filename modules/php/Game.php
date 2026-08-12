@@ -2560,6 +2560,9 @@ $this->discard($cardId);
 
 			// Roll 1 Single-Shot die against the enemy for each cannon card in the Breaches Column.
 			case 'flintPistol':
+				$nbr = $this->water->countCardInLocation('breachesColumn');
+				$singles = array_keys($this->getCollectionFromDB("SELECT `die_id` FROM `dice` WHERE `type`='1'"));
+				$this->fireCannons(array_slice($singles, 0, $nbr);
 				break;
 
 			// Peek at the top 3 cards of the Water Deck. You may reveal 1 Gem and add it to your hand.
@@ -2708,6 +2711,9 @@ $this->discard($cardId);
 
 			// Roll 1 Triple-Shot die against the enemy. On a miss, deal a Breach card to the Breaches Column.
 			case 'grenado':
+				$triple = $this->getObjectFromDB("SELECT `die_id` from `dice` where `type`='3' LIMIT 1")['die_id'];
+				if (!$this->fireCannons([$triple]))
+					$this->resolveBasicBreach();
 				break;
 
 			// Reveal a player's Dial. If they lied, draw 2 cards from the Water Deck. Otherwise, discard 2 cards.
