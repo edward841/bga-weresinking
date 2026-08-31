@@ -2482,23 +2482,27 @@ class Game extends \Table
 	// I'll slowly fill in the logic for each... sounds like fun!
 	public function playCard($cardId): bool 
 	{
+
+// OK SO SOMEWHERE IN THIS BLOCK IS THE SYNTAX ERROR, SOMETHING ABOUT A =
+
 		$card = $this->water->getCard($cardId);
 		$cardName = $card['type'];
 		$sourcePlayer = $this->globals->get('PREVIOUS_PLAYER');
+		$input = []; // WHAT IN THE WORLD IS THIS ANYWAYS?? This input that is missing is probably the problem...
 
 		$message = ''; 
 		if ($cardName == null || !array_key_exists($cardName, $this->tokens['waterDeck']))
 			$message = "Item $cardName does not exist!";
-		else if ($card['location'] != 'hand' || $card['location_arg'] != $input['sourcePlayer'])
+		else if ($card['location'] !== 'hand' || $card['location_arg'] !== $input['sourcePlayer'])
 			$message = "Source player does not have the card in their hand!";
-		else if (!$in_array($input['condition'], $this->tokens['waterDeck'][$cardName]['condition']))
-			$message = "Item must be played in reaction to the condition {$this->tokens['waterDeck'][$cardName]['condition']}, not {input['condition']}";
+		//else if (!in_array($input['condition'], $this->tokens['waterDeck'][$cardName]['condition']))
+			//$message = "Item must be played in reaction to the condition {$this->tokens['waterDeck'][$cardName]['condition']}, not {input['condition']}";
 		// TODO check that the needed player input are incliuded in $input (a player, a dial value, etc)
 
 		if ($message !== '')
 		{
 			$this->dump('input', $input);
-			throw new \BgaSystemException("playCard: item: {$cardName}, sourcePlayer: {$input['sourcePlayer']} not allowed in state {$this->getStateName()}\n($message)");
+			throw new \BgaSystemException("playCard: item: $cardName, sourcePlayer: $sourcePlayer not allowed in state {$this->getStateName()}\n($message)");
 		}
 $this->discard($cardId);
 
@@ -2509,12 +2513,12 @@ $this->discard($cardId);
 			// Very similar to boneClub
 			case 'bottleORum':
 				// If the target player has any cards, get a random one, and swap it with the bottleORum
-				if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0)
-					return false;
-				$newCard = $this->getRandomCardFrom($input['targetPlayer']);
-				$this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
-				$this->water->moveCard($cardId, 'hand', $input['targetPlayer']);
-				// TODO notif???
+//				if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0)
+//					return false;
+//				$newCard = $this->getRandomCardFrom($input['targetPlayer']);
+//				$this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
+//				$this->water->moveCard($cardId, 'hand', $input['targetPlayer']);
+//				// TODO notif???
 				break;
 
 			case 'captainsKey':
@@ -2532,12 +2536,12 @@ $this->discard($cardId);
 
 			// Peek at the top 5 cards of the Discard Pile. Reveal all Treasures and add them to your hand.
 			case 'fishingNet':
-				$topFive  = $this->water->getCardsOnTop(5, 'discard');
+				$topFive = $this->water->getCardsOnTop(5, 'discard');
 				$treasures = array();
 				foreach ($topFive as $cardId => $details)
 				{
 					if ($details['type'] !== 'clearWater')
-						$treasures[$cardId] => $details;
+						$treasures[$cardId] = $details;
 				}
 				
 				if (count($treasures) > 0)
@@ -2546,10 +2550,10 @@ $this->discard($cardId);
 					$this->setCardsOrientation(array_keys($treasures), false);
 					$this->notifyForCardsDrawn($sourcePlayer, $treasures);
 				}
-				$this->notify->all('actPlayCard', clienttranslate('${player_name} drew ${nbr} cards from the Fishing Net'), array(
+				$this->notify->all('actPlayCard', clienttranslate('${player_name} drew ${nbr} cards with the Fishing Net'), array(
 					'player_name' => $this->getPlayerNameById($sourcePlayer),
 					'player_id' => $sourcePlayer,
-					'nbr' => count($treasures);
+					'nbr' => count($treasures),
 				));
 				// Private notif for the animations work? With specifics of which cards they saw
 				break;
@@ -2560,9 +2564,10 @@ $this->discard($cardId);
 
 			// Roll 1 Single-Shot die against the enemy for each cannon card in the Breaches Column.
 			case 'flintPistol':
+				// TODO there is a bug here that it is possible to have more than 3 cannons with ways to get an extra cannon...
 				$nbr = $this->water->countCardInLocation('breachesColumn');
 				$singles = array_keys($this->getCollectionFromDB("SELECT `die_id` FROM `dice` WHERE `type`='1'"));
-				$this->fireCannons(array_slice($singles, 0, $nbr);
+				$this->fireCannons(array_slice($singles, 0, $nbr));
 				break;
 
 			// Peek at the top 3 cards of the Water Deck. You may reveal 1 Gem and add it to your hand.
@@ -2664,6 +2669,11 @@ $this->discard($cardId);
 			// Sirens' cards
 			// Ignore all Screech results this round.
 			case 'sirenSilencers':
+				$this->globals->inc('SIREN_SCREECH', -2);
+				break;
+				
+			// Before resolving dice, flip all Basic Attack dice to their opposite sides.
+			case 'sirenShiner':
 				$dice = $this->getCollectionFromDB("SELECT `die_id`, `value` FROM `dice` WHERE `type`='basic'", true);
 				$updateString = '';
 				foreach (array_keys($dice) as $id)
@@ -2675,16 +2685,10 @@ $this->discard($cardId);
 				$this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` IN ($ids)");
 				break;
 
-			// Before resolving dice, flip all Basic Attack dice to their opposite sides.
-			case 'sirenShiner':
-				$this->globals->inc('SIREN_SCREECH', -2);
-				break;
-
 			// Skullsairs   
 			// Collect more for a combined value: 1=1VP, 2=4VP, 4=12VP, 6=24VP.
 			case 'cursedAmulet':
 				break;
-
 
 			// Player cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
 			// Move your Dial to the top of the Treasure Column.
@@ -2698,11 +2702,11 @@ $this->discard($cardId);
 			// Steal 1 random card from a player who resolved a Treasure this round.
 			// Heavily based on bottleORum
 			case 'boneClub':
-				if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0 || $this->DbQuery("SELECT `dial_value` FROM `player` WHERE `player_id`='{$input['targetPlayer']}'", true) != 'plunder')
-					return false;
-				$newCard = $this->getRandomCardFrom($input['targetPlayer']);
-				$this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
-				// TODO notif???
+//				if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0 || $this->DbQuery("SELECT `dial_value` FROM `player` WHERE `player_id`='{$input['targetPlayer']}'", true) != 'plunder')
+//					return false;
+//				$newCard = $this->getRandomCardFrom($input['targetPlayer']);
+//				$this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
+//				// TODO notif???
 				break;
 
 			// Reveal a card in the Water Column. If it's a Treasure, add it to your hand.
@@ -2720,6 +2724,7 @@ $this->discard($cardId);
 			case 'spyGlass':
 				break;
 		}
+	}
 
 
 //	// Heres a big switch statement for all the cards and their descriptions 
