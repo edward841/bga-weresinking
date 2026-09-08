@@ -2493,7 +2493,7 @@ class Game extends \Table
 		$message = ''; 
 		if ($cardName == null || !array_key_exists($cardName, $this->tokens['waterDeck']))
 			$message = "Item $cardName does not exist!";
-		else if ($card['location'] !== 'hand' || $card['location_arg'] !== $input['sourcePlayer'])
+		else if ($card['location'] !== 'hand' || $card['location_arg'] !== $sourcePlayer)
 			$message = "Source player does not have the card in their hand!";
 		//else if (!in_array($input['condition'], $this->tokens['waterDeck'][$cardName]['condition']))
 			//$message = "Item must be played in reaction to the condition {$this->tokens['waterDeck'][$cardName]['condition']}, not {input['condition']}";
@@ -2504,7 +2504,7 @@ class Game extends \Table
 			$this->dump('input', $input);
 			throw new \BgaSystemException("playCard: item: $cardName, sourcePlayer: $sourcePlayer not allowed in state {$this->getStateName()}\n($message)");
 		}
-$this->discard($cardId);
+		$this->discard($cardId);
 
 		// Heres a big switch statement for all the cards and their descriptions 
 		switch ($cardName)
@@ -2656,7 +2656,7 @@ $this->discard($cardId);
 				}
 
 				$this->notify->all('actPlayCard', clienttranslate('${nbr} cards moved from the Shark\'s Belly to the Discard.'), array(
-					'cards' => $topCards;
+					'cards' => $topCards,
 				));
 				// TODO notif??
 				break;

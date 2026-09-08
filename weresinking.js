@@ -588,6 +588,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					}
 					break;
 			}
+
 			if (this.isCurrentPlayerActive())
 			{
 				console.log('PossibleActions:', args.args.possibleActions);
@@ -596,6 +597,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					this.waterDeck.setSelectionMode('single');
 					this.waterDeck.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
 				}
+
 				if (args.args.possibleActions.includes('Discard'))
 				{
 					this.playerHand.setSelectionMode('multiple');
@@ -604,10 +606,19 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						this.updatePageTitle();
 					};
 				}
+				// TODO what the heck is this doing this makes no senes... being the exact condition as the previous thing...
 				else if (args.args.possibleActions.includes('Discard'))
 				{
 					this.playerHand.setSelectionMode('single');
 					this.playerHand.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+				}
+
+				if (args.args.possibleActions.includes('PlayCard'))
+				{
+					this.playerHand.setSelectionMode('single', args.args.possibleCards);
+					args.args.possibleCards.forEach((card) => {
+
+					});
 				}
 			}
 		},
@@ -766,6 +777,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //					case 'resolveBucket':
 //						const currentAction = args.possibleActions[0];
 //						this.statusBar.addActionButton(_(currentAction), () => this.bga.actions.performAction("act" + currentAction, {cardId: }));
+
+					case 'playCard':
+						if (args.possibleActions.includes('PlayCard'))
+						{
+							this.statusBar.addActionButton(_())
+						}
+						break;
 				}
 
 				if (args.possibleActions.includes('DiscardMultiple'))
