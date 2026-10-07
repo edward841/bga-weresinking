@@ -587,6 +587,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 						};
 					}
 					break;
+				case 'playCard':
+					console.log('Play card test test!');
+					console.log(args);
+					break;
 			}
 
 			if (this.isCurrentPlayerActive())
@@ -615,10 +619,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 				if (args.args.possibleActions.includes('PlayCard'))
 				{
-					this.playerHand.setSelectionMode('single', args.args.possibleCards);
-					args.args.possibleCards.forEach((card) => {
-
-					});
+					//this.playerHand.setSelectionMode('single', args.args.possibleCards);
+//					args.args.possibleCards.forEach((card) => {
+//
+//					});
 				}
 			}
 		},
@@ -779,10 +783,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //						this.statusBar.addActionButton(_(currentAction), () => this.bga.actions.performAction("act" + currentAction, {cardId: }));
 
 					case 'playCard':
+						console.log('Play card here...');
 						if (args.possibleActions.includes('PlayCard'))
 						{
-							this.statusBar.addActionButton(_())
+							args.validPlays.forEach((card) => {
+								this.statusBar.addActionButton(_(card.name), () => this.bga.actions.performAction('actPlayCard', {cardId: card.id}), {color: 'primary'});
+							});
 						}
+						this.statusBar.addActionButton(_('Pass'), () => this.bga.actions.performAction('actPass'), {color: 'secondary'});
 						break;
 				}
 

@@ -525,6 +525,11 @@ class Game extends \Table
 		$this->gamestate->nextState($nextAction);
 	}
 
+	public function stPlayCardSetup()
+	{
+		$this->gamestate->setPlayersMultiactive(array($this->globals->get('PREVIOUS_PLAYER')), 'playCard', true);
+	}
+
 	public function checkHandSize()
 	{
 		$playerCardNbr = $this->water->countCardsByLocationArgs('hand');
@@ -1105,16 +1110,20 @@ class Game extends \Table
 		$args = $this->argPlayCard();
 
 		// Fail if actPlayCard is not allowed or the card in question is not viable
+		$message = '';
 		if (!in_array('PlayCard', $args['possibleActions']))
 		{
 			$possibleActions = implode(',', $args['possibleActions']);
 			$message = "PlayCard not in possibleActions: <$possibleActions>";
 		}
-		else if (!in_array($cardId, $args['possiblePlays']))
+		else if (!in_array($cardId, array_column($args['validPlays'], 'id')))
 		{
-			$possibleIds = implode(',', $args['possiblePlays']);
+			$possibleIds = implode(',', array_column($args['validPlays'], 'id'));
 			$message = "CardId given: $cardId, expected to be one of <$possibleIds>";
 		}
+
+		if ($message !== '')
+			throw new \BgaSystemException("playCard: item: $cardName, sourcePlayer: $sourcePlayer not allowed in state {$this->getStateName()}\n($message)");
 
 
 		// If no additional information is required then immediately play the card!
@@ -1188,12 +1197,18 @@ class Game extends \Table
 			}
 		}	
 		
-		// Most common pass logic: Resets all globals
-		$this->globals->set('FLAG', true);
-		$this->globals->set('COUNTER', 0);
-		$this->globals->set('LIST', []);
-		$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
-		$this->gamestate->nextState('next');
+
+		if ($state === STATE_PLAY_CARD)
+			$this->gamestate->setPlayerNonMultiactive($this->globals->get('PREVIOUS_PLAYER'), 'next');	
+		else
+		{
+			// Most common pass logic: Resets all globals
+			$this->globals->set('FLAG', true);
+			$this->globals->set('COUNTER', 0);
+			$this->globals->set('LIST', []);
+			$this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+			$this->gamestate->nextState('next');
+		}
 	}
 	
 	public function argDeclareDial()
@@ -1392,12 +1407,14 @@ class Game extends \Table
 		// Determine which cards are playable right now
 		foreach ($hand as $id => $details)
 		{
-			// If this item has a trigger AND that trigger is $trigger
+			// If this item has a trigger AND that trigger contains trigger (contains to account for the ones with multiple triggers separated by ' OR ')
 			// TODO Add a condition to check that the card specific conditons are met
-			if (key_exists('trigger', $this->tokens['waterDeck'][$details['type']]) 
-				&& $this->tokens['waterDeck'][$details['type']]['trigger'] === $trigger)
+//			if (key_exists('trigger', $this->tokens['waterDeck'][$details['type']]) 
+//				&& str_contains($this->tokens['waterDeck'][$details['type']]['trigger'], $trigger))
+			if (($cardsTrigger = $this->tokens['waterDeck'][$details['type']]['trigger'] ?? false) &&
+				(str_contains($cardsTrigger, $trigger) || $cardsTrigger === 'resolve dial'))
 			{
-				$args['validPlays'][] = $id;
+				$args['validPlays'][] = ['id' => $id, 'name' => $this->tokens['waterDeck'][$details['type']]['name']];
 			}
 		}
 
@@ -2480,7 +2497,7 @@ class Game extends \Table
 	// Items!?!
 	// All items with actual effects (not just points), in alphabetical order.
 	// I'll slowly fill in the logic for each... sounds like fun!
-	public function playCard($cardId): bool 
+	public function playCard($cardId)
 	{
 
 // OK SO SOMEWHERE IN THIS BLOCK IS THE SYNTAX ERROR, SOMETHING ABOUT A =
@@ -2493,10 +2510,6 @@ class Game extends \Table
 		$message = ''; 
 		if ($cardName == null || !array_key_exists($cardName, $this->tokens['waterDeck']))
 			$message = "Item $cardName does not exist!";
-		else if ($card['location'] !== 'hand' || $card['location_arg'] !== $sourcePlayer)
-			$message = "Source player does not have the card in their hand!";
-		//else if (!in_array($input['condition'], $this->tokens['waterDeck'][$cardName]['condition']))
-			//$message = "Item must be played in reaction to the condition {$this->tokens['waterDeck'][$cardName]['condition']}, not {input['condition']}";
 		// TODO check that the needed player input are incliuded in $input (a player, a dial value, etc)
 
 		if ($message !== '')
@@ -2565,7 +2578,7 @@ class Game extends \Table
 			// Roll 1 Single-Shot die against the enemy for each cannon card in the Breaches Column.
 			case 'flintPistol':
 				// TODO there is a bug here that it is possible to have more than 3 cannons with ways to get an extra cannon...
-				$nbr = $this->water->countCardInLocation('breachesColumn');
+				$nbr = intval($this->cannons->countCardInLocation('breachesColumn'));
 				$singles = array_keys($this->getCollectionFromDB("SELECT `die_id` FROM `dice` WHERE `type`='1'"));
 				$this->fireCannons(array_slice($singles, 0, $nbr));
 				break;

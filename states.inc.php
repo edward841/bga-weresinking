@@ -64,6 +64,7 @@ if (!defined('STATE_END_GAME'))
 	define('STATE_DECLARE_DIAL_HELPER', 20);
 	define('STATE_DECLARE_DIAL', 22);
 	define('STATE_REVEAL_DIAL', 24);
+
 	define('STATE_BRAIN', 26);	
 	define('STATE_RESOLVE_BUCKET', 28);
 	define('STATE_RESOLVE_PLUNDER', 32);
@@ -216,6 +217,7 @@ $machinestates = [
 		'possibleactions' => ['actPlayCard', 'actContributeInformation', 'actPass'],
 		'args' => 'argPlayCard',
 		'transitions' => ['again' => STATE_PLAY_CARD, 'next' => STATE_BRAIN],
+		'action' => 'stPlayCardSetup',
 	),
 
 // End game scoring state is a state class, the new paradigm to utilize the reverse scoring feature
