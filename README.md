@@ -17,12 +17,12 @@ Implement all game rules, frontend is complete enough for the player to play the
 - [ ] Buttons, clicks, animations!
 - [ ] Separating dial_location and dial_value for players
 - [ ] Verify data access is correct (nobody has too much or too little game state info) 
-- [ ] Player aid card
+- [x] Player aid card
 - [ ] Translations... Actual proper translations not this mess...
 - [ ] Basic tooltips to make the text understandable...
 
 ### Known Issues:
-- [ ] Why dont the treasure column cards discard down to 5?
+- [x] Why dont the treasure column cards discard down to 5?
 - [ ] That one JS error when the ship sinks? What is happening there anyways?
 - [ ] Translations are definitely waaaaay wrong... Should be fun to fix
 - [ ] There is definitely info being shared with players in notifications that they shouldn't have access to... (deck counts, normal little notifications not set up right, etc.)

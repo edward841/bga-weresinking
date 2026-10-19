@@ -527,7 +527,7 @@ class Game extends \Table
 
 	public function stPlayCardSetup()
 	{
-		$this->gamestate->setPlayersMultiactive(array($this->globals->get('PREVIOUS_PLAYER')), 'playCard', true);
+		$this->gamestate->setPlayersMultiactive(array(intval($this->globals->get('PREVIOUS_PLAYER'))), 'playCard', true);
 	}
 
 	public function checkHandSize()
@@ -1127,21 +1127,19 @@ class Game extends \Table
 
 
 		// If no additional information is required then immediately play the card!
-		$nextAction = 'next';
 		if (true)
+		{
 			$this->playCard($cardId);
-
+			$this->gamestate->setPlayerNonMultiactive($this->globals->get('PREVIOUS_PLAYER'), 'next');	
+		}
 		// Additional information is required to play the card
 		else
 		{
-			$nextAction = 'again';
 			$list = (array) $this->globals->get('LIST');
 			$list['playCardInfo'] = array('id' => $cardId, 'name' => '', 'input' => array());
 			$this->globals->set('LIST', $list);
+			$this->gamestate->nextState('again');
 		}
-
-		$this->gamestate->nextState($nextAction);
-
 	}
 
 	public function actContributeInformation(int $information)
