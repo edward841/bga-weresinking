@@ -1509,12 +1509,8 @@ class Game extends \Table
 		$result['breaches'] = array_reverse($this->breaches->getCardsInLocation('breachesColumn', null, 'location_arg'));
 
 		// Cannons
-		$cannons = [
-			'busted' => $this->cannons->getCardsInLocation('breachesColumn', null, 'location_arg'),
-			'operational' => $this->cannons->getCardsInLocation('cannonsColumn', null, 'location_arg'),
-		];
-		$result['bustedCannons'] = array_reverse($cannons['busted']);
-		$result['operationalCannons'] = array_reverse($cannons['operational']);
+		$result['bustedCannons'] = array_reverse($this->cannons->getCardsInLocation('breachesColumn', null, 'location_arg'));
+		$result['operationalCannons'] = array_reverse($this->cannons->getCardsInLocation('cannonsColumn', null, 'location_arg'));
 		
 		// This player's hand
 		$result['hand'] = $this->water->getPlayerHand($currentPlayerId);
@@ -1531,7 +1527,7 @@ class Game extends \Table
 		foreach (['busted', 'operational'] as $cannonType)
 		{
 			$dice = [];
-			foreach ($cannons[$cannonType] as $card)
+			foreach ($result[$cannonType . 'Cannons'] as $card)
 			{
 				$dice[] = ['id' => $card['id'], 'color' => 'Cannon' . $diceInfo[$card['id']]['type'], 'face' => $diceInfo[$card['id']]['value']];
 			}
@@ -2115,6 +2111,8 @@ class Game extends \Table
 			'rolls' => $rolls,
 			'hitNbr' => $successes,
 			'newHp' => $this->globals->get('ENEMY_HP'),
+			'enemyDiceChanged' => 0,// TODO Make this meaningful
+			'enemyDiceAffected' => [], // TODO put dice here so that the frontend can make appropriate changes and remain stable across refreshes
 		));
 		return $successes > 0;
 	}

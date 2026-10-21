@@ -400,6 +400,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); 
 			};
 			this.bustedCannons.setSort((a, b) => a.type - b.type);
+
 			this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager, this.bigCardGap);
 			this.operationalCannons.onCardCountChange = (cardCount) => {dojo.style('cannonsColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCardsAndDials}px`)};
 			this.operationalCannons.onSelectionChange = (selection, lastChange) => this.updatePageTitle();
@@ -591,10 +592,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			if (this.isCurrentPlayerActive())
 			{
 				console.log('PossibleActions:', args.args.possibleActions);
+				console.log('MARKER1: HELLO OUT THERE???');
 				if (args.args.possibleActions.includes('Draw') && args.args.location == 'deck')
 				{
 					this.waterDeck.setSelectionMode('single');
 					this.waterDeck.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+					if (args.args.location.length == 1)
+					{
+						this.waterDeck.selectAll();
+						this.waterdeck.onSelectionChange = (selection, lastChange) => {if (selection.length == 0) this.waterDeck.selectAll()};
+					}
 				}
 				if (args.args.possibleActions.includes('Discard'))
 				{
@@ -1102,7 +1109,21 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			this.operationalDice.rollDice(dice, {duration: [800, 1200]});
 
 			if (notif.hitNbr > 0)
+			{
 				dojo.addClass('damageTokenSpaces', 'enemy' + notif.newHp + 'HP');
+				
+				// Enemy gains more attack dice
+				if (notif.enemyDiceChanged > 0)
+				{
+
+				}
+				// Enemy loses attack dice
+				else if (notif.enemyDiceChanged < 0)
+				{
+
+				}
+				// If its 0 then no change in attack dice so no action needed
+			}
 		},
 
 		notif_resolveBasicWater: function(notif)
@@ -1129,7 +1150,18 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log(notif);
 		
 			this.bustedCannons.addCard(notif.card, {fromStock: this.cannons});
-			this.bustedDice.addDie({'id': notif.card.id, 'color': 'Cannon' + notif.card.type});
+			
+			// We have to find the correct die so the value doesnt change
+			var bustedDie = null;
+			for (const die of this.operationalDice.getDice())
+			{
+				if (die.id == notif.card.id)
+				{
+					bustedDie = die;
+					break;
+				}
+			}
+			this.bustedDice.addDie(bustedDie, {fromStock: this.operationalDice});
 			this.correctGapUnderBoard();
 		},
 
@@ -1314,7 +1346,20 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			switch (notif.problem)
 			{
 				case 'cannon':
+					// Move the repaired cannon to the Cannons coloumn
 					this.operationalCannons.addCard(notif.card);
+					
+					// Move the associated die as well
+					var cannonsDie = null; 
+					for (const die of this.bustedDice.getDice())
+					{
+						if (die.id == notif.card.id)
+						{
+							cannonsDie = die;
+							break;
+						}
+					}
+					this.operationalDice.addDie(cannonsDie, {fromStock: this.bustedDice});
 					break;
 
 				case 'breach':
