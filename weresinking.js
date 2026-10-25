@@ -1111,18 +1111,22 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			if (notif.hitNbr > 0)
 			{
 				dojo.addClass('damageTokenSpaces', 'enemy' + notif.newHp + 'HP');
-				
-				// Enemy gains more attack dice
-				if (notif.enemyDiceChanged > 0)
+		
+				// If there were any changes to the enemy dice update accordingly
+				for (var i = 0; i < notif.enemyDiceChanged.length; i++)
 				{
-
+					// Enemy loses attack dice
+					if (this.enemyDice.contains(notif.enemyDiceChanged[i]))
+					{
+						this.enemyDice.removeDie(notif.enemyDiceChanged[i]);
+					}
+					// Enemy gains more attack dice
+					else
+					{
+						this.enemyDice.addDie(notif.enemyDiceChanged[i]);
+					}
+					// If its 0 then no change in attack dice so no action needed
 				}
-				// Enemy loses attack dice
-				else if (notif.enemyDiceChanged < 0)
-				{
-
-				}
-				// If its 0 then no change in attack dice so no action needed
 			}
 		},
 

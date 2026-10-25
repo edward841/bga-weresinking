@@ -2082,6 +2082,7 @@ class Game extends \Table
 		// Deal a damage to the enemy for each successful hit!
 		$rolls = $this->getNonEmptyCollectionFromDB("SELECT `die_id`, `type`, `value` FROM `dice` WHERE `die_id` in ('" . implode("','", $cannonIds) . "')"); 
 		$successes = 0;
+		$diceChanged = array();
 
 		foreach ($rolls as $id => $details) 
 		{
@@ -2101,7 +2102,9 @@ class Game extends \Table
 				else
 				{
 					$successes++;
-					$this->damageEnemy();
+					$dieChanged = $this->damageEnemy();
+					if ($dieChanged != null)
+						$diceChanged[] = $dieChanged;
 					$this->addToLIST($id);
 				}
 			}
@@ -2111,14 +2114,14 @@ class Game extends \Table
 			'rolls' => $rolls,
 			'hitNbr' => $successes,
 			'newHp' => $this->globals->get('ENEMY_HP'),
-			'enemyDiceChanged' => 0,// TODO Make this meaningful
-			'enemyDiceAffected' => [], // TODO put dice here so that the frontend can make appropriate changes and remain stable across refreshes
+			'enemyDiceChanged' => $diceChanged,
 		));
 		return $successes > 0;
 	}
 	
 	public function damageEnemy()
 	{
+		$dieChanged = null;
 		if ($this->globals->get('ENEMY_HP') > 0)
 		{
 			$hp = $this->globals->inc('ENEMY_HP', -1);
@@ -2128,18 +2131,22 @@ class Game extends \Table
 			// Add/Remove a basic die if necessary
 			if (array_key_exists($hp, $enemyInfo['adjustBasicDice']))
 			{
-				$dieIds = array_keys($this->getCollectionFromDB("SELECT `die_id` FROM `dice`"));
+				$dice = $this->getCollectionFromDB("SELECT `die_id`, `type`, `value` FROM `dice`");
+				$dieIds = array_keys($dice);
 				$dieIds = array_map('intval', $dieIds);
 				$maxDieId = max($dieIds);
+				$dieChanged = array('id' => $maxDieId, 'color' => 'Basic', 'face' => \bga_rand(1,6));
 
 				switch ($enemyInfo['adjustBasicDice'][$hp])
 				{
 					case 1:
 						$maxDieId++;
-						$this->DbQuery("INSERT INTO `dice` VALUES ('$maxDieId', 'basic', '" . \bga_rand(1,6) . "')");
+						$dieChanged['id']++;
+						$this->DbQuery("INSERT INTO `dice` VALUES ('$maxDieId', 'basic', " . $dieChanged['face'] . ")");
 						break;
 
 					case -1:
+						$dieChanged['face'] = $dice[$maxDieId]['value'];
 						$this->DbQuery("DELETE FROM `dice` WHERE `die_id` = '$maxDieId'");
 						break;
 				}
@@ -2153,6 +2160,7 @@ class Game extends \Table
 				$this->$reaction();
 			}
 		}
+		return $dieChanged;
 	}
 
 	public function notifyForCardsDrawn(int $playerId, array $cards)
