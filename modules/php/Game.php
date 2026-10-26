@@ -2033,7 +2033,11 @@ class Game extends \Table
 
 		// Treasure column max length enforcement
 		if ($column === 'treasureColumn' && $this->water->countCardInLocation('treasureColumn') > 5)
-			$this->discard((int) $this->water->getCardOnTop('treasureColumn')['id']);
+		{
+			$discardId = (int) $this->water->getCardOnTop('treasureColumn')['id'];
+			$this->discard($discardId);
+			$this->notify->all('treasureColumnOverMax', '', array('id' => $discardId));
+		}
 		return (int) $cardId;
 	}
 

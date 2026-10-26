@@ -1025,13 +1025,21 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					dojo.style('thresholdSheet', 'transform', 'rotateX(0deg)');
 					break;
 			}
+			console.log('Threshold sheet adjusted.'); //TEST
 
 			// Rebuild the water deck with all available cards (water column, treasure column, discard, deck) and shuffle
 			this.waterDeck.addCards(this.waterDiscard.getCards().map(card => ({id: card.id})));
+			console.log('Discard added to deck.'); //TEST
+
 			this.waterDeck.addCards(this.waterColumn.getCards().map(card => ({id: card.id})));
+			console.log('Water column added to deck.'); //TEST
+
 			this.waterDeck.addCards(this.treasureColumn.getCards().map(card => ({id: card.id})));
+			console.log('Treasure column added to deck.'); //TEST
+
 			//this.waterDeck.setCardNumber(notif.deckNbr);
 			this.waterDeck.shuffle().then(() => console.log('Water deck shuffled'));
+			console.log('Water deck shuffled.'); //TEST
 			
 			this.correctGapUnderBoard();
 			
@@ -1040,7 +1048,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			{
 				this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
 				dojo.create('div', {class: 'permanentBreach'}, 'permanentBreaches');
+				console.log('Permanent breach added.'); //TEST
 			}
+
 		},
 
 		notif_testUpdate: function(notif)
@@ -1059,7 +1069,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 				case 2:
 					dojo.style('thresholdSheet', 'transform', 'rotateX(180deg)');
-
 					dojo.addClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel+1}`);	
 					dojo.removeClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel}`);	
 					dojo.style('thresholdSheet', 'transform', 'rotateX(0deg)');
@@ -1067,21 +1076,21 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			}
 		},
 
-		notif_dealWaterAndTreasure: function(notif)
-		{
-			console.log('notif_dealWaterAndTreasure');
-			console.log(notif);
-
-			// Deal the necessary water and treasure cards
-			notif.cards.forEach(card => {
-				if (card.type === 'backside' || card.type === 'clearWater')
-					this.waterColumn.addCard(card, {fromStock: this.waterDeck,});
-				else
-					this.treasureColumn.addCard(card, {fromStock: this.waterDeck,});
-			});
-			
-			this.correctGapUnderBoard();
-		},
+        	notif_dealWaterAndTreasure: function(notif)
+        	{
+        		console.log('notif_dealWaterAndTreasure');
+        		console.log(notif);
+    
+        		// Deal the necessary water and treasure cards
+        		notif.cards.forEach(card => {
+        			if (card.type === 'backside' || card.type === 'clearWater')
+        				this.waterColumn.addCard(card, {fromStock: this.waterDeck,});
+        			else
+        				this.treasureColumn.addCard(card, {fromStock: this.waterDeck,});
+        		});
+        					
+        		this.correctGapUnderBoard();
+        	},
 
 		notif_rollEnemyDice: function(notif)
 		{
@@ -1129,6 +1138,20 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				}
 			}
 		},
+
+                notif_treasureColumnOverMax: function(notif)
+                {
+    			console.log('notif_treasureColumnOverMax');
+			console.log(notif);
+
+			var oldestTreasure = this.treasureColumn.getCards()[0];
+			console.log(oldestTreasure);
+			if (oldestTreasure.id != notif.id)
+				console.log('treasure ids dont match?');
+
+			this.treasureColumn.removeCard(oldestTreasure, {fadeout: true});
+			//this.discard.addCard(oldestTreasure);
+                },
 
 		notif_resolveBasicWater: function(notif)
 		{
