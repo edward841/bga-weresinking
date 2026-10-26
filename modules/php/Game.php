@@ -2035,8 +2035,8 @@ class Game extends \Table
 		if ($column === 'treasureColumn' && $this->water->countCardInLocation('treasureColumn') > 5)
 		{
 			$discardId = (int) $this->water->getCardOnTop('treasureColumn')['id'];
-			$this->discard($discardId);
-			$this->notify->all('treasureColumnOverMax', '', array('id' => $discardId));
+			$discardedCard = $this->discard($discardId);
+			$this->notifyForCardsDiscarded([$discardedCard], -1, 'discard', false);
 		}
 		return (int) $cardId;
 	}

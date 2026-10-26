@@ -1139,20 +1139,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			}
 		},
 
-                notif_treasureColumnOverMax: function(notif)
-                {
-    			console.log('notif_treasureColumnOverMax');
-			console.log(notif);
-
-			var oldestTreasure = this.treasureColumn.getCards()[0];
-			console.log(oldestTreasure);
-			if (oldestTreasure.id != notif.id)
-				console.log('treasure ids dont match?');
-
-			this.treasureColumn.removeCard(oldestTreasure, {fadeout: true});
-			//this.discard.addCard(oldestTreasure);
-                },
-
 		notif_resolveBasicWater: function(notif)
 		{
 			console.log('notif_resolveBasicWater');
