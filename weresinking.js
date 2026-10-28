@@ -981,6 +981,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             console.log( 'notifications subscriptions setup' );
         	this.bgaSetupPromiseNotifications();    
 
+		dojo.subscribe('sinkingProcedures', this, 'notif_sinkingProcedures');
+		this.bga.gameui.notifqueue.setSynchronous('sinkingProcedures', 2000); // Wait 1000 miliseconds after executing sinkingProcedures handler
+
+
 			// Ignore notifications! These notifications have private versions, communicating private information privy only to the current player
 			this.notifqueue.setIgnoreNotificationCheck('actDraw', (notif) => (notif.args.player_id == this.player_id));
 			this.notifqueue.setIgnoreNotificationCheck('actDiscard', (notif) => (notif.args.player_id == this.player_id));
@@ -1003,7 +1007,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 		// STEP 4) Shuffle all cards in the Water Deck, Discard Pile, and the Water and Treasure Columns to create a new Water Deck
 		// STEP 5) IF there are any Breach cards in the Breaches Column, discard all breach cards and gain 1 Permanent Breach Token. Add the Permanent Breach Token to the top of the Breaches Column.
 		// STEP 6) Flip over the First Mate Scroll and continue the round on Step 3 of the duties checklist.
-		notif_sinkingProcedures: function(notif)
+		notif_sinkingProcedures: async function(notif)
 		{
 			console.log('notif_sinkingProcedures');
 			console.log(notif);
@@ -1038,7 +1042,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			console.log('Treasure column added to deck.'); //TEST
 
 			//this.waterDeck.setCardNumber(notif.deckNbr);
-			this.waterDeck.shuffle().then(() => console.log('Water deck shuffled'));
+			await this.waterDeck.shuffle().then(() => console.log('Water deck shuffled for reals this time.'));
 			console.log('Water deck shuffled.'); //TEST
 			
 			this.correctGapUnderBoard();
@@ -1051,29 +1055,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				console.log('Permanent breach added.'); //TEST
 			}
 
-		},
-
-		notif_testUpdate: function(notif)
-		{
-			console.log('TESTING UPDATING THRESHOLD');
-			console.log(notif);
-
-			// Trying to figure out how to update threshold sheet
-			switch (notif.thresholdLevel)
-			{	
-				case 1: case 3:
-					dojo.style('thresholdSheet', 'transform', 'rotateZ(180deg)');
-					dojo.addClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel+1}`);	
-					dojo.removeClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel}`);	
-					break;
-
-				case 2:
-					dojo.style('thresholdSheet', 'transform', 'rotateX(180deg)');
-					dojo.addClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel+1}`);	
-					dojo.removeClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel}`);	
-					dojo.style('thresholdSheet', 'transform', 'rotateX(0deg)');
-					break;
-			}
 		},
 
         	notif_dealWaterAndTreasure: function(notif)
@@ -1103,8 +1084,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			dice = dice.filter(die => die != null);
 			dice.forEach(die => die.face = notif.diceRollMapping[die.id]);
 			this.enemyDice.rollDice(dice, {duration: [800, 1200]});
-
-
 		},
 
 		notif_firedCannons: function(notif)
