@@ -83,7 +83,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			<div id="gameCenter"> 
 				<div id="thresholdSheet" class="sheet threshold_${playerCount}players_level${gamedatas.globals.threshold}"></div>
 				<div id="gameCore"> 
-					<div id="gameboard"></div>
+					<div id="gameboard">
+						<div id="ship" class="shipLevel${gamedatas.globals.threshold}"></div>
+					</div>
 					<div id="cardsOnBoardWrapper" class="flexRow">
 						<div id="waterDrawPile"></div>
 						<div id="waterDiscardPile"></div>
@@ -1033,17 +1035,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
 			// Rebuild the water deck with all available cards (water column, treasure column, discard, deck) and shuffle
 			this.waterDeck.addCards(this.waterDiscard.getCards().map(card => ({id: card.id})));
-			console.log('Discard added to deck.'); //TEST
-
 			this.waterDeck.addCards(this.waterColumn.getCards().map(card => ({id: card.id})));
-			console.log('Water column added to deck.'); //TEST
-
 			this.waterDeck.addCards(this.treasureColumn.getCards().map(card => ({id: card.id})));
-			console.log('Treasure column added to deck.'); //TEST
-
 			//this.waterDeck.setCardNumber(notif.deckNbr);
 			await this.waterDeck.shuffle().then(() => console.log('Water deck shuffled for reals this time.'));
-			console.log('Water deck shuffled.'); //TEST
 			
 			this.correctGapUnderBoard();
 			
@@ -1054,7 +1049,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 				dojo.create('div', {class: 'permanentBreach'}, 'permanentBreaches');
 				console.log('Permanent breach added.'); //TEST
 			}
-
+	
+			dojo.addClass('ship', 'shipLevel' + (notif.thresholdLevel+1));
+			dojo.removeClass('ship', 'shipLevel' + notif.thresholdLevel);
+			dojo.removeClass('ship', 'shipLevelNaN'); // I cant figure out where the NaN class is coming from but not hard to get rid of it
 		},
 
         	notif_dealWaterAndTreasure: function(notif)

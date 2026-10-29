@@ -117,6 +117,7 @@
  */
 #gameCenter {
 	display: flex;
+	margin-top: 115px;
 }
 
 #gameCore {
@@ -631,6 +632,35 @@
 
 .dial[data-value="fire"] {
 	background-position-x: 102px;
+}
+
+/*Testnig testing*/
+/* Ship! */
+#ship {
+	width: 307.25px;
+	height: 301px;
+	margin: 0 auto;
+	padding-bottom: 8px;
+	position: relative;
+	top: -140px;
+	background-image: url('img/FinalShip.png');
+	background-repeat: no-repeat;
+}
+
+.shipLevel1 {
+	background-position-x: 0%;
+}
+
+.shipLevel2 {
+	background-position-x: 33.3%;
+}
+
+.shipLevel3 {
+	background-position-x: 66.6%;
+}
+
+.shipLevel4 {
+	background-position-x: 100%;
 }
 
 /* Duties checklist! */
