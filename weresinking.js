@@ -993,12 +993,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         },  
         
         // From this point and below, you can write your game notifications handling methods
-		notif_checkForBreaches: function(notif)
+		notif_checkForBreaches: async function(notif)
 		{
 			console.log('notif_checkForBreaches');
 			console.log(notif);
 			
-			this.dealWaterCardAnimation(notif.cards, this.waterColumn);
+			//this.dealWaterCardAnimation(notif.cards, this.waterColumn);
+			for (var i = 0; i < notif.cards.length; i++)
+			{
+				await this.waterColumn.addCard(card, {fromStock: this.waterDeck,});
+			}
 			this.correctGapUnderBoard();
 		},
 		
@@ -1040,8 +1044,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			//this.waterDeck.setCardNumber(notif.deckNbr);
 			await this.waterDeck.shuffle().then(() => console.log('Water deck shuffled for reals this time.'));
 			
-			this.correctGapUnderBoard();
-			
 			// Manage the breaches as well
 			if (this.breaches.getCardCount() > 0)
 			{
@@ -1053,20 +1055,24 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 			dojo.addClass('ship', 'shipLevel' + (notif.thresholdLevel+1));
 			dojo.removeClass('ship', 'shipLevel' + notif.thresholdLevel);
 			dojo.removeClass('ship', 'shipLevelNaN'); // I cant figure out where the NaN class is coming from but not hard to get rid of it
+
+			this.correctGapUnderBoard();
 		},
 
-        	notif_dealWaterAndTreasure: function(notif)
+        	notif_dealWaterAndTreasure: async function(notif)
         	{
         		console.log('notif_dealWaterAndTreasure');
         		console.log(notif);
     
         		// Deal the necessary water and treasure cards
-        		notif.cards.forEach(card => {
+			for (var i = 0; i < notif.cards.length; i++)
+			{
+				card = notif.cards[i];
         			if (card.type === 'backside' || card.type === 'clearWater')
-        				this.waterColumn.addCard(card, {fromStock: this.waterDeck,});
+        				await this.waterColumn.addCard(card, {fromStock: this.waterDeck,});
         			else
-        				this.treasureColumn.addCard(card, {fromStock: this.waterDeck,});
-        		});
+        				await this.treasureColumn.addCard(card, {fromStock: this.waterDeck,});
+        		}
         					
         		this.correctGapUnderBoard();
         	},
@@ -1242,6 +1248,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 					
 				case 'treasureColumn':
 					source = this.treasureColumn;
+					break;
+
+				case 'skullsairsStash':
+					source = this.specialLocation;
 					break;
 
 				default:

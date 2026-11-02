@@ -650,8 +650,8 @@ class Game extends \Table
 	public function actDraw(string $cardId, string $location)
 	{
 		// Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
-		// It might seem odd to have different arg functions, but this simple draw is an allowed action in 3 of the 4 different dial actions (bucket, plunder, patch)
-		// 	and they all work the same at their core but have access to different cards and have little details to control flow
+		// It might seem odd to have different arg functions, but this simple draw is an allowed action in all four dial actions (even fire if playing skullsairs)
+		// and they all work the same at their core but have access to different cards and have little details to control flow
 		$playerId = $this->gamestate->getActivePlayerList()[0];
 		$currentState = $this->getStateName();
 		$argFunction = 'arg' . ucfirst($currentState);
@@ -673,7 +673,7 @@ class Game extends \Table
 			$message = "Location given: $location, expected <{$args['location']}>";
 
 		// $args['possibleIdsDraw'] is a list of ids of cards that could be drawn, where $args['possibleToDraw'] is a list of the cards that could be drawn
-		// 'possibleIdsDraw' was the original idea, I think Im going to refactor to 'possibleToDraw' to work better with selecting cards in the front end
+		// 'possibleIdsDraw' was the original idea, I think Im going to refactor to 'possibleToDraw' to work better with selecting cards in the frontend
 		// We will probably phase out 'possibleIdsDraw' and move to the 'possibleToDraw' model but in the transitional time we'll just allow both 
 		else if (in_array('possibleIdsDraw', array_keys($args)) && !in_array((int) $cardId, $args['possibleIdsDraw'], true))
 		{
@@ -1910,6 +1910,16 @@ class Game extends \Table
 		$this->pickCardsForWaterColumn(10);
 		$this->globals->set('ENEMY_HP', 1);
 		$this->globals->set('THRESHOLD_LEVEL', 4);
+	}
+
+	public function debug_rollEnemyDice()
+	{
+		$this->stRollEnemyDice();
+	}
+
+	public function debug_resolveEnemyDice()
+	{
+		$this->stResolveEnemyDice();
 	}
 
 	// Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
