@@ -1,0 +1,15 @@
+" Enable syntax highlighting and the PaperColor colorscheme
+syntax on
+filetype plugin indent on
+set termguicolors
+set background=dark
+colorscheme PaperColor
+
+" Use spaces for indentation
+set expandtab
+set tabstop=4
+set shiftwidth=4
+set softtabstop=4
+
+" Reopen to the last edited position in files
+au BufReadPost * if line("'\"") > 1 && line("'\"") <= line("$") | exe "normal! g'\"" | endif
