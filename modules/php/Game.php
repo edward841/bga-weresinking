@@ -638,20 +638,28 @@ class Game extends \Table
 
         $activePlayer = $this->getActivePlayerId();
         $this->DbQuery("UPDATE `player` SET `dial_value`='$value', `dial_location`='$location' WHERE `player_id`=$activePlayer");
+        $screech = $this->globals->get('SIRENS_SCREECH');
 
-        $actionToColumn = [
-            'bucket' => 'Water Column',
-            'plunder' => 'Treasure Column',
-            'patch' => 'Breaches Column',
-            'fire' => 'Cannons Column',
-        ];  
-        $this->notify->all('actDeclareDial', clienttranslate('${player_name} placed their dial in the ${dial_location}'),
-            array(
-                'player_id' => $activePlayer,
-                'player_name' => $this->getPlayerNameById((int) $activePlayer),
-                'dial_location' => $actionToColumn[$location],
-                'screech' => $this->globals->get('SIRENS_SCREECH'),
-            ));
+        if ($screech)
+        {
+            $this->notify->all('actDeclareDial', clienttranslate('${player_name} declared their dial'),
+                array(
+                    'player_id' => $activePlayer,
+                    'player_name' => $this->getPlayerNameById((int) $activePlayer),
+                    'screech' => $screech,
+                ));
+        }
+        else
+        {
+            $this->notify->all('actDeclareDial', clienttranslate('${player_name} placed their dial in the ${dial_location}'),
+                array(
+                    'player_id' => $activePlayer,
+                    'player_name' => $this->getPlayerNameById((int) $activePlayer),
+                    'dial_location_shorthand' => $location,
+                    'dial_location' => $this->tokens['actionToColumn'][$location],
+                    'screech' => $screech,
+                ));
+        }
 
         $this->gamestate->nextState('next');
     }
@@ -1194,7 +1202,10 @@ class Game extends \Table
         if ($this->cannons->countCardInLocation('cannonsColumn') > 0)
             array_push($possibleActions, 'fire');
 
-        return ['possibleActions' => $possibleActions];
+        return [
+            'possibleActions' => $possibleActions, 
+            'screech' => $this->globals->get('SIRENS_SCREECH'),
+        ];
     }
 
     public function argResolveBucket()
@@ -1945,7 +1956,7 @@ class Game extends \Table
 
     public function getNextPlayer(): int
     {
-        $playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
+        $playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_value` FROM `player` ORDER BY `custom_order`');
         $previousPlayer = $this->globals->get('PREVIOUS_PLAYER');
         $nextPlayer = '';
         
@@ -1965,13 +1976,13 @@ class Game extends \Table
         }
         
         // Special case: previous player plundered (Does it need to wrap around for more plundering?)
-        if ($previousPlayer !== 'none' && $playerInfo[$previousPlayer]['dial_location'] === 'plunder')
+        if ($previousPlayer !== 'none' && $playerInfo[$previousPlayer]['dial_value'] === 'plunder')
         {
             // If the next player is plundering, then it couldn't possibly wrap
-            $nobodyPlundersNext = $nextPlayer <= 0 || $playerInfo[$nextPlayer]['dial_location'] !== 'plunder';
+            $nobodyPlundersNext = $nextPlayer <= 0 || $playerInfo[$nextPlayer]['dial_value'] !== 'plunder';
 
             // Dial values of each player in order (e.g. ['bucket', 'plunder', 'plunder', 'patch', 'fire'])
-            $dialValues = array_column(array_values($playerInfo), 'dial_location'); 
+            $dialValues = array_column(array_values($playerInfo), 'dial_value'); 
             $plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
             $theresStillEnoughTreasure = $this->water->countCardInLocation('treasureColumn') >= $plunderingPlayersNbr;
                 

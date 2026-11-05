@@ -527,77 +527,80 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         //
         onEnteringState: function(stateName, args)
         {
-            switch(stateName)
+            if (this.isCurrentPlayerActive())
             {
-                case 'resolveBucket':
-                    if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Draw'))
-                    {
-                        if (args.args.nbr == 1)
+                switch(stateName)
+                {
+                    case 'resolveBucket':
+                        if (args.args.possibleActions.includes('Draw'))
                         {
-                            this.waterColumn.setSelectionMode('single');
-                            this.waterColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+                            if (args.args.nbr == 1)
+                            {
+                                this.waterColumn.setSelectionMode('single');
+                                this.waterColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+                            }
+                            else
+                            {
+                                this.waterColumn.setSelectionMode('multiple');
+                                this.waterColumn.onSelectionChange = (selection, lastChange) => {
+                                    selection.length == args.args.nbr ? this.waterColumn.setSelectableCards(selection) : this.waterColumn.setSelectableCards();
+                                    this.updatePageTitle();
+                                };
+                            }
                         }
-                        else
+                        break;
+
+                    case 'resolvePlunder': 
+                        if (args.args.possibleActions.includes('Draw'))
                         {
-                            this.waterColumn.setSelectionMode('multiple');
-                            this.waterColumn.onSelectionChange = (selection, lastChange) => {
-                                selection.length == args.args.nbr ? this.waterColumn.setSelectableCards(selection) : this.waterColumn.setSelectableCards();
+                            this.treasureColumn.setSelectionMode('single');
+                            this.treasureColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+                        }
+                        break;
+                        
+                    case 'resolvePatch':
+                        if (args.args.possibleActions.includes('Patch'))
+                        {
+                            this.bustedCannons.setSelectionMode('single', args.args.possibleToPatch.cannon);    
+                            this.breaches.setSelectionMode('single', args.args.possibleToPatch.breach);
+                        }
+                        else if (args.args.possibleActions.includes('ContributeHammer'))
+                        {
+                            // Select the breach in question, forcefully disable deselecting the card, and mark everything else as not selectable
+                            this.breaches.setSelectionMode('single', [args.args.card]); 
+                            this.breaches.selectCard(args.args.card);
+                            this.breaches.onSelectionChange = (selection, lastChange) => {if (selection.length == 0) this.breaches.selectCard(args.args.card)};
+                            this.bustedCannons.setSelectionMode('single', []);
+                        }
+                        break;
+
+                    case 'resolveFire':
+                        if (args.args.possibleActions.includes('ShootYeTreasure'))
+                        {
+                            this.playerHand.setSelectionMode('single', args.args.possibleDiscard);
+                            this.operationalCannons.setSelectionMode('single', args.args.possibleToFireCannons);
+                            this.playerHand.onSelectionChange = (selection, change) => {this.updatePageTitle()};
+                        }
+                        else if (args.args.possibleActions.includes('DrawMultiple'))
+                        {
+                            //dojo.addClass('specialLocation', 'hide');
+                            const skullsairsStashElement = dojo.create('div', {'id': 'skullsairsStashWrapper', 'class': 'whiteblock'}, 'tempWrapper');
+                            skullsairsStashElement.innerHTML = `    
+                                    <b id="skullsairsStashLabel">${_('Skullsairs Stash')}</b>
+                                    <div id="skullsairsStash"></div>`
+                            this.tempCards = new BgaCards.LineStock(this.waterManager, document.getElementById('skullsairsStash'), {});
+                            this.tempCards.setSelectionMode('multiple');
+                            args.args.possibleToDraw.forEach((card) => this.tempCards.addCard(card));
+                            this.tempCards.onSelectionChange = (selection, lastChange) => {
+                                if (selection.length >= args.args.nbr)
+                                    this.tempCards.setSelectableCards(selection);
+                                else
+                                    this.tempCards.setSelectableCards();
                                 this.updatePageTitle();
                             };
                         }
-                    }
-                    break;
-
-                case 'resolvePlunder': 
-                    if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Draw'))
-                    {
-                        this.treasureColumn.setSelectionMode('single');
-                        this.treasureColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
-                    }
-                    break;
-                    
-                case 'resolvePatch':
-                    if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Patch'))
-                    {
-                        this.bustedCannons.setSelectionMode('single', args.args.possibleToPatch.cannon);    
-                        this.breaches.setSelectionMode('single', args.args.possibleToPatch.breach);
-                    }
-                    else if (args.args.possibleActions.includes('ContributeHammer'))
-                    {
-                        // Select the breach in question, forcefully disable deselecting the card, and mark everything else as not selectable
-                        this.breaches.setSelectionMode('single', [args.args.card]); 
-                        this.breaches.selectCard(args.args.card);
-                        this.breaches.onSelectionChange = (selection, lastChange) => {if (selection.length == 0) this.breaches.selectCard(args.args.card)};
-                        this.bustedCannons.setSelectionMode('single', []);
-                    }
-                    break;
-
-                case 'resolveFire':
-                    if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('ShootYeTreasure'))
-                    {
-                        this.playerHand.setSelectionMode('single', args.args.possibleDiscard);
-                        this.operationalCannons.setSelectionMode('single', args.args.possibleToFireCannons);
-                        this.playerHand.onSelectionChange = (selection, change) => {this.updatePageTitle()};
-                    }
-                    else if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('DrawMultiple'))
-                    {
-                        //dojo.addClass('specialLocation', 'hide');
-                        const skullsairsStashElement = dojo.create('div', {'id': 'skullsairsStashWrapper', 'class': 'whiteblock'}, 'tempWrapper');
-                        skullsairsStashElement.innerHTML = `    
-                                <b id="skullsairsStashLabel">${_('Skullsairs Stash')}</b>
-                                <div id="skullsairsStash"></div>`
-                        this.tempCards = new BgaCards.LineStock(this.waterManager, document.getElementById('skullsairsStash'), {});
-                        this.tempCards.setSelectionMode('multiple');
-                        args.args.possibleToDraw.forEach((card) => this.tempCards.addCard(card));
-                        this.tempCards.onSelectionChange = (selection, lastChange) => {
-                            if (selection.length >= args.args.nbr)
-                                this.tempCards.setSelectableCards(selection);
-                            else
-                                this.tempCards.setSelectableCards();
-                            this.updatePageTitle();
-                        };
-                    }
-                    break;
+                        break;
+                }
             }
             if (this.isCurrentPlayerActive())
             {
@@ -711,12 +714,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //                    this.statusBar.addActionButton(_('Pass'), () => this.bga.actions.performAction("actPass"), { color: 'secondary' }); 
 //                    break;
                     case 'declareDial':
-                       this.statusBar.addActionButton(_('Bucket'), () => {this.clientStateArgs.actualValue = 'bucket'; this.onActualValueSelected()});
-                        this.statusBar.addActionButton(_('Plunder'), () => {this.clientStateArgs.actualValue = 'plunder'; this.onActualValueSelected()});
+                        this.statusBar.addActionButton(_('Bucket'), () => {this.clientStateArgs.actualValue = 'bucket'; this.onActualValueSelected(args.screech)});
+                        this.statusBar.addActionButton(_('Plunder'), () => {this.clientStateArgs.actualValue = 'plunder'; this.onActualValueSelected(args.screech)});
                         if (args.possibleActions.includes('patch'))
-                            this.statusBar.addActionButton(_('Patch'), () => {this.clientStateArgs.actualValue = 'patch'; this.onActualValueSelected()});
+                            this.statusBar.addActionButton(_('Patch'), () => {this.clientStateArgs.actualValue = 'patch'; this.onActualValueSelected(args.screech)});
                         if (args.possibleActions.includes('fire'))
-                            this.statusBar.addActionButton(_('Fire'), () => {this.clientStateArgs.actualValue = 'fire'; this.onActualValueSelected()});
+                            this.statusBar.addActionButton(_('Fire'), () => {this.clientStateArgs.actualValue = 'fire'; this.onActualValueSelected(args.screech)});
                         break;
 
                     case 'client_selectDialLocation':
@@ -984,18 +987,22 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //              this.bga.actions.performAction('actTemptingTune', {});
         },
 
-        onActualValueSelected: function(event)
+        onActualValueSelected: function(screech)
         {
-            if (event != undefined)
-                dojo.stopEvent(event);
+            if (screech != undefined && screech)
+            {
+                 this.bga.actions.performAction("actDeclareDial", {value: this.clientStateArgs.actualValue, location: this.clientStateArgs.actualValue});
+            }
+            else
+            {
+                var playerId = this.bga.players.getActivePlayerId();
+                var actualValue = this.clientStateArgs.actualValue;
+                dojo.attr(`dial_${playerId}`, 'data-value', actualValue);
 
-            var playerId = this.bga.players.getActivePlayerId();
-            var actualValue = this.clientStateArgs.actualValue;
-            dojo.attr(`dial_${playerId}`, 'data-value', actualValue);
-
-            this.setClientState('client_selectDialLocation', {
-                descriptionmyturn: _("${you} must select your dial's column"),
-            });
+                this.setClientState('client_selectDialLocation', {
+                    descriptionmyturn: _("${you} must select your dial's column"),
+                });
+            }
         },
 
         
@@ -1202,12 +1209,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             // Necessary info
             var dialId = `dial_${notif.player_id}`;
             var color = this.gamedatas.players[Number(notif.player_id)].color;
-            var targetLocation = 'sirensScreechDials';
-            if (!notif.screech)
-            {
-                targetLocation = `${notif.dial_location}Dials`.replace(' ', '');
-                targetLocation = targetLocation.charAt(0).toLowerCase() + targetLocation.slice(1);
-            }
+            var targetLocation = notif.screech ? 'sirensScreechDials' : this.actionToColumn(notif.dial_location_shorthand) + 'Dials';
             var targetLocationElement = document.getElementById(targetLocation);
             
             // Hide the dial icon in the corresponding player panel
@@ -1225,6 +1227,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     'data-color': color,
                 }, playerPanel);
             }
+            else
+                dojo.attr(dialElement, 'data-value', 'backside');
+            
 
             await this.animationManager.slideAndAttach(dialElement, targetLocationElement);
 
@@ -1248,16 +1253,18 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 var player = notif.new_turn_order[i];
                 var dialInfo = notif.dials[player];
                 
-                if (dialInfo['dial_value'] !== dialInfo['dial_location'])
+                if (dialInfo['dial_value'] !== dialInfo['dial_location'] || notif.screech)
                 {
                     var dialElement = document.getElementById(`dial_${player}`);
                     var containerElement = document.getElementById(this.actionToColumn(dialInfo['dial_value']) + 'Dials');
                     await this.animationManager.slideAndAttach(dialElement, containerElement, {duration: 750});
+                    this.correctGapUnderBoard();
                 }
             }
 
             if (notif.screech)
                 this.removeScreechEffect();
+
         },
 
         notif_actDraw: function(notif)
