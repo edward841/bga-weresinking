@@ -56,6 +56,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             // Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
             var itemsString = 'backside boneClub harpoon trustyCarrot cutlass grenado spyGlass ruby sapphire emerald topaz amethyst decoyCannon fishingNet spareBarrel somberSkull bottleORum waterFlask rubberDucky stickyStarfish woodenMallet metalMallet treasureMap silverDoubloon captainsKey gemSifter crackedCompass moldyMop fishingRod grabbyCrabby smellySponge flintPistol waterPistol warDrum hurdyGurdy cheekyChum fishyBait sirenSilencers sirenShiner cursedAmulet';
             this.items = itemsString.split(' ');    
+
+            // Client side state info
+            this.clientStateArgs = {};
         },
         
         /*
@@ -152,7 +155,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
             // Essential Setup: Managers, cards, dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
             this.animationManager = new BgaAnimations.Manager({
-                animationsActive: () => this.bgaAnimationsActive(),
+                animationsActive: () => this.bga.gameui.bgaAnimationsActive(),
             });
 
             // create the card managers 
@@ -187,13 +190,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 var dial = gamedatas.dials[i];
                 if (dial['dial_location'] !== 'player')
                 {
-                    if (parentElement === '' || gamedatas.gamestate.id > gamedatas.constants.STATE_DECLARE_DIAL)
-                        parentElement = this.actionToColumn([dial['dial_location']]) + 'Dials';
+                    if (gamedatas.gamestate.id > gamedatas.constants.STATE_DECLARE_DIAL)
+                        parentElement = this.actionToColumn(dial['dial_value']) + 'Dials';
+                    else if (parentElement === '')
+                        parentElement = this.actionToColumn(dial['dial_location']) + 'Dials';
                 }
                 else if (dial['id'] === (gamedatas.currentPlayer + ''))
                     parentElement = 'myCharacterItemsWrapper';
                 else
-                    continue; // For spectators when no dial should be displayed!
+                    continue; // For spectators when no dial should be displayed before they are declared
                 dojo.create("div", {id: `dial_${dial['id']}`, class: "dial", 'data-value': dial['dial_value'], 'data-color': gamedatas.players[dial['id']].color}, parentElement);
             }
 
@@ -706,13 +711,23 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //                    this.statusBar.addActionButton(_('Pass'), () => this.bga.actions.performAction("actPass"), { color: 'secondary' }); 
 //                    break;
                     case 'declareDial':
-                        this.statusBar.addActionButton(_('Bucket'), () => this.bga.actions.performAction("actDeclareDial", {value: 'bucket', location: 'bucket'}));
-                        this.statusBar.addActionButton(_('Plunder'), () => this.bga.actions.performAction("actDeclareDial", {value: 'plunder', location: 'plunder'}));
+                       this.statusBar.addActionButton(_('Bucket'), () => {this.clientStateArgs.actualValue = 'bucket'; this.onActualValueSelected()});
+                        this.statusBar.addActionButton(_('Plunder'), () => {this.clientStateArgs.actualValue = 'plunder'; this.onActualValueSelected()});
                         if (args.possibleActions.includes('patch'))
-                            this.statusBar.addActionButton(_('Patch'), () => this.bga.actions.performAction("actDeclareDial", {value: 'patch', location: 'patch'}));
+                            this.statusBar.addActionButton(_('Patch'), () => {this.clientStateArgs.actualValue = 'patch'; this.onActualValueSelected()});
                         if (args.possibleActions.includes('fire'))
-                            this.statusBar.addActionButton(_('Fire'), () => this.bga.actions.performAction("actDeclareDial", {value: 'fire', location: 'fire'}));
+                            this.statusBar.addActionButton(_('Fire'), () => {this.clientStateArgs.actualValue = 'fire'; this.onActualValueSelected()});
                         break;
+
+                    case 'client_selectDialLocation':
+                        this.statusBar.addActionButton(_('Bucket'), () => this.bga.actions.performAction("actDeclareDial", {value: this.clientStateArgs.actualValue, location: 'bucket'}));
+                        this.statusBar.addActionButton(_('Plunder'), () => this.bga.actions.performAction("actDeclareDial", {value: this.clientStateArgs.actualValue, location: 'plunder'}));
+                        if (args.possibleActions.includes('patch'))
+                            this.statusBar.addActionButton(_('Patch'), () => this.bga.actions.performAction("actDeclareDial", {value: this.clientStateArgs.actualValue, location: 'patch'}));
+                        if (args.possibleActions.includes('fire'))
+                            this.statusBar.addActionButton(_('Fire'), () => this.bga.actions.performAction("actDeclareDial", {value: this.clientStateArgs.actualValue, location: 'fire'}));
+                        break;
+
                     case 'resolveBucket': 
                         if (args.possibleActions.includes('DrawMultiple'))
                             this.statusBar.addActionButton(_('Draw'), () => {this.bga.actions.performAction('actDrawMultiple', {'cardIds': this.waterColumn.getSelection().map(card => card.id), 'location': 'waterColumn'})}, {color: 'primary', disabled: this.waterColumn.getSelection().length != args.nbr});
@@ -969,6 +984,20 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //              this.bga.actions.performAction('actTemptingTune', {});
         },
 
+        onActualValueSelected: function(event)
+        {
+            if (event != undefined)
+                dojo.stopEvent(event);
+
+            var playerId = this.bga.players.getActivePlayerId();
+            var actualValue = this.clientStateArgs.actualValue;
+            dojo.attr(`dial_${playerId}`, 'data-value', actualValue);
+
+            this.setClientState('client_selectDialLocation', {
+                descriptionmyturn: _("${you} must select your dial's column"),
+            });
+        },
+
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
@@ -1172,57 +1201,38 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         
             // Necessary info
             var dialId = `dial_${notif.player_id}`;
-            var tempId = dialId + 'temp';
             var color = this.gamedatas.players[Number(notif.player_id)].color;
-
             var targetLocation = 'sirensScreechDials';
             if (!notif.screech)
             {
                 targetLocation = `${notif.dial_location}Dials`.replace(' ', '');
                 targetLocation = targetLocation.charAt(0).toLowerCase() + targetLocation.slice(1);
             }
+            var targetLocationElement = document.getElementById(targetLocation);
             
             // Hide the dial icon in the corresponding player panel
             //dojo.addClass(`dialIcon_${notif.player_id}`, 'hide');
         
-            // If the current player just declared, change the id of the dial in their character panel to avoid naming conflicts
-            if (this.player_id == notif.player_id)
-            {
-                dojo.attr(dialId, 'data-value', 'backside');
-                $(dialId).id = tempId; 
-            }
-            // Else (a player besides the current player declared) create a temporary dial above their player panel
-            else
+            // If the player who declared is not the current player we create a dial above their player panel
+            var dialElement = document.getElementById(dialId);
+            if (this.player_id != notif.player_id)
             {
                 var playerPanel = this.getPlayerPanelElement(notif.player_id);
-                dojo.create('div', {
-                    'id': tempId, 
+                dialElement = dojo.create('div', {
+                    'id': dialId, 
                     'class': 'dial',
                     'data-value': 'backside', 
                     'data-color': color,
                 }, playerPanel);
-                //this.placeOnObject(tempId, playerPanel);
             }
 
-            // Prepare the dial in the column
-            dojo.create('div', {
-                'id': dialId, 
-                'class': 'dial hide',
-                'data-value': 'backside', 
-                'data-color': color,
-            }, targetLocation);
-            
+            await this.animationManager.slideAndAttach(dialElement, targetLocationElement);
+
             // Correct whitespace
             this.correctGapUnderBoard();
-            
-            // Move the temp dial into the column
-            // Mobile, targetLocation, duration, delay
-            await this.slideToObjectAndDestroy(tempId, dialId, 2000).promise;
-            dojo.removeClass(dialId, 'hide');
         },
 
-        // TODO This will need more attention when I finish declaring dials in frontend
-        notif_revealDials: function(notif)
+        notif_revealDials: async function(notif)
         {
             console.log('notif_revealDials');
             console.log(notif);
@@ -1231,6 +1241,20 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             {
                 dojo.attr(`dial_${player}`, 'data-value', notif.dials[player]['dial_value']);
             }   
+
+            // If this player lied, move their dial to the correct column
+            for (var i = 0; i < notif.new_turn_order.length; i++)
+            {
+                var player = notif.new_turn_order[i];
+                var dialInfo = notif.dials[player];
+                
+                if (dialInfo['dial_value'] !== dialInfo['dial_location'])
+                {
+                    var dialElement = document.getElementById(`dial_${player}`);
+                    var containerElement = document.getElementById(this.actionToColumn(dialInfo['dial_value']) + 'Dials');
+                    await this.animationManager.slideAndAttach(dialElement, containerElement, {duration: 750});
+                }
+            }
 
             if (notif.screech)
                 this.removeScreechEffect();
