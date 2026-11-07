@@ -742,6 +742,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                             this.statusBar.addActionButton(_('Draw'), () => {this.bga.actions.performAction('actDraw',{cardId: this.treasureColumn.getSelection()[0].id, location: 'treasureColumn'})}, {color: 'primary', disabled: this.treasureColumn.getSelection().length == 0});
                         if (args.possibleActions.includes('Pass'))
                             this.statusBar.addActionButton(_('Pass'), () => {this.bga.actions.performAction('actPass');}, {color: 'secondary'});
+                        if (args.possibleActions.includes('TemptingTune'))
+                            this.statusBar.addActionButton(_('Tempting Tune: Draw 1 card from Water Deck'), () => {this.bga.actions.performAction('actTemptingTune');}, {color: 'primary'});
                         break;
 
                     case 'resolvePatch':
@@ -1000,7 +1002,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 dojo.attr(`dial_${playerId}`, 'data-value', actualValue);
 
                 this.setClientState('client_selectDialLocation', {
-                    descriptionmyturn: _("${you} must select your dial's column"),
+                    descriptionmyturn: _("${you} must select your \'Public\' Dial Action"),
                 });
             }
         },
@@ -1042,8 +1044,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             for (var i = 0; i < notif.cards.length; i++)
             {
                 await this.waterColumn.addCard(notif.cards[i], {fromStock: this.waterDeck,});
+                this.correctGapUnderBoard();
             }
-            this.correctGapUnderBoard();
         },
         
         // Sinking procedures animation!
@@ -1089,7 +1091,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             {
                 this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
                 dojo.create('div', {class: 'permanentBreach'}, 'permanentBreaches');
-                console.log('Permanent breach added.'); //TEST
+                console.log('Permanent breach added.'); 
             }
     
             dojo.addClass('ship', 'shipLevel' + (notif.thresholdLevel+1));
@@ -1099,23 +1101,22 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.correctGapUnderBoard();
         },
 
-            notif_dealWaterAndTreasure: async function(notif)
-            {
-                console.log('notif_dealWaterAndTreasure');
-                console.log(notif);
-    
-                // Deal the necessary water and treasure cards
+        notif_dealWaterAndTreasure: async function(notif)
+        {
+            console.log('notif_dealWaterAndTreasure');
+            console.log(notif);
+
+            // Deal the necessary water and treasure cards
             for (var i = 0; i < notif.cards.length; i++)
             {
                 card = notif.cards[i];
-                    if (card.type === 'backside' || card.type === 'clearWater')
-                        await this.waterColumn.addCard(card, {fromStock: this.waterDeck,});
-                    else
-                        await this.treasureColumn.addCard(card, {fromStock: this.waterDeck,});
-                }
-                            
+                if (card.type === 'backside' || card.type === 'clearWater')
+                    await this.waterColumn.addCard(card, {fromStock: this.waterDeck,});
+                else
+                    await this.treasureColumn.addCard(card, {fromStock: this.waterDeck,});
                 this.correctGapUnderBoard();
-            },
+            }
+        },
 
         notif_rollEnemyDice: function(notif)
         {
@@ -1264,7 +1265,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
             if (notif.screech)
                 this.removeScreechEffect();
-
         },
 
         notif_actDraw: function(notif)
@@ -1403,7 +1403,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     this.breachesDeck.addCard(notif.card);
                     break;
             }
-            
+            this.correctGapUnderBoard();    
         },
 
         // Move all cards from the Shark's Belly into the Water Column
@@ -1430,6 +1430,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             console.log(notif);
 
             this.specialLocation.addCard(notif.card);           
+            this.correctGapUnderBoard();
         },
 
         notif_endScores: function(notif)

@@ -1248,7 +1248,7 @@ class Game extends \Table
         if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0 && $this->globals->get('COUNTER') <= 0)
         {
             $plunderers = array_keys($this->getCollectionFromDB("SELECT `player_id` FROM `player` WHERE `dial_value`='plunder' ORDER BY `custom_order`"));
-            if ($activePlayer === $plunderers[count($plunderers) - 1])
+            if ($activePlayer === $plunderers[count($plunderers) - 1] && count($plunderers) > $this->water->countCardInLocation('treasureColumn'))
                 $canTemptingTune = true;
         }
         if ($canTemptingTune)
