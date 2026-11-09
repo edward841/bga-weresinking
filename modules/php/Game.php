@@ -2263,6 +2263,7 @@ class Game extends \Table
                     'card_description' => $cardDescription,
                     'card' => $card,
                     'location' => $location,
+                    'player_id' => $playerId,
                 ));
             else
                 $this->notify->all('discard', clienttranslate('${player_name} discarded a ${card_description}'), array(

@@ -772,6 +772,10 @@
 }
 
 /* Special Locations! */
+#specialLocation {
+    z-index: -1;
+}
+
 #specialLocation.Shark { 
 	background-position-x: 360px;		
 }

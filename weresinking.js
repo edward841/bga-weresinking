@@ -1025,9 +1025,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             console.log( 'notifications subscriptions setup' );
             this.bgaSetupPromiseNotifications();    
 
-        dojo.subscribe('sinkingProcedures', this, 'notif_sinkingProcedures');
-        this.bga.gameui.notifqueue.setSynchronous('sinkingProcedures', 2000); // Wait 1000 miliseconds after executing sinkingProcedures handler
-
+            dojo.subscribe('sinkingProcedures', this, 'notif_sinkingProcedures');
+            this.bga.gameui.notifqueue.setSynchronous('sinkingProcedures', 2000); // Wait 1000 miliseconds after executing sinkingProcedures handler
 
             // Ignore notifications! These notifications have private versions, communicating private information privy only to the current player
             this.notifqueue.setIgnoreNotificationCheck('actDraw', (notif) => (notif.args.player_id == this.player_id));
@@ -1293,8 +1292,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     source = this.waterDeck;
                     break;
             }
-            if (source != this.waterDeck)   
-                source.removeCard(card);
+            //if (source != this.waterDeck)   
+            source.removeCard(card, {slideTo: this.getPlayerPanelElement(notif.player_id)});
             
             // TODO Need to animate moving it to player panel
             this.handSizeCounters[notif.player_id].incValue(1);
@@ -1308,8 +1307,28 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             
             var card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
             console.log(card);
+
+            var source = null;
+            switch (notif.card.location)
+            {
+                case 'waterColumn':
+                    source = this.waterColumn;
+                    break;
+                    
+                case 'treasureColumn':
+                    source = this.treasureColumn;
+                    break;
+
+                case 'skullsairsStash':
+                    source = this.specialLocation;
+                    break;
+
+                default:
+                    source = this.waterDeck;
+                    break;
+            }
         
-            this.playerHand.addCard(card);
+            this.playerHand.addCard(card, {fromStock: source});
             this.handSizeCounters[this.player_id].incValue(1);
             this.correctGapUnderBoard();
         },
@@ -1318,7 +1337,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         {
             console.log('notif_actDiscard');
             console.log(notif);
-                
+
             card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
             if (notif.location === 'discard')
             {
@@ -1335,6 +1354,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 this.specialLocation.addCard(card);
                 this.specialLocation.setCardVisible(card, true);
             }
+            this.handSizeCounters[notif.player_id].incValue(-1);
         },
 
         notif_actDiscardPrivate: function(notif)
@@ -1348,6 +1368,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             else if (notif.location === 'sharksBelly')
                 this.specialLocation.addCard(card);
             this.waterDiscard.setCardVisible(card, false);
+            this.handSizeCounters[this.player_id].incValue(-1);
         },
 
         notif_discard: function(notif)
@@ -1371,6 +1392,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 this.specialLocation.addCard(card);
                 this.specialLocation.setCardVisible(card, true);
             }
+            if (notif.player_id > 0)
+                this.handSizeCounters[notif.player_id].incValue(-1);
         },
 
         notif_actPatch: function(notif)
