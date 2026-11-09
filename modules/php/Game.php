@@ -103,9 +103,15 @@ class Game extends \Table
             $thresholdLevel = $this->globals->inc('THRESHOLD_LEVEL', 1);
 
             // STEP 4: Shuffle all cards in the Water deck, disard pile, and water and treasure columns to create a new water deck
-            $this->water->moveAllCardsInLocation('discard', 'deck');
-            $this->water->moveAllCardsInLocation('waterColumn', 'deck');
-            $this->water->moveAllCardsInLocation('treasureColumn', 'deck');
+            // (but first we make sure all those cards are facedown to prevent future issues)
+            foreach (['discard', 'waterColumn', 'treasureColumn'] as $location)
+            {
+                $cardIds = array_keys($this->water->getCardsInLocation($location));
+                if (count($cardIds) == 0)
+                    continue;
+                $this->setCardsOrientation($cardIds, false);
+                $this->water->moveAllCardsInLocation($location, 'deck');
+            }
             $this->water->shuffle('deck');
 
             // STEP 5: If there are any Breach cards in the Breaches column, discard all Breach cards and gain 1 Permanent Breach Token. Add the Permanent Breach Token to the top of the Breaches columm.
@@ -2702,8 +2708,8 @@ class Game extends \Table
         $this->addToColumn('waterColumn', null, $card['id']);
         $this->setCardOrientation((int) $card['id'], false);
         $this->notify->all('resolveKrakenSplash', clienttranslate('Resolved Splash die result: Moved ${card_description} from the top of the Treasure Column face-down into the Water Column'), array(
-            'id' => $card['id'],
             'card_description' => $this->tokens['waterDeck'][$card['type']]['name'],
+            'card' => $card,
         ));
     }
     

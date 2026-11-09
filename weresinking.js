@@ -91,7 +91,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     </div>
                     <div id="cardsOnBoardWrapper" class="flexRow">
                         <div id="waterDrawPile"></div>
-                        <div id="waterDiscardPile"></div>
+                        <div id="waterDiscardPile">
+                            <div id="discardDice" class="sendToFront"></div>
+                        </div>
                         <div id="breachesDrawPile"></div>
                     </div>
                     <div id="columns" class="flexRow">
@@ -123,7 +125,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     <div id="enemySheet" class="sheet enemy${gamedatas.globals.enemy}Front">
                         <div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
                     </div>
-                    <div id="enemyDice"></div>
+                    <div id="enemyDice" class="sendToFront"></div>
                 </div>
             </div>
             <div id="tempWrapper"></div>
@@ -517,6 +519,19 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.enemyDice.addDice(gamedatas.attackDice);
             this.bustedDice.addDice(gamedatas.bustedDice);
             this.operationalDice.addDice(gamedatas.operationalDice);
+            
+            if (gamedatas.globals.enemy == 'Kraken')
+            {
+                this.discardDice = new BgaDice.LineStock(this.diceManager, document.getElementById('discardDice'), {
+                    gap: '4px',
+                    perspective: diePerspective,
+                });
+    
+                gamedatas.attackDice.forEach((die) => {
+                    if (die.color == 'Kraken' && die.face == 5)
+                        this.discardDice.addDie(die);
+                });
+            }
         },
 
         ///////////////////////////////////////////////////
@@ -1038,8 +1053,10 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         {
             console.log('notif_checkForBreaches');
             console.log(notif);
+
+            if (this.discardDice != undefined && !this.discardDice.isEmpty())
+                this.enemyDice.addDice(this.discardDice.getDice(), {fromStock: this.discardDice, index: 0});
             
-            //this.dealWaterCardAnimation(notif.cards, this.waterColumn);
             for (var i = 0; i < notif.cards.length; i++)
             {
                 await this.waterColumn.addCard(notif.cards[i], {fromStock: this.waterDeck,});
@@ -1394,6 +1411,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             }
             if (notif.player_id > 0)
                 this.handSizeCounters[notif.player_id].incValue(-1);
+            
         },
 
         notif_actPatch: function(notif)
@@ -1427,6 +1445,32 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     break;
             }
             this.correctGapUnderBoard();    
+        },
+        
+        notif_resolveKrakenSplash: function(notif)
+        {
+            console.log('notif_resolveKrakenSplash');
+            console.log(notif);
+            var card = notif.card;
+            card.type = 'backside';
+            
+            this.waterColumn.addCard(card, {fromStock: this.treasureColumn, initialSide: 'front', finalSide: 'back'});
+        },
+
+        notif_resolveKrakenAngered: function(notif)
+        {
+            console.log('notif_resolveKrakenAngered');
+            console.log(notif);
+
+            var dice = this.enemyDice.getDice();
+            for (var i = 0; i < dice.length; i++)
+            {
+                if (dice[i].color == 'Kraken' && dice[i].face == 5)
+                {
+                    this.discardDice.addDie(dice[i], {fromStock: this.enemyDice});
+                    break;
+                }
+            }
         },
 
         // Move all cards from the Shark's Belly into the Water Column
