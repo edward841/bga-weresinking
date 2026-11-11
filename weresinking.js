@@ -115,6 +115,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                             <div id="breachesColumnDials" class="dialColumn"></div>
                         </div>
                         <div id="cannonsColumnWrapper" class="column">
+                            <div id="cannonColumnAttackDice" class="sendToFront"></div>
                             <div id="cannonsColumn"></div>
                             <div id="operationalDice" class="diceColumn"></div>
                             <div id="cannonsColumnDials" class="dialColumn"></div>
@@ -164,8 +165,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.setupManagers();
 
             // Create the stocks and populate them
-            this.setupCards(gamedatas);
             this.setupDice(gamedatas);
+            this.setupCards(gamedatas);
 
             // Notificataions
             this.setupNotifications();
@@ -411,7 +412,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.bustedCannons.setSort((a, b) => a.type - b.type);
 
             this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager, this.bigCardGap);
-            this.operationalCannons.onCardCountChange = (cardCount) => {dojo.style('cannonsColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCardsAndDials}px`)};
+            this.operationalCannons.onCardCountChange = (cardCount) => {dojo.style('cannonsColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCardsAndDials + (this.cannonColumnAttackDice?.isEmpty() === false ? 45 : 0)}px`)};
             this.operationalCannons.onSelectionChange = (selection, lastChange) => this.updatePageTitle();
 
             this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, gamedatas.deckCount.breaches);
@@ -520,17 +521,36 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.bustedDice.addDice(gamedatas.bustedDice);
             this.operationalDice.addDice(gamedatas.operationalDice);
             
-            if (gamedatas.globals.enemy == 'Kraken')
+            switch (gamedatas.globals.enemy)
             {
-                this.discardDice = new BgaDice.LineStock(this.diceManager, document.getElementById('discardDice'), {
-                    gap: '4px',
-                    perspective: diePerspective,
-                });
-    
-                gamedatas.attackDice.forEach((die) => {
-                    if (die.color == 'Kraken' && die.face == 5)
-                        this.discardDice.addDie(die);
-                });
+                case 'Kraken':
+                    this.discardDice = new BgaDice.LineStock(this.diceManager, document.getElementById('discardDice'), {
+                        gap: '4px',
+                        perspective: diePerspective,
+                    });
+                    gamedatas.attackDice.forEach((die) => {
+                        if (die.color == 'Kraken' && die.face == 5)
+                            this.discardDice.addDie(die);
+                    });
+                    break;
+
+                case 'Shark':
+                    this.discardDice = new BgaDice.LineStock(this.diceManager, document.getElementById('discardDice'), {
+                        gap: '4px',
+                        perspective: diePerspective,
+                    });
+                    this.cannonColumnAttackDice = new BgaDice.LineStock(this.diceManager, document.getElementById('cannonColumnAttackDice'), {
+                        gap: '4px',
+                        perspective: diePerspective,
+                    });
+                    gamedatas.attackDice.forEach((die) => {
+                        if (die.color == 'Shark' && die.face == 2)
+                            this.discardDice.addDie(die);
+                        else if (die.color == 'Shark' && die.face == 5)
+                            this.cannonColumnAttackDice.addDie(die);
+                    });
+                    break;
+
             }
         },
 
@@ -891,7 +911,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 breaches += 20; // Account for the gap between busted cannons and breaches?
             
             if (this.operationalCannons.getCardCount() > 0)
+            {
                 cannons = this.calculateStockHeight(this.operationalCannons.getCardCount(), this.bigCardGap); 
+                if (!this.cannonColumnAttackDice.isEmpty())
+                    cannons += 45; // 30px die + 15px margin-bottom
+            }
 
             // Account for dials in columns 
             var dialsCounter = {'bucket': 0, 'plunder': 0, 'patch': 0, 'fire': 0};
@@ -1053,9 +1077,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         {
             console.log('notif_checkForBreaches');
             console.log(notif);
-
+            
+            // Attack dice that were moved need returned to the enemy sheet
+            // Not super clear where this should go so just putting it in the notif of the first automatic action
             if (this.discardDice != undefined && !this.discardDice.isEmpty())
                 this.enemyDice.addDice(this.discardDice.getDice(), {fromStock: this.discardDice, index: 0});
+            if (this.cannonColumnAttackDice != undefined && !this.cannonColumnAttackDice.isEmpty())
+                this.enemyDice.addDice(this.cannonColumnAttackDice.getDice(), {fromStock: this.cannonColumnAttackDice, index: 0});
             
             for (var i = 0; i < notif.cards.length; i++)
             {
@@ -1468,6 +1496,38 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 if (dice[i].color == 'Kraken' && dice[i].face == 5)
                 {
                     this.discardDice.addDie(dice[i], {fromStock: this.enemyDice});
+                    break;
+                }
+            }
+        },
+
+        notif_resolveSharkChompChomp: function(notif)
+        {
+            console.log('notif_resolveSharkChompChomp');   
+            console.log(notif);
+
+            var dice = this.enemyDice.getDice();
+            for (var i = 0; i < dice.length; i++)
+            {
+                if (dice[i].color == 'Shark' && dice[i].face == 2)
+                {
+                    this.discardDice.addDie(dice[i], {fromStock: this.enemyDice});
+                    break;
+                }
+            }
+        },
+
+        notif_resolveSharkSubmerged: function(notif)
+        {
+            console.log('notif_resolveSharkSubmerged');   
+            console.log(notif);
+
+            var dice = this.enemyDice.getDice();
+            for (var i = 0; i < dice.length; i++)
+            {
+                if (dice[i].color == 'Shark' && dice[i].face == 5)
+                {
+                    this.cannonColumnAttackDice.addDie(dice[i], {fromStock: this.enemyDice});
                     break;
                 }
             }

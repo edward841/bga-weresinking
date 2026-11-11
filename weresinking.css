@@ -75,7 +75,7 @@
 .sheet {
     width: 240px;
     height: 336px;
-    margin-bottom: 15px;
+    margin-bottom: var(--gap-under-board);
     border-radius: 10px;    
 }
 
@@ -128,7 +128,7 @@
 #gameboard {
     width: 720px;
     height: 447px;
-    margin-bottom: 15px; /* Matching the margin-bottom: 15px of the last #permanentBreach */
+    margin-bottom: var(--gap-under-board);
     background-image: url('img/GameBoard.png');
 }
 
@@ -154,7 +154,7 @@
 
 #specialLocation {
     position: relative;
-    margin: 15px auto 0px auto; 
+    margin: var(--gap-under-board) auto 0px auto; 
     background-image: url('img/Locations.jpg');
 }
 
@@ -192,12 +192,17 @@
 }
 
 #permanentBreaches > .permanentBreach:last-child {
-    margin-bottom: 15px; /* Matching the margin-bottom: 15px of the #gameboard */
-    /* If you want to adjust this, also adjust the details of this.gapBetweenCannonsAndBreaches */
+    margin-bottom: var(--gap-under-board);
+    /* Matching the margin-bottom: 15px of the #gameboard */
+    /* If you want to adjust this, also adjust the details of this.gapBetweenCannonsAndBreaches and #cannonsColumn*/
 }
 
 #cannonsColumnWrapper {
     margin-left: 70px;
+}
+
+#cannonColumnAttackDice > div {
+    margin-bottom: var(--gap-under-board);
 }
 
 #myHandWrapper {
@@ -367,6 +372,10 @@
 
 .weresinking-die[data-color="Cannon3"] .bga-dice_die-face {
     background-position-y: 30px; 
+}
+
+#enemyDice {
+    position: relative;
 }
 
 /* Threshold Sheets: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -804,6 +813,7 @@
  */
 :root {
     --dark-brown: #3B2314; 
+    --gap-under-board: 15px;
 }
 
 .flexRow {
