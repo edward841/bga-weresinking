@@ -103,7 +103,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                         </div>
                         <div id="treasureColumnWrapper">
                             <div id="treasureColumn" class="column"></div>
-                            <div id="treasureColumnDials" class="dialColumn"></div>
+                            <div id="treasureColumnDials" class="dialColumn">
+                                <div id="treasureColumnAttackDice" class="sendToFront"></div>
+                            </div>
                         </div>
                         <div id="breachesColumnWrapper" class="column">
                             <div id="permanentBreaches"></div>
@@ -150,7 +152,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 <div id="myCrew" class="flexRow"></div>
             </div>
             `);
-            
+
             // Adds the special location if we are playing the shark or skullsairs
             // (Yes this feels slightly out of place, but it has to be before setupCards call because it attaches a bga-cards object to the div)
             if (gamedatas.globals.hasOwnProperty('specialLocation'))
@@ -406,8 +408,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             //this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);   
             this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager, this.bigCardGap);
             this.bustedCannons.onCardCountChange = (cardCount) => {
-                dojo.style('breaches', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCannonsAndBreaches}px`); 
-                dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); 
+                dojo.style('breaches', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + (cardCount == 0 || this.breaches.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches)}px`);
+                dojo.style('breachesColumnDials', 'marginTop', `${
+                          (gamedatas.globals.permanentBreaches > 0 ? gamedatas.globals.permanmentBreaches * 39 + 10 : 0)
+                        + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) 
+                        + (this.bustedCannons.getCardCount() == 0 || this.breaches.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches) 
+                        + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) 
+                        + gapBetweenCardsAndDials
+                }px`); 
             };
             this.bustedCannons.setSort((a, b) => a.type - b.type);
 
@@ -417,7 +425,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
             this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, gamedatas.deckCount.breaches);
             this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager, this.bigCardGap);
-            this.breaches.onCardCountChange = (cardCount) => {dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); };
+            this.breaches.onCardCountChange = (cardCount) => {
+                dojo.style('breaches', 'marginTop', `${this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) + (cardCount == 0 || this.bustedCannons.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches)}px`);
+                dojo.style('breachesColumnDials', 'marginTop', `${
+                          (gamedatas.globals.permanentBreaches > 0 ? gamedatas.globals.permanmentBreaches * 39 + 10 : 0)
+                        + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) 
+                        + (this.bustedCannons.getCardCount() == 0 || this.breaches.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches) 
+                        + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) 
+                        + gapBetweenCardsAndDials
+                }px`); 
+            };
 
             // Set it up so you cannot select a cannon and breach at the same time
             this.resetBreachesSelection();
@@ -530,7 +547,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     });
                     gamedatas.attackDice.forEach((die) => {
                         if (die.color == 'Kraken' && die.face == 5)
-                            this.discardDice.addDie(die);
+                            this.discardDice.addDie(die, {fromStock: this.attackDice});
                     });
                     break;
 
@@ -545,9 +562,20 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     });
                     gamedatas.attackDice.forEach((die) => {
                         if (die.color == 'Shark' && die.face == 2)
-                            this.discardDice.addDie(die);
+                            this.discardDice.addDie(die, {fromStock: this.attackDice});
                         else if (die.color == 'Shark' && die.face == 5)
-                            this.cannonColumnAttackDice.addDie(die);
+                            this.cannonColumnAttackDice.addDie(die, {fromStock: this.attackDice});
+                    });
+                    break;
+
+                case 'Sirens':
+                    this.treasureColumnAttackDice = new BgaDice.LineStock(this.diceManager, document.getElementById('treasureColumnAttackDice'), {
+                        gap: '4px',
+                        perspective: diePerspective,
+                    });
+                    gamedatas.attackDice.forEach((die) => {
+                        if (die.color == 'Sirens' && die.face == 2)
+                            this.treasureColumnAttackDice.addDie(die, {fromStock: this.attackDice});
                     });
                     break;
 
@@ -880,16 +908,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         },
         
         // Animation helpers
-        dealWaterCardAnimation: function(cards, destination)
-        {
-            let cardsNumber = this.waterDeck.getCardNumber();
-
-            if (cardsNumber >= cards.length)
-                destination.addCards(cards, {fromStock: this.waterDeck}, true); 
-            else
-                console.log('dealWaterCardAnimation: not enough cards. Need ' + cards.length + ' but only have ' + cardsNumber);
-        },
-
         correctGapUnderBoard: function()
         {
             var water = 0, treasure = 0, breaches = 0, cannons = 0;
@@ -898,6 +916,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
             if (this.treasureColumn.getCardCount() > 0)
                 treasure = this.calculateStockHeight(this.treasureColumn.getCardCount(), this.smallCardGap);
+            if (this.treasureColumnAttackDice?.isEmpty() === false)
+                treasure += 50; // 30px die + 15px margin-top + 5px margin-bottom
         
             const permanentBreachNbr = dojo.query('.permanentBreach').length;
             if (permanentBreachNbr > 0)
@@ -913,7 +933,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             if (this.operationalCannons.getCardCount() > 0)
             {
                 cannons = this.calculateStockHeight(this.operationalCannons.getCardCount(), this.bigCardGap); 
-                if (!this.cannonColumnAttackDice.isEmpty())
+                if (this.cannonColumnAttackDice?.isEmpty() === false)
                     cannons += 45; // 30px die + 15px margin-bottom
             }
 
@@ -1080,11 +1100,13 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             
             // Attack dice that were moved need returned to the enemy sheet
             // Not super clear where this should go so just putting it in the notif of the first automatic action
-            if (this.discardDice != undefined && !this.discardDice.isEmpty())
+            if (this.discardDice?.isEmpty() === false)
                 this.enemyDice.addDice(this.discardDice.getDice(), {fromStock: this.discardDice, index: 0});
-            if (this.cannonColumnAttackDice != undefined && !this.cannonColumnAttackDice.isEmpty())
+            if (this.cannonColumnAttackDice?.isEmpty() === false)
                 this.enemyDice.addDice(this.cannonColumnAttackDice.getDice(), {fromStock: this.cannonColumnAttackDice, index: 0});
-            
+            if (this.treasureColumnAttackDice?.isEmpty() === false)
+                this.enemyDice.addDice(this.treasureColumnAttackDice.getDice(), {fromStock: this.treasureColumnAttackDice, index: 0});
+
             for (var i = 0; i < notif.cards.length; i++)
             {
                 await this.waterColumn.addCard(notif.cards[i], {fromStock: this.waterDeck,});
@@ -1212,7 +1234,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             console.log('notif_resolveBasicWater');
             console.log(notif);
 
-            this.dealWaterCardAnimation(notif.card, this.waterColumn);
+            this.waterColumn.addCard(notif.card, {fromStock: this.waterDeck});
             this.correctGapUnderBoard();
         },
 
@@ -1221,7 +1243,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             console.log('notif_resolveBasicBreach');
             console.log(notif);
 
-            this.breaches.addCard(notif.card, {fromStock: this.breachesDeck}, true);
+            this.breaches.addCard(notif.card, {fromStock: this.breachesDeck});
             this.correctGapUnderBoard();
         },
 
@@ -1540,6 +1562,22 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             console.log(notif);
 
             notif.cardIds.forEach((id) => this.waterColumn.addCard({'id': id, 'type': 'backside', 'type_arg': 0}));
+        },
+
+        notif_resolveTemptingTune: function(notif)
+        {
+            console.log('notif_resolveTemptingTune');
+            console.log(notif);
+
+            var dice = this.enemyDice.getDice();
+            for (var i = 0; i < dice.length; i++)
+            {
+                if (dice[i].color == 'Sirens' && dice[i].face == 2)
+                {
+                    this.treasureColumnAttackDice.addDie(dice[i], {fromStock: this.enemyDice});
+                    break;
+                }
+            }
         },
 
         notif_resolveScreech: function(notif)

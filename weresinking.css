@@ -205,6 +205,11 @@
     margin-bottom: var(--gap-under-board);
 }
 
+#treasureColumnAttackDice > div {
+    margin-top: var(--gap-under-board);
+    margin-bottom: calc(var(--gap-under-board) - var(--gap-between-dials));
+}
+
 #myHandWrapper {
     position: relative;
 }
@@ -586,9 +591,12 @@
     width: 102px;
     height: 102px;
     border-radius: 51px;
-    margin-top: 10px;
-    margin-right: 10px;
+    margin-top: var(--gap-between-dials);
     background-image: url('img/Dials.jpg');
+}
+
+#sirensScreechDials > .dial {
+    margin-right: var(--gap-between-dials);
 }
 
 .dialColumn {
@@ -814,6 +822,7 @@
 :root {
     --dark-brown: #3B2314; 
     --gap-under-board: 15px;
+    --gap-between-dials: 10px;
 }
 
 .flexRow {
@@ -824,6 +833,7 @@
 }
 
 .sendToFront {
+    position: relative;
     z-index: calc(infinity);
 }
 
