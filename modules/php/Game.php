@@ -2789,6 +2789,7 @@ class Game extends \Table
         $this->notify->all('resolveCursedSearchMessage', clienttranslate('Resolving Cursed Search'), array());
         $allPlayers = array_keys($this->loadPlayersBasicInfos());
         $playersWithAmulets = array_unique(array_values($this->getCollectionFromDB("SELECT `card_id`, `card_location_arg` FROM `water` WHERE `card_type`='cursedAmulet' AND `card_location`='hand'", true)));
+
         foreach (array_diff($allPlayers, $playersWithAmulets) as $playerId)
             $this->notify->all('resolveCursedSearchMessage', clienttranslate('${player_name} does not have a Cursed Amulet.'), array(
                 'player_id' => $playerId,
@@ -2806,7 +2807,7 @@ class Game extends \Table
 
             if ($card['type'] !== 'clearWater')
             {
-                $this->water->insertCardOnExtremePosition('skullsairsStash', $card['id'], true);
+                $this->water->insertCardOnExtremePosition($card['id'], 'skullsairsStash', true);
                 $this->notifyForCardsDiscarded([$card], intval($playerId), 'skullsairsStash', false);
             }
         }

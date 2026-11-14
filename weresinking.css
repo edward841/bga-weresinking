@@ -833,8 +833,7 @@
 }
 
 .sendToFront {
-    position: relative;
-    z-index: calc(infinity);
+    z-index: 100;
 }
 
 /* https://stackoverflow.com/questions/4191260/drawing-a-grid-using-css 

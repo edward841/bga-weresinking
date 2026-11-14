@@ -1496,7 +1496,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             }
             this.correctGapUnderBoard();    
         },
+
+        notif_endScores: function(notif)
+        {
+            console.log('notif_endScores');
+            console.log(notif);
+
+            this.displayGameState(notif.hands, notif.enemyDefeated);
+        },
         
+        // Kraken ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         notif_resolveKrakenSplash: function(notif)
         {
             console.log('notif_resolveKrakenSplash');
@@ -1523,6 +1532,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             }
         },
 
+        // Shark ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         notif_resolveSharkChompChomp: function(notif)
         {
             console.log('notif_resolveSharkChompChomp');   
@@ -1558,12 +1568,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         // Move all cards from the Shark's Belly into the Water Column
         notif_theSharkReactsToDamage: function(notif)
         {
+
             console.log('notif_theSharkReactsToDamage');
             console.log(notif);
 
             notif.cardIds.forEach((id) => this.waterColumn.addCard({'id': id, 'type': 'backside', 'type_arg': 0}));
         },
 
+        // Sirens ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         notif_resolveTemptingTune: function(notif)
         {
             console.log('notif_resolveTemptingTune');
@@ -1588,22 +1600,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.addScreechEffect();
         },
 
-        // Skullsairs
+        // Skullsairs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         notif_resolveBoardingParty: function(notif)
         {
             console.log('notif_resolveBoardingParty');
             console.log(notif);
 
-            this.specialLocation.addCard(notif.card);           
+            this.specialLocation.addCard(notif.card, {fromStock: this.treasureColumn});           
             this.correctGapUnderBoard();
         },
-
-        notif_endScores: function(notif)
-        {
-            console.log('notif_endScores');
-            console.log(notif);
-
-            this.displayGameState(notif.hands, notif.enemyDefeated);
-        }
    });             
 });
