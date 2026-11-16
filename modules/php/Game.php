@@ -1156,8 +1156,8 @@ class Game extends \Table
 
         // Actually execute the action now that we have verified the input
         // If it was a miss, mark that the cannon was activated (if successful, it was marked as activated by fireCannons)
-        $this->notifyForCardsDiscarded(array($this->water->getCard($cardId)), intval($this->getActivePlayerId()));
         $this->discard($cardId);
+        $this->notifyForCardsDiscarded(array($this->water->getCard($cardId)), intval($this->getActivePlayerId()), 'discard', false);
         if (!$this->fireCannons(array($cannonId)))
             $this->addToLIST($cannonId);
 
