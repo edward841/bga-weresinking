@@ -1,11 +1,8 @@
 UNRESOLVED
 The remaining big questions. Approximately in order of priority.. 
 
-
--I saw in a discord rules channel that Angered can be doubled??? Are there any other special attacks that can be doubled up? (Looking at you tempting tune and cursed search...)
 -How do we want to handle people that speak different languages? Should we use language dependency to force a game to agree on a common language?
 
--What is the precise meaning of the rule that prevents playing several cards with the same trigger event?  "A player can use multiple items in a round as long as they do not share the same condition. i.e. Declare, Reveal, Resolve, etc." -pg 8. Can you play two items in the same round with two different resolves? or two different declare? Or must they have different verbs?
 -Complexity, Luck, Strategy, Diplomacy rating (1-5?) Tags? Average game duration?
 -Any ideas for statistics?
 
@@ -24,6 +21,12 @@ Answer: For now, were going to give the built in elements a chance: the chat/voi
 
 RESOLVED: 
 Everything that has been resolved or clarified. Either by an improved understanding of the rules, a discussion with Joseph, the discord, etc.
+
+What is the precise meaning of the rule that prevents playing several cards with the same trigger event?  "A player can use multiple items in a round as long as they do not share the same condition. i.e. Declare, Reveal, Resolve, etc." -pg 8. Can you play two items in the same round with two different resolves? or two different declare? Or must they have different verbs?
+Answer: This is much more straightforward than it may seem. The card play requirements are much stricter than I originally thought, YOU have to be the one to do that requirement, it cant be anyone. If it says "Resolve Bucket" that means you have to resolve a bucketing action and then immediately after play that card. Ultimately this means if someone plays a card, we have to progress the state machine to the next thing to ensure they cannot do that type again.
+
+I saw in a discord rules channel that Angered can be doubled??? Are there any other special attacks that can be doubled up? (Looking at you tempting tune and cursed search...)
+Answer: Yes angered can be doubled. For every discard, you must roll and resolve two basic dice. The sirens tempting tune can also be doubled (the last person to plunder may draw up to 4 cards from water deck)
 
 How exactly does the shoot ye treasure work? Who can shoot treasure? How many treasures can be shot (per person/cannon)? Does everyone have a chance to discard a treasure and fire a missed cannon or just the person who chose that action? If they fire the treasure and the reroll misses, can they keep trying?
 Answer: Only the person that is resolving the fire action may shoot their treasure. For each cannon they desire, they may discard one treasure and reroll it. They may only reroll a cannon once. They can choose which cannon tho
