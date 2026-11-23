@@ -524,10 +524,10 @@ class Game extends \Table
         // If there is not another action to be done, goes to STATE_UPKEEP
         $this->gamestate->nextState($nextAction);
     }
-
-    public function stPlayCardSetup()
+                    
+    public function stPlayCardHelper()
     {
-        $this->gamestate->setPlayersMultiactive(array(intval($this->globals->get('PREVIOUS_PLAYER'))), 'playCard', true);
+        $this->gamestate->nextState("next");
     }
 
     public function checkHandSize()
