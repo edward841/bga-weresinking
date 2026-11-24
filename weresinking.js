@@ -51,11 +51,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.bustedCannons = null;
             this.specialLocation = null;
             this.tempCards = null;
+            this.permanentBreaches = 0;
         
             // This is the backbone of the getCardUniqueId for easily displaying any given item card.
             // Dead simple but effective: a list of the items in the order they occur in the sprite image. Split on space and find index of item in question
             var itemsString = 'backside boneClub harpoon trustyCarrot cutlass grenado spyGlass ruby sapphire emerald topaz amethyst decoyCannon fishingNet spareBarrel somberSkull bottleORum waterFlask rubberDucky stickyStarfish woodenMallet metalMallet treasureMap silverDoubloon captainsKey gemSifter crackedCompass moldyMop fishingRod grabbyCrabby smellySponge flintPistol waterPistol warDrum hurdyGurdy cheekyChum fishyBait sirenSilencers sirenShiner cursedAmulet';
             this.items = itemsString.split(' ');    
+
+            // Client side state info
+            this.clientStateArgs = {};
         },
         
         /*
@@ -83,10 +87,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             <div id="gameCenter"> 
                 <div id="thresholdSheet" class="sheet threshold_${playerCount}players_level${gamedatas.globals.threshold}"></div>
                 <div id="gameCore"> 
-                    <div id="gameboard"></div>
+                    <div id="gameboard">
+                        <div id="ship" class="shipLevel${gamedatas.globals.threshold}"></div>
+                    </div>
                     <div id="cardsOnBoardWrapper" class="flexRow">
                         <div id="waterDrawPile"></div>
-                        <div id="waterDiscardPile"></div>
+                        <div id="waterDiscardPile">
+                            <div id="discardDice" class="sendToFront"></div>
+                        </div>
                         <div id="breachesDrawPile"></div>
                     </div>
                     <div id="columns" class="flexRow">
@@ -96,7 +104,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                         </div>
                         <div id="treasureColumnWrapper">
                             <div id="treasureColumn" class="column"></div>
-                            <div id="treasureColumnDials" class="dialColumn"></div>
+                            <div id="treasureColumnDials" class="dialColumn">
+                                <div id="treasureColumnAttackDice" class="sendToFront"></div>
+                            </div>
                         </div>
                         <div id="breachesColumnWrapper" class="column">
                             <div id="permanentBreaches"></div>
@@ -108,6 +118,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                             <div id="breachesColumnDials" class="dialColumn"></div>
                         </div>
                         <div id="cannonsColumnWrapper" class="column">
+                            <div id="cannonColumnAttackDice" class="sendToFront"></div>
                             <div id="cannonsColumn"></div>
                             <div id="operationalDice" class="diceColumn"></div>
                             <div id="cannonsColumnDials" class="dialColumn"></div>
@@ -118,7 +129,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     <div id="enemySheet" class="sheet enemy${gamedatas.globals.enemy}Front">
                         <div id="damageTokenSpaces" class="enemy${gamedatas.globals.enemyHP}HP damageCounter${gamedatas.globals.enemy}"></div>
                     </div>
-                    <div id="enemyDice"></div>
+                    <div id="enemyDice" class="sendToFront"></div>
                 </div>
             </div>
             <div id="tempWrapper"></div>
@@ -142,7 +153,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 <div id="myCrew" class="flexRow"></div>
             </div>
             `);
-            
+
             // Adds the special location if we are playing the shark or skullsairs
             // (Yes this feels slightly out of place, but it has to be before setupCards call because it attaches a bga-cards object to the div)
             if (gamedatas.globals.hasOwnProperty('specialLocation'))
@@ -150,15 +161,22 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
             // Essential Setup: Managers, cards, dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
             this.animationManager = new BgaAnimations.Manager({
-                animationsActive: () => this.bgaAnimationsActive(),
+                animationsActive: () => this.bga.gameui.bgaAnimationsActive(),
             });
 
             // create the card managers 
             this.setupManagers();
+            
+            // Add permanent breaches (must be before card setup so the cards know about permanent breaches)
+            this.permanentBreaches = gamedatas.globals.permanentBreaches;
+            for (let i = 0; i < this.permanentBreaches; i++)
+            {
+                dojo.create("div", {class: "permanentBreach"}, "permanentBreaches");
+            }
 
             // Create the stocks and populate them
-            this.setupCards(gamedatas);
             this.setupDice(gamedatas);
+            this.setupCards(gamedatas);
 
             // Notificataions
             this.setupNotifications();
@@ -168,12 +186,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             if (gamedatas.globals.hasOwnProperty('screech') && gamedatas.globals.screech && gamedatas.gamestate.id <= gamedatas.constants.STATE_DECLARE_DIAL)
                 this.addScreechEffect();
 
-            // Add permanent breaches
-            for (let i = 0; i < gamedatas.globals.permanentBreaches; i++)
-            {
-                dojo.create("div", {class: "permanentBreach"}, "permanentBreaches");
-            }
-            
             // Place the Duties Checklist in my character panel iff i am first mate
             if (gamedatas.currentPlayer === gamedatas.globals.firstMate)
                 dojo.create("div", {class: "dutiesChecklist"}, "myCharacterItemsWrapper");
@@ -185,13 +197,15 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 var dial = gamedatas.dials[i];
                 if (dial['dial_location'] !== 'player')
                 {
-                    if (parentElement === '' || gamedatas.gamestate.id > gamedatas.constants.STATE_DECLARE_DIAL)
-                        parentElement = this.actionToColumn([dial['dial_location']]) + 'Dials';
+                    if (gamedatas.gamestate.id > gamedatas.constants.STATE_DECLARE_DIAL)
+                        parentElement = this.actionToColumn(dial['dial_value']) + 'Dials';
+                    else if (parentElement === '')
+                        parentElement = this.actionToColumn(dial['dial_location']) + 'Dials';
                 }
                 else if (dial['id'] === (gamedatas.currentPlayer + ''))
                     parentElement = 'myCharacterItemsWrapper';
                 else
-                    continue; // For spectators when no dial should be displayed!
+                    continue; // For spectators when no dial should be displayed before they are declared
                 dojo.create("div", {id: `dial_${dial['id']}`, class: "dial", 'data-value': dial['dial_value'], 'data-color': gamedatas.players[dial['id']].color}, parentElement);
             }
 
@@ -371,8 +385,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
         setupCards: function(gamedatas)
         {
-            const gapBetweenCardsAndDials = 0;
-            const gapBetweenCannonsAndBreaches = (gamedatas.globals.permanentBreaches > 0) ? 30 : 20;
+            const gapBetweenCardsAndDials = 10;
+            const gapBetweenCannonsAndBreaches = (this.permanentBreaches > 0) ? 30 : 20;
 
             this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, gamedatas.deckCount.water);
 ///* FLAG */    this.waterDeck.onCardClick = (card) => {this.onCardClick('deck', card);};
@@ -381,9 +395,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.waterDiscard.addCards(gamedatas.discardDeck);
 
             this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager);
-            this.waterColumn.onCardCountChange = (cardCount) => {dojo.style('waterColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.smallCardGap) + gapBetweenCardsAndDials}px`)};
+            this.waterColumn.onCardCountChange = (cardCount) => {dojo.style('waterColumnDials', 'margin-top', `${this.calculateStockHeight(cardCount, this.smallCardGap) + gapBetweenCardsAndDials}px`)};
             this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
-            this.treasureColumn.onCardCountChange = (cardCount) => {dojo.style('treasureColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.smallCardGap) + gapBetweenCardsAndDials}px`)};
+            this.treasureColumn.onCardCountChange = (cardCount) => {dojo.style('treasureColumnDials', 'margin-top', `${this.calculateStockHeight(cardCount, this.smallCardGap) + gapBetweenCardsAndDials}px`)};
         
             const playerHandStock = BgaCards.LineStock;
             this.playerHand = new playerHandStock(this.waterManager, document.getElementById('myHand'), {
@@ -396,17 +410,34 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             //this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);   
             this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager, this.bigCardGap);
             this.bustedCannons.onCardCountChange = (cardCount) => {
-                dojo.style('breaches', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCannonsAndBreaches}px`); 
-                dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); 
+                dojo.style('breaches', 'margin-top', `${this.calculateStockHeight(cardCount, this.bigCardGap) + (cardCount == 0 || this.breaches.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches)}px`);
+                dojo.style('breachesColumnDials', 'margin-top', `${
+                          (this.permanentBreaches > 0 ? 15: 0)
+                        + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) 
+                        + (this.bustedCannons.getCardCount() == 0 || this.breaches.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches) 
+                        + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) 
+                        + gapBetweenCardsAndDials
+                }px`); 
             };
             this.bustedCannons.setSort((a, b) => a.type - b.type);
+
             this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager, this.bigCardGap);
-            this.operationalCannons.onCardCountChange = (cardCount) => {dojo.style('cannonsColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCardsAndDials}px`)};
+            this.operationalCannons.onCardCountChange = (cardCount) => {dojo.style('cannonsColumnDials', 'margin-top', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCardsAndDials}px`)};
             this.operationalCannons.onSelectionChange = (selection, lastChange) => this.updatePageTitle();
 
             this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, gamedatas.deckCount.breaches);
             this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager, this.bigCardGap);
-            this.breaches.onCardCountChange = (cardCount) => {dojo.style('breachesColumnDials', 'marginTop', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) + gapBetweenCannonsAndBreaches + gapBetweenCardsAndDials}px`); };
+            this.breaches.onCardCountChange = (cardCount) => {
+                dojo.style('breaches', 'margin-top', `${this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) + (cardCount == 0 || this.bustedCannons.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches)}px`);
+                // Breaches are 34px tall, have a 5px gap between them, and the bottom one has a margin-bottom of 15px. Plus an extra 15px for margin collapsing
+                dojo.style('breachesColumnDials', 'margin-top', `${
+                          (this.permanentBreaches > 0 ? 15: 0)
+                        + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) 
+                        + (this.bustedCannons.getCardCount() == 0 || this.breaches.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches) 
+                        + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) 
+                        + gapBetweenCardsAndDials
+                }px`); 
+            };
 
             // Set it up so you cannot select a cannon and breach at the same time
             this.resetBreachesSelection();
@@ -509,6 +540,49 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.enemyDice.addDice(gamedatas.attackDice);
             this.bustedDice.addDice(gamedatas.bustedDice);
             this.operationalDice.addDice(gamedatas.operationalDice);
+            
+            switch (gamedatas.globals.enemy)
+            {
+                case 'Kraken':
+                    this.discardDice = new BgaDice.LineStock(this.diceManager, document.getElementById('discardDice'), {
+                        gap: '4px',
+                        perspective: diePerspective,
+                    });
+                    gamedatas.attackDice.forEach((die) => {
+                        if (die.color == 'Kraken' && die.face == 5)
+                            this.discardDice.addDie(die, {fromStock: this.attackDice});
+                    });
+                    break;
+
+                case 'Shark':
+                    this.discardDice = new BgaDice.LineStock(this.diceManager, document.getElementById('discardDice'), {
+                        gap: '4px',
+                        perspective: diePerspective,
+                    });
+                    this.cannonColumnAttackDice = new BgaDice.LineStock(this.diceManager, document.getElementById('cannonColumnAttackDice'), {
+                        gap: '4px',
+                        perspective: diePerspective,
+                    });
+                    gamedatas.attackDice.forEach((die) => {
+                        if (die.color == 'Shark' && die.face == 2)
+                            this.discardDice.addDie(die, {fromStock: this.attackDice});
+                        else if (die.color == 'Shark' && die.face == 5)
+                            this.cannonColumnAttackDice.addDie(die, {fromStock: this.attackDice});
+                    });
+                    break;
+
+                case 'Sirens':
+                    this.treasureColumnAttackDice = new BgaDice.LineStock(this.diceManager, document.getElementById('treasureColumnAttackDice'), {
+                        gap: '4px',
+                        perspective: diePerspective,
+                    });
+                    gamedatas.attackDice.forEach((die) => {
+                        if (die.color == 'Sirens' && die.face == 2)
+                            this.treasureColumnAttackDice.addDie(die, {fromStock: this.attackDice});
+                    });
+                    break;
+
+            }
         },
 
         ///////////////////////////////////////////////////
@@ -519,110 +593,108 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         //
         onEnteringState: function(stateName, args)
         {
-            switch(stateName)
+            if (this.isCurrentPlayerActive())
             {
-                case 'resolveBucket':
-                    if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Draw'))
-                    {
-                        if (args.args.nbr == 1)
+                switch(stateName)
+                {
+                    case 'resolveBucket':
+                        if (args.args.possibleActions.includes('Draw'))
                         {
-                            this.waterColumn.setSelectionMode('single');
-                            this.waterColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+                            if (args.args.nbr == 1)
+                            {
+                                this.waterColumn.setSelectionMode('single');
+                                this.waterColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+                            }
+                            else
+                            {
+                                this.waterColumn.setSelectionMode('multiple');
+                                this.waterColumn.onSelectionChange = (selection, lastChange) => {
+                                    selection.length == args.args.nbr ? this.waterColumn.setSelectableCards(selection) : this.waterColumn.setSelectableCards();
+                                    this.updatePageTitle();
+                                };
+                            }
                         }
-                        else
+                        break;
+
+                    case 'resolvePlunder': 
+                        if (args.args.possibleActions.includes('Draw'))
                         {
-                            this.waterColumn.setSelectionMode('multiple');
-                            this.waterColumn.onSelectionChange = (selection, lastChange) => {
-                                selection.length == args.args.nbr ? this.waterColumn.setSelectableCards(selection) : this.waterColumn.setSelectableCards();
+                            this.treasureColumn.setSelectionMode('single');
+                            this.treasureColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+                        }
+                        break;
+                        
+                    case 'resolvePatch':
+                        if (args.args.possibleActions.includes('Patch'))
+                        {
+                            this.bustedCannons.setSelectionMode('single', args.args.possibleToPatch.cannon);    
+                            this.breaches.setSelectionMode('single', args.args.possibleToPatch.breach);
+                        }
+                        else if (args.args.possibleActions.includes('ContributeHammer'))
+                        {
+                            // Select the breach in question, forcefully disable deselecting the card, and mark everything else as not selectable
+                            this.breaches.setSelectionMode('single', [args.args.card]); 
+                            this.breaches.selectCard(args.args.card);
+                            this.breaches.onSelectionChange = (selection, lastChange) => {if (selection.length == 0) this.breaches.selectCard(args.args.card)};
+                            this.bustedCannons.setSelectionMode('single', []);
+                        }
+                        break;
+
+                    case 'resolveFire':
+                        if (args.args.possibleActions.includes('ShootYeTreasure'))
+                        {
+                            this.playerHand.setSelectionMode('single', args.args.possibleDiscard);
+                            this.operationalCannons.setSelectionMode('single', args.args.possibleToFireCannons);
+                            this.playerHand.onSelectionChange = (selection, change) => {this.updatePageTitle()};
+                        }
+                        else if (args.args.possibleActions.includes('DrawMultiple'))
+                        {
+                            //dojo.addClass('specialLocation', 'hide');
+                            const skullsairsStashElement = dojo.create('div', {'id': 'skullsairsStashWrapper', 'class': 'whiteblock'}, 'tempWrapper');
+                            skullsairsStashElement.innerHTML = `    
+                                    <b id="skullsairsStashLabel">${_('Skullsairs Stash')}</b>
+                                    <div id="skullsairsStash"></div>`
+                            this.tempCards = new BgaCards.LineStock(this.waterManager, document.getElementById('skullsairsStash'), {});
+                            this.tempCards.setSelectionMode('multiple');
+                            args.args.possibleToDraw.forEach((card) => this.tempCards.addCard(card));
+                            this.tempCards.onSelectionChange = (selection, lastChange) => {
+                                if (selection.length >= args.args.nbr)
+                                    this.tempCards.setSelectableCards(selection);
+                                else
+                                    this.tempCards.setSelectableCards();
                                 this.updatePageTitle();
                             };
                         }
-                    }
-                    break;
-                case 'resolvePlunder': 
-                    if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Draw'))
-                    {
-                        this.treasureColumn.setSelectionMode('single');
-                        this.treasureColumn.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
-                    }
-                    break;
-                case 'resolvePatch':
-                    if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('Patch'))
-                    {
-                        this.bustedCannons.setSelectionMode('single', args.args.possibleToPatch.cannon);    
-                        this.breaches.setSelectionMode('single', args.args.possibleToPatch.breach);
-                    }
-                    else if (args.args.possibleActions.includes('ContributeHammer'))
-                    {
-                        // Select the breach in question, forcefully disable deselecting the card, and mark everything else as not selectable
-                        this.breaches.setSelectionMode('single', [args.args.card]); 
-                        this.breaches.selectCard(args.args.card);
-                        this.breaches.onSelectionChange = (selection, lastChange) => {if (selection.length == 0) this.breaches.selectCard(args.args.card)};
-                        this.bustedCannons.setSelectionMode('single', []);
-                    }
-                    break;
-
-                case 'resolveFire':
-                    if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('ShootYeTreasure'))
-                    {
-                        this.playerHand.setSelectionMode('single', args.args.possibleDiscard);
-                        this.operationalCannons.setSelectionMode('single', args.args.possibleToFireCannons);
-                    }
-                    else if (this.isCurrentPlayerActive() && args.args.possibleActions.includes('DrawMultiple'))
-                    {
-                        //dojo.addClass('specialLocation', 'hide');
-                        const skullsairsStashElement = dojo.create('div', {'id': 'skullsairsStashWrapper', 'class': 'whiteblock'}, 'tempWrapper');
-                        skullsairsStashElement.innerHTML = `    
-                                <b id="skullsairsStashLabel">${_('Skullsairs Stash')}</b>
-                                <div id="skullsairsStash"></div>`
-                        this.tempCards = new BgaCards.LineStock(this.waterManager, document.getElementById('skullsairsStash'), {});
-                        this.tempCards.setSelectionMode('multiple');
-                        args.args.possibleToDraw.forEach((card) => this.tempCards.addCard(card));
-                        this.tempCards.onSelectionChange = (selection, lastChange) => {
-                            if (selection.length >= args.args.nbr)
-                                this.tempCards.setSelectableCards(selection);
-                            else
-                                this.tempCards.setSelectableCards();
-                            this.updatePageTitle();
-                        };
-                    }
-                    break;
-                case 'playCard':
-                    console.log('Play card test test!');
-                    console.log(args);
-                    break;
+                        break;
+                }
             }
-
             if (this.isCurrentPlayerActive())
             {
-                console.log('PossibleActions:', args.args.possibleActions);
                 if (args.args.possibleActions.includes('Draw') && args.args.location == 'deck')
                 {
                     this.waterDeck.setSelectionMode('single');
-                    this.waterDeck.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+                    this.waterDeck.selectAll();
+                    this.waterDeck.onSelectionChange = (selection, lastChange) => {
+                        if (selection.length == 0) 
+                            this.waterDeck.selectAll()
+                    };
+                    this.updatePageTitle();
                 }
-
                 if (args.args.possibleActions.includes('Discard'))
                 {
-                    this.playerHand.setSelectionMode('multiple');
-                    this.playerHand.onSelectionChange = (selection, lastChange) => {
-                        selection.length == args.args.nbr ? this.playerHand.setSelectableCards(selection) : this.playerHand.setSelectableCards();
-                        this.updatePageTitle();
-                    };
-                }
-                // TODO what the heck is this doing this makes no senes... being the exact condition as the previous thing...
-                else if (args.args.possibleActions.includes('Discard'))
-                {
-                    this.playerHand.setSelectionMode('single');
-                    this.playerHand.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
-                }
-
-                if (args.args.possibleActions.includes('PlayCard'))
-                {
-                    //this.playerHand.setSelectionMode('single', args.args.possibleCards);
-//                  args.args.possibleCards.forEach((card) => {
-//
-//                  });
+                    if (args.args.nbr > 1)
+                    {
+                        this.playerHand.setSelectionMode('multiple');
+                        this.playerHand.onSelectionChange = (selection, lastChange) => {
+                            selection.length == args.args.nbr ? this.playerHand.setSelectableCards(selection) : this.playerHand.setSelectableCards();
+                            this.updatePageTitle();
+                        };
+                    }
+                    else
+                    {
+                        this.playerHand.setSelectionMode('single');
+                        this.playerHand.onSelectionChange = (selection, lastChange) => {this.updatePageTitle()};
+                    }
                 }
             }
         },
@@ -683,7 +755,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                         'data-color': this.gamedatas.players[this.player_id].color,
                     }, 'myCharacterItemsWrapper');
                     break;
-            }              
+            }               
         }, 
 
         // onUpdateActionButtons: in this method you can manage "action buttons" that are displayed in the
@@ -705,16 +777,26 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 /* FLAG *///                        cardId => this.statusBar.addActionButton(_('Play card with id ${card_id}').replace('${card_id}', cardId), () => this.onCardClick(cardId))
 //                  ); 
 //
-//                  this.statusBar.addActionButton(_('Pass'), () => this.bga.actions.performAction("actPass"), { color: 'secondary' }); 
-//                  break;
+//                    this.statusBar.addActionButton(_('Pass'), () => this.bga.actions.performAction("actPass"), { color: 'secondary' }); 
+//                    break;
                     case 'declareDial':
-                        this.statusBar.addActionButton(_('Bucket'), () => this.bga.actions.performAction("actDeclareDial", {value: 'bucket', location: 'bucket'}));
-                        this.statusBar.addActionButton(_('Plunder'), () => this.bga.actions.performAction("actDeclareDial", {value: 'plunder', location: 'plunder'}));
+                        this.statusBar.addActionButton(_('Bucket'), () => {this.clientStateArgs.actualValue = 'bucket'; this.onActualValueSelected(args.screech)});
+                        this.statusBar.addActionButton(_('Plunder'), () => {this.clientStateArgs.actualValue = 'plunder'; this.onActualValueSelected(args.screech)});
                         if (args.possibleActions.includes('patch'))
-                            this.statusBar.addActionButton(_('Patch'), () => this.bga.actions.performAction("actDeclareDial", {value: 'patch', location: 'patch'}));
+                            this.statusBar.addActionButton(_('Patch'), () => {this.clientStateArgs.actualValue = 'patch'; this.onActualValueSelected(args.screech)});
                         if (args.possibleActions.includes('fire'))
-                            this.statusBar.addActionButton(_('Fire'), () => this.bga.actions.performAction("actDeclareDial", {value: 'fire', location: 'fire'}));
+                            this.statusBar.addActionButton(_('Fire'), () => {this.clientStateArgs.actualValue = 'fire'; this.onActualValueSelected(args.screech)});
                         break;
+
+                    case 'client_selectDialLocation':
+                        this.statusBar.addActionButton(_('Bucket'), () => this.bga.actions.performAction("actDeclareDial", {value: this.clientStateArgs.actualValue, location: 'bucket'}));
+                        this.statusBar.addActionButton(_('Plunder'), () => this.bga.actions.performAction("actDeclareDial", {value: this.clientStateArgs.actualValue, location: 'plunder'}));
+                        if (args.possibleActions.includes('patch'))
+                            this.statusBar.addActionButton(_('Patch'), () => this.bga.actions.performAction("actDeclareDial", {value: this.clientStateArgs.actualValue, location: 'patch'}));
+                        if (args.possibleActions.includes('fire'))
+                            this.statusBar.addActionButton(_('Fire'), () => this.bga.actions.performAction("actDeclareDial", {value: this.clientStateArgs.actualValue, location: 'fire'}));
+                        break;
+
                     case 'resolveBucket': 
                         if (args.possibleActions.includes('DrawMultiple'))
                             this.statusBar.addActionButton(_('Draw'), () => {this.bga.actions.performAction('actDrawMultiple', {'cardIds': this.waterColumn.getSelection().map(card => card.id), 'location': 'waterColumn'})}, {color: 'primary', disabled: this.waterColumn.getSelection().length != args.nbr});
@@ -726,6 +808,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                             this.statusBar.addActionButton(_('Draw'), () => {this.bga.actions.performAction('actDraw',{cardId: this.treasureColumn.getSelection()[0].id, location: 'treasureColumn'})}, {color: 'primary', disabled: this.treasureColumn.getSelection().length == 0});
                         if (args.possibleActions.includes('Pass'))
                             this.statusBar.addActionButton(_('Pass'), () => {this.bga.actions.performAction('actPass');}, {color: 'secondary'});
+                        if (args.possibleActions.includes('TemptingTune'))
+                            this.statusBar.addActionButton(_('Tempting Tune: Draw 1 card from Water Deck'), () => {this.bga.actions.performAction('actTemptingTune');}, {color: 'primary'});
                         break;
 
                     case 'resolvePatch':
@@ -781,17 +865,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //                  case 'resolveBucket':
 //                      const currentAction = args.possibleActions[0];
 //                      this.statusBar.addActionButton(_(currentAction), () => this.bga.actions.performAction("act" + currentAction, {cardId: }));
-
-                    case 'playCard':
-                        console.log('Play card here...');
-                        if (args.possibleActions.includes('PlayCard'))
-                        {
-                            args.validPlays.forEach((card) => {
-                                this.statusBar.addActionButton(_(card.name), () => this.bga.actions.performAction('actPlayCard', {cardId: card.id}), {color: 'primary'});
-                            });
-                        }
-                        this.statusBar.addActionButton(_('Pass'), () => this.bga.actions.performAction('actPass'), {color: 'secondary'});
-                        break;
                 }
 
                 if (args.possibleActions.includes('DiscardMultiple'))
@@ -838,16 +911,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         },
         
         // Animation helpers
-        dealWaterCardAnimation: function(cards, destination)
-        {
-            let cardsNumber = this.waterDeck.getCardNumber();
-
-            if (cardsNumber >= cards.length)
-                destination.addCards(cards, {fromStock: this.waterDeck}, true); 
-            else
-                console.log('dealWaterCardAnimation: not enough cards. Need ' + cards.length + ' but only have ' + cardsNumber);
-        },
-
         correctGapUnderBoard: function()
         {
             var water = 0, treasure = 0, breaches = 0, cannons = 0;
@@ -856,6 +919,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
             if (this.treasureColumn.getCardCount() > 0)
                 treasure = this.calculateStockHeight(this.treasureColumn.getCardCount(), this.smallCardGap);
+            if (this.treasureColumnAttackDice?.isEmpty() === false)
+                treasure += 50; // 30px die + 15px margin-top + 5px margin-bottom
         
             const permanentBreachNbr = dojo.query('.permanentBreach').length;
             if (permanentBreachNbr > 0)
@@ -869,7 +934,11 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 breaches += 20; // Account for the gap between busted cannons and breaches?
             
             if (this.operationalCannons.getCardCount() > 0)
+            {
                 cannons = this.calculateStockHeight(this.operationalCannons.getCardCount(), this.bigCardGap); 
+                if (this.cannonColumnAttackDice?.isEmpty() === false)
+                    cannons += 45; // 30px die + 15px margin-bottom
+            }
 
             // Account for dials in columns 
             var dialsCounter = {'bucket': 0, 'plunder': 0, 'patch': 0, 'fire': 0};
@@ -982,6 +1051,24 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 //              this.bga.actions.performAction('actTemptingTune', {});
         },
 
+        onActualValueSelected: function(screech)
+        {
+            if (screech != undefined && screech)
+            {
+                 this.bga.actions.performAction("actDeclareDial", {value: this.clientStateArgs.actualValue, location: this.clientStateArgs.actualValue});
+            }
+            else
+            {
+                var playerId = this.bga.players.getActivePlayerId();
+                var actualValue = this.clientStateArgs.actualValue;
+                dojo.attr(`dial_${playerId}`, 'data-value', actualValue);
+
+                this.setClientState('client_selectDialLocation', {
+                    descriptionmyturn: _("${you} must select your \'Public\' Dial Action"),
+                });
+            }
+        },
+
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
@@ -1000,19 +1087,34 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             console.log( 'notifications subscriptions setup' );
             this.bgaSetupPromiseNotifications();    
 
+            dojo.subscribe('sinkingProcedures', this, 'notif_sinkingProcedures');
+            this.bga.gameui.notifqueue.setSynchronous('sinkingProcedures', 2000); // Wait 1000 miliseconds after executing sinkingProcedures handler
+
             // Ignore notifications! These notifications have private versions, communicating private information privy only to the current player
             this.notifqueue.setIgnoreNotificationCheck('actDraw', (notif) => (notif.args.player_id == this.player_id));
             this.notifqueue.setIgnoreNotificationCheck('actDiscard', (notif) => (notif.args.player_id == this.player_id));
         },  
         
         // From this point and below, you can write your game notifications handling methods
-        notif_checkForBreaches: function(notif)
+        notif_checkForBreaches: async function(notif)
         {
             console.log('notif_checkForBreaches');
             console.log(notif);
             
-            this.dealWaterCardAnimation(notif.cards, this.waterColumn);
-            this.correctGapUnderBoard();
+            // Attack dice that were moved need returned to the enemy sheet
+            // Not super clear where this should go so just putting it in the notif of the first automatic action
+            if (this.discardDice?.isEmpty() === false)
+                this.enemyDice.addDice(this.discardDice.getDice(), {fromStock: this.discardDice, index: 0});
+            if (this.cannonColumnAttackDice?.isEmpty() === false)
+                this.enemyDice.addDice(this.cannonColumnAttackDice.getDice(), {fromStock: this.cannonColumnAttackDice, index: 0});
+            if (this.treasureColumnAttackDice?.isEmpty() === false)
+                this.enemyDice.addDice(this.treasureColumnAttackDice.getDice(), {fromStock: this.treasureColumnAttackDice, index: 0});
+
+            for (var i = 0; i < notif.cards.length; i++)
+            {
+                await this.waterColumn.addCard(notif.cards[i], {fromStock: this.waterDeck,});
+                this.correctGapUnderBoard();
+            }
         },
         
         // Sinking procedures animation!
@@ -1022,7 +1124,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         // STEP 4) Shuffle all cards in the Water Deck, Discard Pile, and the Water and Treasure Columns to create a new Water Deck
         // STEP 5) IF there are any Breach cards in the Breaches Column, discard all breach cards and gain 1 Permanent Breach Token. Add the Permanent Breach Token to the top of the Breaches Column.
         // STEP 6) Flip over the First Mate Scroll and continue the round on Step 3 of the duties checklist.
-        notif_sinkingProcedures: function(notif)
+        notif_sinkingProcedures: async function(notif)
         {
             console.log('notif_sinkingProcedures');
             console.log(notif);
@@ -1044,62 +1146,46 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     dojo.style('thresholdSheet', 'transform', 'rotateX(0deg)');
                     break;
             }
+            console.log('Threshold sheet adjusted.'); //TEST
 
             // Rebuild the water deck with all available cards (water column, treasure column, discard, deck) and shuffle
             this.waterDeck.addCards(this.waterDiscard.getCards().map(card => ({id: card.id})));
             this.waterDeck.addCards(this.waterColumn.getCards().map(card => ({id: card.id})));
             this.waterDeck.addCards(this.treasureColumn.getCards().map(card => ({id: card.id})));
             //this.waterDeck.setCardNumber(notif.deckNbr);
-            this.waterDeck.shuffle().then(() => console.log('Water deck shuffled'));
-            
-            this.correctGapUnderBoard();
+            await this.waterDeck.shuffle().then(() => console.log('Water deck shuffled for reals this time.'));
             
             // Manage the breaches as well
             if (this.breaches.getCardCount() > 0)
             {
                 this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
                 dojo.create('div', {class: 'permanentBreach'}, 'permanentBreaches');
+                this.permanentBreaches++;
+                console.log('Permanent breach added.'); 
             }
+    
+            dojo.addClass('ship', 'shipLevel' + (notif.thresholdLevel+1));
+            dojo.removeClass('ship', 'shipLevel' + notif.thresholdLevel);
+            dojo.removeClass('ship', 'shipLevelNaN'); // I cant figure out where the NaN class is coming from but not hard to get rid of it
+
+            this.correctGapUnderBoard();
         },
 
-        notif_testUpdate: function(notif)
-        {
-            console.log('TESTING UPDATING THRESHOLD');
-            console.log(notif);
-
-            // Trying to figure out how to update threshold sheet
-            switch (notif.thresholdLevel)
-            {   
-                case 1: case 3:
-                    dojo.style('thresholdSheet', 'transform', 'rotateZ(180deg)');
-                    dojo.addClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel+1}`);  
-                    dojo.removeClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel}`); 
-                    break;
-
-                case 2:
-                    dojo.style('thresholdSheet', 'transform', 'rotateX(180deg)');
-
-                    dojo.addClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel+1}`);  
-                    dojo.removeClass('thresholdSheet', `threshold_${notif.playerNbr}players_level${notif.thresholdLevel}`); 
-                    dojo.style('thresholdSheet', 'transform', 'rotateX(0deg)');
-                    break;
-            }
-        },
-
-        notif_dealWaterAndTreasure: function(notif)
+        notif_dealWaterAndTreasure: async function(notif)
         {
             console.log('notif_dealWaterAndTreasure');
             console.log(notif);
 
             // Deal the necessary water and treasure cards
-            notif.cards.forEach(card => {
+            for (var i = 0; i < notif.cards.length; i++)
+            {
+                card = notif.cards[i];
                 if (card.type === 'backside' || card.type === 'clearWater')
-                    this.waterColumn.addCard(card, {fromStock: this.waterDeck,});
+                    await this.waterColumn.addCard(card, {fromStock: this.waterDeck,});
                 else
-                    this.treasureColumn.addCard(card, {fromStock: this.waterDeck,});
-            });
-            
-            this.correctGapUnderBoard();
+                    await this.treasureColumn.addCard(card, {fromStock: this.waterDeck,});
+                this.correctGapUnderBoard();
+            }
         },
 
         notif_rollEnemyDice: function(notif)
@@ -1113,8 +1199,6 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             dice = dice.filter(die => die != null);
             dice.forEach(die => die.face = notif.diceRollMapping[die.id]);
             this.enemyDice.rollDice(dice, {duration: [800, 1200]});
-
-
         },
 
         notif_firedCannons: function(notif)
@@ -1128,7 +1212,25 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.operationalDice.rollDice(dice, {duration: [800, 1200]});
 
             if (notif.hitNbr > 0)
+            {
                 dojo.addClass('damageTokenSpaces', 'enemy' + notif.newHp + 'HP');
+        
+                // If there were any changes to the enemy dice update accordingly
+                for (var i = 0; i < notif.enemyDiceChanged.length; i++)
+                {
+                    // Enemy loses attack dice
+                    if (this.enemyDice.contains(notif.enemyDiceChanged[i]))
+                    {
+                        this.enemyDice.removeDie(notif.enemyDiceChanged[i]);
+                    }
+                    // Enemy gains more attack dice
+                    else
+                    {
+                        this.enemyDice.addDie(notif.enemyDiceChanged[i]);
+                    }
+                    // If its 0 then no change in attack dice so no action needed
+                }
+            }
         },
 
         notif_resolveBasicWater: function(notif)
@@ -1136,7 +1238,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             console.log('notif_resolveBasicWater');
             console.log(notif);
 
-            this.dealWaterCardAnimation(notif.card, this.waterColumn);
+            this.waterColumn.addCard(notif.card, {fromStock: this.waterDeck});
             this.correctGapUnderBoard();
         },
 
@@ -1145,7 +1247,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             console.log('notif_resolveBasicBreach');
             console.log(notif);
 
-            this.breaches.addCard(notif.card, {fromStock: this.breachesDeck}, true);
+            this.breaches.addCard(notif.card, {fromStock: this.breachesDeck});
             this.correctGapUnderBoard();
         },
 
@@ -1155,7 +1257,18 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             console.log(notif);
         
             this.bustedCannons.addCard(notif.card, {fromStock: this.cannons});
-            this.bustedDice.addDie({'id': notif.card.id, 'color': 'Cannon' + notif.card.type});
+            
+            // We have to find the correct die so the value doesnt change
+            var bustedDie = null;
+            for (const die of this.operationalDice.getDice())
+            {
+                if (die.id == notif.card.id)
+                {
+                    bustedDie = die;
+                    break;
+                }
+            }
+            this.bustedDice.addDie(bustedDie, {fromStock: this.operationalDice});
             this.correctGapUnderBoard();
         },
 
@@ -1166,57 +1279,36 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         
             // Necessary info
             var dialId = `dial_${notif.player_id}`;
-            var tempId = dialId + 'temp';
             var color = this.gamedatas.players[Number(notif.player_id)].color;
-
-            var targetLocation = 'sirensScreechDials';
-            if (!notif.screech)
-            {
-                targetLocation = `${notif.dial_location}Dials`.replace(' ', '');
-                targetLocation = targetLocation.charAt(0).toLowerCase() + targetLocation.slice(1);
-            }
+            var targetLocation = notif.screech ? 'sirensScreechDials' : this.actionToColumn(notif.dial_location_shorthand) + 'Dials';
+            var targetLocationElement = document.getElementById(targetLocation);
             
             // Hide the dial icon in the corresponding player panel
             //dojo.addClass(`dialIcon_${notif.player_id}`, 'hide');
         
-            // If the current player just declared, change the id of the dial in their character panel to avoid naming conflicts
-            if (this.player_id == notif.player_id)
-            {
-                dojo.attr(dialId, 'data-value', 'backside');
-                $(dialId).id = tempId; 
-            }
-            // Else (a player besides the current player declared) create a temporary dial above their player panel
-            else
+            // If the player who declared is not the current player we create a dial above their player panel
+            var dialElement = document.getElementById(dialId);
+            if (this.player_id != notif.player_id)
             {
                 var playerPanel = this.getPlayerPanelElement(notif.player_id);
-                dojo.create('div', {
-                    'id': tempId, 
+                dialElement = dojo.create('div', {
+                    'id': dialId, 
                     'class': 'dial',
                     'data-value': 'backside', 
                     'data-color': color,
                 }, playerPanel);
-                //this.placeOnObject(tempId, playerPanel);
             }
-
-            // Prepare the dial in the column
-            dojo.create('div', {
-                'id': dialId, 
-                'class': 'dial hide',
-                'data-value': 'backside', 
-                'data-color': color,
-            }, targetLocation);
+            else
+                dojo.attr(dialElement, 'data-value', 'backside');
             
+
+            await this.animationManager.slideAndAttach(dialElement, targetLocationElement);
+
             // Correct whitespace
             this.correctGapUnderBoard();
-            
-            // Move the temp dial into the column
-            // Mobile, targetLocation, duration, delay
-            await this.slideToObjectAndDestroy(tempId, dialId, 2000).promise;
-            dojo.removeClass(dialId, 'hide');
         },
 
-        // TODO This will need more attention when I finish declaring dials in frontend
-        notif_revealDials: function(notif)
+        notif_revealDials: async function(notif)
         {
             console.log('notif_revealDials');
             console.log(notif);
@@ -1225,6 +1317,21 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             {
                 dojo.attr(`dial_${player}`, 'data-value', notif.dials[player]['dial_value']);
             }   
+
+            // If this player lied, move their dial to the correct column
+            for (var i = 0; i < notif.new_turn_order.length; i++)
+            {
+                var player = notif.new_turn_order[i];
+                var dialInfo = notif.dials[player];
+                
+                if (dialInfo['dial_value'] !== dialInfo['dial_location'] || notif.screech)
+                {
+                    var dialElement = document.getElementById(`dial_${player}`);
+                    var containerElement = document.getElementById(this.actionToColumn(dialInfo['dial_value']) + 'Dials');
+                    await this.animationManager.slideAndAttach(dialElement, containerElement, {duration: 750});
+                    this.correctGapUnderBoard();
+                }
+            }
 
             if (notif.screech)
                 this.removeScreechEffect();
@@ -1248,12 +1355,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     source = this.treasureColumn;
                     break;
 
+                case 'skullsairsStash':
+                    source = this.specialLocation;
+                    break;
+
                 default:
                     source = this.waterDeck;
                     break;
             }
-            if (source != this.waterDeck)   
-                source.removeCard(card);
+            //if (source != this.waterDeck)   
+            source.removeCard(card, {slideTo: this.getPlayerPanelElement(notif.player_id)});
             
             // TODO Need to animate moving it to player panel
             this.handSizeCounters[notif.player_id].incValue(1);
@@ -1267,8 +1378,28 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             
             var card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
             console.log(card);
+
+            var source = null;
+            switch (notif.card.location)
+            {
+                case 'waterColumn':
+                    source = this.waterColumn;
+                    break;
+                    
+                case 'treasureColumn':
+                    source = this.treasureColumn;
+                    break;
+
+                case 'skullsairsStash':
+                    source = this.specialLocation;
+                    break;
+
+                default:
+                    source = this.waterDeck;
+                    break;
+            }
         
-            this.playerHand.addCard(card);
+            this.playerHand.addCard(card, {fromStock: source});
             this.handSizeCounters[this.player_id].incValue(1);
             this.correctGapUnderBoard();
         },
@@ -1277,7 +1408,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         {
             console.log('notif_actDiscard');
             console.log(notif);
-                
+
             card = {'id': notif.card.id, 'type': notif.card.type, 'type_arg': notif.card.type_arg};
             if (notif.location === 'discard')
             {
@@ -1294,6 +1425,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 this.specialLocation.addCard(card);
                 this.specialLocation.setCardVisible(card, true);
             }
+            this.handSizeCounters[notif.player_id].incValue(-1);
         },
 
         notif_actDiscardPrivate: function(notif)
@@ -1307,6 +1439,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             else if (notif.location === 'sharksBelly')
                 this.specialLocation.addCard(card);
             this.waterDiscard.setCardVisible(card, false);
+            this.handSizeCounters[this.player_id].incValue(-1);
         },
 
         notif_discard: function(notif)
@@ -1330,6 +1463,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 this.specialLocation.addCard(card);
                 this.specialLocation.setCardVisible(card, true);
             }
+            if (notif.player_id > 0)
+                this.handSizeCounters[notif.player_id].incValue(-1);
+            
         },
 
         notif_actPatch: function(notif)
@@ -1340,7 +1476,20 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             switch (notif.problem)
             {
                 case 'cannon':
+                    // Move the repaired cannon to the Cannons coloumn
                     this.operationalCannons.addCard(notif.card);
+                    
+                    // Move the associated die as well
+                    var cannonsDie = null; 
+                    for (const die of this.bustedDice.getDice())
+                    {
+                        if (die.id == notif.card.id)
+                        {
+                            cannonsDie = die;
+                            break;
+                        }
+                    }
+                    this.operationalDice.addDie(cannonsDie, {fromStock: this.bustedDice});
                     break;
 
                 case 'breach':
@@ -1393,7 +1542,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 case 'gemSifter':
                     break;
         
-                // Swap this card with a card in the Treasure Column.
+                // Swap this card with a card in the Treasure Column. | ￼Accept incoming change
                 case 'grabbyCrabby':
                     break;
         
@@ -1503,16 +1652,102 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 // Reveal a player's Dial. If they lied, draw 2 cards from the Water Deck. Otherwise, discard 2 cards.
                 case 'spyGlass':
                     break;
+            this.correctGapUnderBoard();    
+        },
+
+        notif_endScores: function(notif)
+        {
+            console.log('notif_endScores');
+            console.log(notif);
+
+            this.displayGameState(notif.hands, notif.enemyDefeated);
+        },
+        
+        // Kraken ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        notif_resolveKrakenSplash: function(notif)
+        {
+            console.log('notif_resolveKrakenSplash');
+            console.log(notif);
+            var card = notif.card;
+            card.type = 'backside';
+            
+            this.waterColumn.addCard(card, {fromStock: this.treasureColumn, initialSide: 'front', finalSide: 'back'});
+        },
+
+        notif_resolveKrakenAngered: function(notif)
+        {
+            console.log('notif_resolveKrakenAngered');
+            console.log(notif);
+
+            var dice = this.enemyDice.getDice();
+            for (var i = 0; i < dice.length; i++)
+            {
+                if (dice[i].color == 'Kraken' && dice[i].face == 5)
+                {
+                    this.discardDice.addDie(dice[i], {fromStock: this.enemyDice});
+                    break;
+                }
+            }
+        },
+
+        // Shark ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        notif_resolveSharkChompChomp: function(notif)
+        {
+            console.log('notif_resolveSharkChompChomp');   
+            console.log(notif);
+
+            var dice = this.enemyDice.getDice();
+            for (var i = 0; i < dice.length; i++)
+            {
+                if (dice[i].color == 'Shark' && dice[i].face == 2)
+                {
+                    this.discardDice.addDie(dice[i], {fromStock: this.enemyDice});
+                    break;
+                }
+            }
+        },
+
+        notif_resolveSharkSubmerged: function(notif)
+        {
+            console.log('notif_resolveSharkSubmerged');   
+            console.log(notif);
+
+            var dice = this.enemyDice.getDice();
+            for (var i = 0; i < dice.length; i++)
+            {
+                if (dice[i].color == 'Shark' && dice[i].face == 5)
+                {
+                    this.cannonColumnAttackDice.addDie(dice[i], {fromStock: this.enemyDice});
+                    break;
+                }
             }
         },
 
         // Move all cards from the Shark's Belly into the Water Column
         notif_theSharkReactsToDamage: function(notif)
         {
+
             console.log('notif_theSharkReactsToDamage');
             console.log(notif);
 
             notif.cardIds.forEach((id) => this.waterColumn.addCard({'id': id, 'type': 'backside', 'type_arg': 0}));
+        },
+
+        // Sirens ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        notif_resolveTemptingTune: function(notif)
+        {
+            console.log('notif_resolveTemptingTune');
+            console.log(notif);
+
+            var dice = this.enemyDice.getDice();
+            for (var i = 0; i < dice.length; i++)
+            {
+                if (dice[i].color == 'Sirens' && dice[i].face == 2)
+                {
+                    this.treasureColumnAttackDice.addDie(dice[i], {fromStock: this.enemyDice});
+                    break;
+                }
+            }
         },
 
         notif_resolveScreech: function(notif)
@@ -1523,21 +1758,14 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.addScreechEffect();
         },
 
-        // Skullsairs
+        // Skullsairs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         notif_resolveBoardingParty: function(notif)
         {
             console.log('notif_resolveBoardingParty');
             console.log(notif);
 
-            this.specialLocation.addCard(notif.card);           
+            this.specialLocation.addCard(notif.card, {fromStock: this.treasureColumn});           
+            this.correctGapUnderBoard();
         },
-
-        notif_endScores: function(notif)
-        {
-            console.log('notif_endScores');
-            console.log(notif);
-
-            this.displayGameState(notif.hands, notif.enemyDefeated);
-        },
-   });           
+   });             
 });

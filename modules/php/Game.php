@@ -103,9 +103,15 @@ class Game extends \Table
             $thresholdLevel = $this->globals->inc('THRESHOLD_LEVEL', 1);
 
             // STEP 4: Shuffle all cards in the Water deck, disard pile, and water and treasure columns to create a new water deck
-            $this->water->moveAllCardsInLocation('discard', 'deck');
-            $this->water->moveAllCardsInLocation('waterColumn', 'deck');
-            $this->water->moveAllCardsInLocation('treasureColumn', 'deck');
+            // (but first we make sure all those cards are facedown to prevent future issues)
+            foreach (['discard', 'waterColumn', 'treasureColumn'] as $location)
+            {
+                $cardIds = array_keys($this->water->getCardsInLocation($location));
+                if (count($cardIds) == 0)
+                    continue;
+                $this->setCardsOrientation($cardIds, false);
+                $this->water->moveAllCardsInLocation($location, 'deck');
+            }
             $this->water->shuffle('deck');
 
             // STEP 5: If there are any Breach cards in the Breaches column, discard all Breach cards and gain 1 Permanent Breach Token. Add the Permanent Breach Token to the top of the Breaches columm.
@@ -301,8 +307,17 @@ class Game extends \Table
         // Determine proper order
         $playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `dial_location`, `dial_value` FROM `player` ORDER BY `custom_order`');
         $sorted = ['bucket' => [], 'plunder' => [], 'patch' => [], 'fire' =>[]];    
+        $sortedLiars = ['bucket' => [], 'plunder' => [], 'patch' => [], 'fire' =>[]];   
         foreach ($playerInfo as $playerId => $details)
-            $sorted[$details['dial_value']][] = $playerId;
+        {
+            if ($details['dial_value'] === $details['dial_location'])
+                $sorted[$details['dial_value']][] = $playerId;
+            else
+                $sortedLiars[$details['dial_location']][] = $playerId;
+        }
+        $sortedLiars = array_merge($sortedLiars['bucket'], $sortedLiars['plunder'], $sortedLiars['patch'], $sortedLiars['fire']);
+        foreach ($sortedLiars as $playerId)
+            $sorted[$playerInfo[$playerId]['dial_value']][] = $playerId;
         $sorted = array_merge($sorted['bucket'], $sorted['plunder'], $sorted['patch'], $sorted['fire']);
 
         // Update the database to reflect new order
@@ -588,20 +603,28 @@ class Game extends \Table
 
         $activePlayer = $this->getActivePlayerId();
         $this->DbQuery("UPDATE `player` SET `dial_value`='$value', `dial_location`='$location' WHERE `player_id`=$activePlayer");
+        $screech = $this->globals->get('SIRENS_SCREECH');
 
-        $actionToColumn = [
-            'bucket' => 'Water Column',
-            'plunder' => 'Treasure Column',
-            'patch' => 'Breaches Column',
-            'fire' => 'Cannons Column',
-        ];  
-        $this->notify->all('actDeclareDial', clienttranslate('${player_name} placed their dial in the ${dial_location}'),
-            array(
-                'player_id' => $activePlayer,
-                'player_name' => $this->getPlayerNameById((int) $activePlayer),
-                'dial_location' => $actionToColumn[$location],
-                'screech' => $this->globals->get('SIRENS_SCREECH'),
-            ));
+        if ($screech)
+        {
+            $this->notify->all('actDeclareDial', clienttranslate('${player_name} declared their dial'),
+                array(
+                    'player_id' => $activePlayer,
+                    'player_name' => $this->getPlayerNameById((int) $activePlayer),
+                    'screech' => $screech,
+                ));
+        }
+        else
+        {
+            $this->notify->all('actDeclareDial', clienttranslate('${player_name} placed their dial in the ${dial_location}'),
+                array(
+                    'player_id' => $activePlayer,
+                    'player_name' => $this->getPlayerNameById((int) $activePlayer),
+                    'dial_location_shorthand' => $location,
+                    'dial_location' => $this->tokens['actionToColumn'][$location],
+                    'screech' => $screech,
+                ));
+        }
 
         $this->gamestate->nextState('next');
     }
@@ -609,8 +632,8 @@ class Game extends \Table
     public function actDraw(string $cardId, string $location)
     {
         // Check that the paramaters are allowed by redirecting to the correct arg function with functional programming technique
-        // It might seem odd to have different arg functions, but this simple draw is an allowed action in 3 of the 4 different dial actions (bucket, plunder, patch)
-        //  and they all work the same at their core but have access to different cards and have little details to control flow
+        // It might seem odd to have different arg functions, but this simple draw is an allowed action in all four dial actions (even fire if playing skullsairs)
+        // and they all work the same at their core but have access to different cards and have little details to control flow
         $playerId = $this->gamestate->getActivePlayerList()[0];
         $currentState = $this->getStateName();
         $argFunction = 'arg' . ucfirst($currentState);
@@ -632,7 +655,7 @@ class Game extends \Table
             $message = "Location given: $location, expected <{$args['location']}>";
 
         // $args['possibleIdsDraw'] is a list of ids of cards that could be drawn, where $args['possibleToDraw'] is a list of the cards that could be drawn
-        // 'possibleIdsDraw' was the original idea, I think Im going to refactor to 'possibleToDraw' to work better with selecting cards in the front end
+        // 'possibleIdsDraw' was the original idea, I think Im going to refactor to 'possibleToDraw' to work better with selecting cards in the frontend
         // We will probably phase out 'possibleIdsDraw' and move to the 'possibleToDraw' model but in the transitional time we'll just allow both 
         else if (in_array('possibleIdsDraw', array_keys($args)) && !in_array((int) $cardId, $args['possibleIdsDraw'], true))
         {
@@ -1092,8 +1115,8 @@ class Game extends \Table
 
         // Actually execute the action now that we have verified the input
         // If it was a miss, mark that the cannon was activated (if successful, it was marked as activated by fireCannons)
-        $this->notifyForCardsDiscarded(array($this->water->getCard($cardId)), intval($this->getActivePlayerId()));
         $this->discard($cardId);
+        $this->notifyForCardsDiscarded(array($this->water->getCard($cardId)), intval($this->getActivePlayerId()), 'discard', false);
         if (!$this->fireCannons(array($cannonId)))
             $this->addToLIST($cannonId);
 
@@ -1195,7 +1218,6 @@ class Game extends \Table
             }
         }   
         
-
         if ($state === STATE_PLAY_CARD)
             $this->gamestate->setPlayerNonMultiactive($this->globals->get('PREVIOUS_PLAYER'), 'next');  
         else
@@ -1220,7 +1242,10 @@ class Game extends \Table
         if ($this->cannons->countCardInLocation('cannonsColumn') > 0)
             array_push($possibleActions, 'fire');
 
-        return ['possibleActions' => $possibleActions];
+        return [
+            'possibleActions' => $possibleActions, 
+            'screech' => $this->globals->get('SIRENS_SCREECH'),
+        ];
     }
 
     public function argResolveBucket()
@@ -1263,7 +1288,7 @@ class Game extends \Table
         if ($this->globals->get('SIRENS_TEMPTING_TUNE') > 0 && $this->globals->get('COUNTER') <= 0)
         {
             $plunderers = array_keys($this->getCollectionFromDB("SELECT `player_id` FROM `player` WHERE `dial_value`='plunder' ORDER BY `custom_order`"));
-            if ($activePlayer === $plunderers[count($plunderers) - 1])
+            if ($activePlayer === $plunderers[count($plunderers) - 1] && count($plunderers) > $this->water->countCardInLocation('treasureColumn'))
                 $canTemptingTune = true;
         }
         if ($canTemptingTune)
@@ -1499,7 +1524,7 @@ class Game extends \Table
         // Dials!
         // Tell the client what dials to place where, and what value they should display
         // This is a bit trickier than it sounds. We have to be careful not to tell the client more than the player should know at the current moment. This means hiding the value of the dial of other players if it is too early (or if the sirens' screech attack is active)
-        $dialsInfo = $this->getCollectionFromDb('SELECT `player_id` `id`, `dial_location`, `dial_value` FROM `player`');
+        $dialsInfo = $this->getCollectionFromDb('SELECT `player_id` `id`, `dial_location`, `dial_value` FROM `player` ORDER BY `custom_order`');
         $dials = [];
         foreach ($dialsInfo as $id => $details)
         {
@@ -1577,12 +1602,8 @@ class Game extends \Table
         $result['breaches'] = array_reverse($this->breaches->getCardsInLocation('breachesColumn', null, 'location_arg'));
 
         // Cannons
-        $cannons = [
-            'busted' => $this->cannons->getCardsInLocation('breachesColumn', null, 'location_arg'),
-            'operational' => $this->cannons->getCardsInLocation('cannonsColumn', null, 'location_arg'),
-        ];
-        $result['bustedCannons'] = array_reverse($cannons['busted']);
-        $result['operationalCannons'] = array_reverse($cannons['operational']);
+        $result['bustedCannons'] = array_reverse($this->cannons->getCardsInLocation('breachesColumn', null, 'location_arg'));
+        $result['operationalCannons'] = array_reverse($this->cannons->getCardsInLocation('cannonsColumn', null, 'location_arg'));
         
         // This player's hand
         $result['hand'] = $this->water->getPlayerHand($currentPlayerId);
@@ -1599,7 +1620,7 @@ class Game extends \Table
         foreach (['busted', 'operational'] as $cannonType)
         {
             $dice = [];
-            foreach ($cannons[$cannonType] as $card)
+            foreach ($result[$cannonType . 'Cannons'] as $card)
             {
                 $dice[] = ['id' => $card['id'], 'color' => 'Cannon' . $diceInfo[$card['id']]['type'], 'face' => $diceInfo[$card['id']]['value']];
             }
@@ -1994,6 +2015,16 @@ class Game extends \Table
         $this->water->moveCard($cardId, 'hand', $player);
         $this->notifyForCardsDrawn($player, array($card));
     }
+    
+    public function debug_rollEnemyDice()
+    {
+        $this->stRollEnemyDice();
+    }
+
+    public function debug_resolveEnemyDice()
+    {
+        $this->stResolveEnemyDice();
+    }
 
     // Helper Functions! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     public function getStateName()
@@ -2009,7 +2040,7 @@ class Game extends \Table
 
     public function getNextPlayer(): int
     {
-        $playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_location` FROM `player` ORDER BY `custom_order`');
+        $playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_value` FROM `player` ORDER BY `custom_order`');
         $previousPlayer = $this->globals->get('PREVIOUS_PLAYER');
         $nextPlayer = '';
         
@@ -2029,13 +2060,13 @@ class Game extends \Table
         }
         
         // Special case: previous player plundered (Does it need to wrap around for more plundering?)
-        if ($previousPlayer !== 'none' && $playerInfo[$previousPlayer]['dial_location'] === 'plunder')
+        if ($previousPlayer !== 'none' && $playerInfo[$previousPlayer]['dial_value'] === 'plunder')
         {
             // If the next player is plundering, then it couldn't possibly wrap
-            $nobodyPlundersNext = $nextPlayer <= 0 || $playerInfo[$nextPlayer]['dial_location'] !== 'plunder';
+            $nobodyPlundersNext = $nextPlayer <= 0 || $playerInfo[$nextPlayer]['dial_value'] !== 'plunder';
 
             // Dial values of each player in order (e.g. ['bucket', 'plunder', 'plunder', 'patch', 'fire'])
-            $dialValues = array_column(array_values($playerInfo), 'dial_location'); 
+            $dialValues = array_column(array_values($playerInfo), 'dial_value'); 
             $plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
             $theresStillEnoughTreasure = $this->water->countCardInLocation('treasureColumn') >= $plunderingPlayersNbr;
                 
@@ -2116,7 +2147,11 @@ class Game extends \Table
 
         // Treasure column max length enforcement
         if ($column === 'treasureColumn' && $this->water->countCardInLocation('treasureColumn') > 5)
-            $this->discard((int) $this->water->getCardOnTop('treasureColumn')['id']);
+        {
+            $discardId = (int) $this->water->getCardOnTop('treasureColumn')['id'];
+            $discardedCard = $this->discard($discardId);
+            $this->notifyForCardsDiscarded([$discardedCard], -1, 'discard', false);
+        }
         return (int) $cardId;
     }
 
@@ -2165,6 +2200,7 @@ class Game extends \Table
         // Deal a damage to the enemy for each successful hit!
         $rolls = $this->getNonEmptyCollectionFromDB("SELECT `die_id`, `type`, `value` FROM `dice` WHERE `die_id` in ('" . implode("','", $cannonIds) . "')"); 
         $successes = 0;
+        $diceChanged = array();
 
         foreach ($rolls as $id => $details) 
         {
@@ -2184,7 +2220,9 @@ class Game extends \Table
                 else
                 {
                     $successes++;
-                    $this->damageEnemy();
+                    $dieChanged = $this->damageEnemy();
+                    if ($dieChanged != null)
+                        $diceChanged[] = $dieChanged;
                     $this->addToLIST($id);
                 }
             }
@@ -2194,12 +2232,14 @@ class Game extends \Table
             'rolls' => $rolls,
             'hitNbr' => $successes,
             'newHp' => $this->globals->get('ENEMY_HP'),
+            'enemyDiceChanged' => $diceChanged,
         ));
         return $successes > 0;
     }
     
     public function damageEnemy()
     {
+        $dieChanged = null;
         if ($this->globals->get('ENEMY_HP') > 0)
         {
             $hp = $this->globals->inc('ENEMY_HP', -1);
@@ -2209,18 +2249,22 @@ class Game extends \Table
             // Add/Remove a basic die if necessary
             if (array_key_exists($hp, $enemyInfo['adjustBasicDice']))
             {
-                $dieIds = array_keys($this->getCollectionFromDB("SELECT `die_id` FROM `dice`"));
+                $dice = $this->getCollectionFromDB("SELECT `die_id`, `type`, `value` FROM `dice`");
+                $dieIds = array_keys($dice);
                 $dieIds = array_map('intval', $dieIds);
                 $maxDieId = max($dieIds);
+                $dieChanged = array('id' => $maxDieId, 'color' => 'Basic', 'face' => \bga_rand(1,6));
 
                 switch ($enemyInfo['adjustBasicDice'][$hp])
                 {
                     case 1:
                         $maxDieId++;
-                        $this->DbQuery("INSERT INTO `dice` VALUES ('$maxDieId', 'basic', '" . \bga_rand(1,6) . "')");
+                        $dieChanged['id']++;
+                        $this->DbQuery("INSERT INTO `dice` VALUES ('$maxDieId', 'basic', " . $dieChanged['face'] . ")");
                         break;
 
                     case -1:
+                        $dieChanged['face'] = $dice[$maxDieId]['value'];
                         $this->DbQuery("DELETE FROM `dice` WHERE `die_id` = '$maxDieId'");
                         break;
                 }
@@ -2234,6 +2278,7 @@ class Game extends \Table
                 $this->$reaction();
             }
         }
+        return $dieChanged;
     }
 
     public function notifyForCardsDrawn(int $playerId, array $cards)
@@ -2302,6 +2347,7 @@ class Game extends \Table
                     'card_description' => $cardDescription,
                     'card' => $card,
                     'location' => $location,
+                    'player_id' => $playerId,
                 ));
             else
                 $this->notify->all('discard', clienttranslate('${player_name} discarded a ${card_description}'), array(
@@ -2896,8 +2942,8 @@ class Game extends \Table
         $this->addToColumn('waterColumn', null, $card['id']);
         $this->setCardOrientation((int) $card['id'], false);
         $this->notify->all('resolveKrakenSplash', clienttranslate('Resolved Splash die result: Moved ${card_description} from the top of the Treasure Column face-down into the Water Column'), array(
-            'id' => $card['id'],
             'card_description' => $this->tokens['waterDeck'][$card['type']]['name'],
+            'card' => $card,
         ));
     }
     
@@ -2994,7 +3040,7 @@ class Game extends \Table
 
             if ($card['type'] !== 'clearWater')
             {
-                $this->water->insertCardOnExtremePosition('skullsairsStash', $card['id'], true);
+                $this->water->insertCardOnExtremePosition($card['id'], 'skullsairsStash', true);
                 $this->notifyForCardsDiscarded([$card], intval($playerId), 'skullsairsStash', false);
             }
         }
