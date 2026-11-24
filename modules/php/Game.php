@@ -342,57 +342,51 @@ class Game extends \Table
                 $this->bga->playerStats->inc("{$details['dial_value']}_turns", 1, $id);
         }
 
-        $this->gamestate->nextState('resolveBucketHelper');
+        $this->gamestate->nextState('next');
     }
 
-    public function stResolveBucketHelper()
+    // This will be the new game state that will act as the brain of the operation. It shall manage round structure, turn order, updates to the database to reflect or prepare for game state changes
+    public function stBrain()
     {
         $nextPlayer = $this->getNextPlayer();
-        $nextAction = 'upkeep';
-        
+        $nextAction = 'nextRound';
+
         if ($nextPlayer > 0)
         {
             $nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
-            if ($nextAction === 'bucket')
+
+            // Reset the LIST if we are done with patching and doing something else
+            if ($nextAction !== 'patch' && array_key_exists('availableHammers', (array) $this->globals->get('LIST')))
+                $this->globals->set('LIST', array());
+
+            switch ($nextAction)
             {
-                // Update active player
-                $this->gamestate->changeActivePlayer($nextPlayer);
-                $this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
+                case 'bucket':
+                    // Bucketing is straightforward, we just need to 
+                    //  1. Change active player
+                    //  2. Indicate they need to draw first (FLAG=true) 
+                    //  3. Indicate whether they are drawing 1 or 2 cards (COUNTER=1 or COUNTER=2)
 
-                // Set FLAG to true (indicates that the player needs to draw now)
-                $this->globals->set('FLAG', true);
+                    // 1. Update active player
+                    $this->gamestate->changeActivePlayer($nextPlayer);
+                    $this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
 
-                // Set COUNTER to indicate how many draws are needed
-                // (and remember $nextPlayer needs updated since we changed active player)
-                $nextPlayer = $this->getNextPlayer();
-                $scale = ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket') ? 1 : 2;
-                $this->globals->set('COUNTER', $scale);
-            }
-        }   
+                    // 2. Set FLAG to true (indicates that the player needs to draw now)
+                    $this->globals->set('FLAG', true);
 
-        // Commence state change
-        // If the next player is doing a Bucket action, the prepwork is done and this moves to STATE_RESOLVE_BUCKET
-        // If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
-        // If there is not another player, goes to STATE_UPKEEP
-        $this->gamestate->nextState($nextAction);
-    }
+                    // 3. Set COUNTER to indicate how many draws are needed
+                    // If there is another player to go and their action is bucketing then only draw 1, else draw 2
+                    // (and remember $nextPlayer needs updated since we changed active player)
+                    $nextPlayer = $this->getNextPlayer();
+                    $scale = ($nextPlayer > 0 && $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'") === 'bucket') ? 1 : 2;
+                    $this->globals->set('COUNTER', $scale);
+                    break;
 
-    public function stResolvePlunderHelper()
-    {
-        $nextPlayer = $this->getNextPlayer();
-        $nextAction = 'upkeep';
-        
-        if ($nextPlayer > 0)
-        {
-            $nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
-            if ($nextAction === 'plunder')
-            {
-                // If FLAG is true, then this is the first time here this round and we need to decide what happens:
-                // 1. If there is only 1 person plundering, they get all the treasure
-                // 2. Treasure nbr >= plundering players nbr, let the players select their treasure
-                // 3. Treasure nbr < plundering players nbr, discard all treasure and move on to the next action
-                if ($this->globals->get('FLAG'))
-                {
+                case 'plunder':
+                    // Plundering is a lot more complicated. There are multiple possible outcomes. We need to decide which one we have and handle it appropriately.
+                    //  1. There is only one plunderer. Give them everything and move on
+                    //  2. There are several plunderers but theres is enough to go around
+                    //  3. There are more plunderers than treasure! All the treasure is lost and move on 
                     $playerInfo = $this->getCollectionFromDB('SELECT `player_id`, `custom_order`, `dial_value` FROM `player` ORDER BY `custom_order`');
                     $dialValues = array_column(array_values($playerInfo), 'dial_value'); 
                     $plunderingPlayersNbr = array_count_values($dialValues)['plunder'];
@@ -400,7 +394,7 @@ class Game extends \Table
                     $moveOnToNextAction = false;
 
                     // 1. Only 1 plunderer! Give them all that precious treasure ARGH!! 
-                    //    (no need for player states, just move on to the next helper state
+                    //    (no need for player states, give them the treasure and restart the brain state
                     if ($plunderingPlayersNbr == 1)
                     {
                         // We need the cards in question (in card format for the notifications)
@@ -413,18 +407,20 @@ class Game extends \Table
                         $this->notifyForCardsDrawn($nextPlayer, $cardsDrawn);
                     
                         // Update the database so that those cards are facedown (minor but keeps the obfuscation right)
-                        // Must occur AFTER the notification: since they were faceup, the cards drawn are not obfuscated from other players
+                        // Must occur AFTER the notification: 
+                        //  Since they were faceup, these cards were not obfuscated from other players in the notification
                         $this->setCardsOrientation(array_column($cardsDrawn, 'id'), false);
-
+                            
+                        // Indicating the plundering is done and we can do a different action
                         $moveOnToNextAction = true;
 
                         // Stats work
                         $this->bga->tableStats->inc('treasure_plundered', count($cardsDrawn));
                     }
                     // 2. Several plunderers with enough to go around
-                    else if ($treasureNbr >= $plunderingPlayersNbr)
+                    else if ($treasureNbr >= $plunderingPlayersNbr || !$this->globals->get('FLAG'))
                     {
-                        // Setting FLAG to false indicates treasure is getting divided (Makes future stResolvePlunderHelper visits much simpler)
+                        // Setting FLAG to false indicates treasure is getting divided (Makes future brain visits for plundering much simpler)
                         $this->globals->set('FLAG', false); 
                         $this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
                         $this->globals->set('COUNTER', 1);
@@ -456,106 +452,101 @@ class Game extends \Table
                             $this->gamestate->changeActivePlayer($lastPlunderer);
                         }
                         else
-                            $nextAction = 'patch';
+                            $nextAction = 'again';
                             // No need to update FLAG since it should still be true
                     }
+                    // Else we need the plunder active state to get player input and conveniently the value of $nextAction is still 'plunder'
+                    break;
 
-                }
-                // If FLAG is false: we're dividing treasure among several players. Give the next player a turn 
-                // This looks simple because the logic for determining whether it should loop around or not is all in the getNextPlayer
-                else
-                {
-                    $this->gamestate->changeActivePlayer($nextPlayer);
-                    $this->globals->set('PREVIOUS_PLAYER', $nextPlayer);
-                    $this->globals->set('COUNTER', 1);
-                }
-            }
-        }
+                case 'patch':
+                    // Dont update active player because its a multiactiveplayer state 
+                    $this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
 
-        // Commence state change
-        // If the next player is doing a plunder action, the prepwork is done and this moves to STATE_RESOLVE_PLUNDER
-        // If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
-        // If there is not another player, goes to STATE_UPKEEP
-        $this->gamestate->nextState($nextAction);
-    }
+                    // Set FLAG to true (indicates that the player needs to draw now)
+                    $this->globals->set('FLAG', true);
 
-    public function stResolvePatchHelper()
-    {
-        $nextPlayer = $this->getNextPlayer();
-        $nextAction = 'upkeep';
-        
-        if ($nextPlayer > 0)
-        {
-            $nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
-            if ($nextAction === 'patch')
-            {
-                // Dont update active player (because its a multiactiveplayer state now)
-                $this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
-
-                // Set FLAG to true (indicates that the player needs to draw now)
-                $this->globals->set('FLAG', true);
-
-                // If this is the first patching player, set up the LIST to contain a list of all hammers
-                // failedBreaches should reset at the beginning of each patching player's turn 
-                //      (maybe someone said no during someone elses turn because they want to do it on their turn?)
-                $list = (array) $this->globals->get('LIST');
-                $list['failedBreaches'] = array();
-                if (!array_key_exists('availableHammers', $list))
-                {
-                    $patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
-                    $list['availableHammers'] = array_values($patchingPlayers);
+                    // If this is the first patching player, set up the LIST to contain a list of all hammers
+                    // failedBreaches should reset at the beginning of each patching player's turn 
+                    //      (maybe someone said no during someone elses turn because they want to do it on their turn?)
+                    $list = (array) $this->globals->get('LIST');
+                    $list['failedBreaches'] = array();
+                    if (!array_key_exists('availableHammers', $list))
+                    {
+                        $patchingPlayers = $this->getObjectListFromDB("SELECT `player_id` FROM `player` WHERE `dial_value` = 'patch' ORDER BY `custom_order`", true);
+                        $list['availableHammers'] = array_values($patchingPlayers);
+                    }
                     $this->globals->set('LIST', $list);
-                }
+                    $this->gamestate->setPlayersMultiactive(array($nextPlayer), 'resolvePatch', true);
+                    break;
+                    
+                case 'fire':
+                    // Update active player
+                    $this->gamestate->changeActivePlayer($nextPlayer);
+                    $this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
+
+                    // Set FLAG to true (indicates that the player needs to draw now)
+                    $this->globals->set('FLAG', true);
+                    $this->globals->set('COUNTER', 0);
+                    break;
+
+                default:
+                    // Log some error here
+                    break;
             }
-            else 
-            {
-                $this->globals->set('LIST', array());
-            }
-        }   
-
-        // Commence state change
-        // If the next player is doing a Patch action, the prepwork is done and this moves to STATE_RESOLVE_PATCH
-        // If the next player is doing a different action, redirects to the appropriate game state STATE_RESOLVE_X_HELPER
-        // If there is not another player, goes to STATE_UPKEEP
-        if ($nextAction === 'patch')
+        }       
+        // upkeep
+        else 
         {
-            $this->gamestate->setPlayersMultiactive(array($nextPlayer), 'resolvePatch', true);
-        }
-        $this->gamestate->nextState($nextAction);
-    }
+            // Update round counter
+            $this->bga->tableStats->inc("rounds_number", 1);
 
-    public function stResolveFireHelper()
-    {
-        $nextPlayer = $this->getNextPlayer();
-        $nextAction = 'upkeep';
-        
-        if ($nextPlayer > 0)
-        {
-            $nextAction = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$nextPlayer'");
-            if ($nextAction === 'fire')
-            {
-                // Update active player
-                $this->gamestate->changeActivePlayer($nextPlayer);
-                $this->globals->set('PREVIOUS_PLAYER', $nextPlayer); 
+            // Check hand size
+            $this->checkHandSize();
 
-                // Set FLAG to true (indicates that the player needs to draw now)
+            // Pass First Mate to the left
+            $playerInfo = $this->getCollectionFromDB("SELECT `player_id`, `player_no` FROM player ORDER BY `player_no`", true);
+            $oldFirstMate = $this->globals->get('FIRST_MATE');
+            $newFirstMateIndex = $playerInfo[$oldFirstMate] % count($playerInfo); // Going from 1 indexed to 0 indexed, so we don't need the + 1 you'd expect here
+            $newFirstMate = array_keys($playerInfo)[$newFirstMateIndex];
+            $this->globals->set('FIRST_MATE', $newFirstMate);
+
+            // Update the custom_order field to reflect the new First mate
+            $updateString = '';
+            $newFirstMateIndex++; // Adjust for player_no and custom_order being 1 indexed instead of 0 indexed
+            for ($i = 1; $i <= count($playerInfo); $i++)
+                $updateString .= "WHEN $i THEN " . ($i - $newFirstMateIndex + 60) % count($playerInfo) + 1 . ' '; 
+            //  The + 60 is to avoid the negative domain of %, LCM({3,4,5,6}) = 60. Really it could have been any multiple of current player count
+                $this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_no` $updateString END");
+
+                // Reset globals for a new round
+                $this->DbQuery("UPDATE `player` SET `dial_location` = 'player'");
+                $this->globals->set('PREVIOUS_PLAYER', 'none');
                 $this->globals->set('FLAG', true);
                 $this->globals->set('COUNTER', 0);
-            }
-        }   
+                $this->globals->set('LIST', []);
 
-        // Commence state change
-        // If the next player is doing a Fire action, the prepwork is done and this moves to STATE_RESOLVE_FIRE
-        // If there is not another player, goes to STATE_UPKEEP
+                // Resetting enemy effects
+                $this->globals->set('KRAKEN_ANGERED', 0);
+                $this->globals->set('SHARK_CHOMP_CHOMP', 0);
+                $this->globals->set('SHARK_SUBMERGED', 0);
+                $this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+                $this->globals->set('SIRENS_SCREECH', false);
+        }
+
+
+        // Commence state change, all prepwork completed
+        // Will direct to whichever active state handles the nextAction if there is another action to be done
+        // If there is not another action to be done, goes to STATE_UPKEEP
         $this->gamestate->nextState($nextAction);
     }
-
-    public function stUpkeep()
+                    
+    public function stPlayCardHelper()
     {
-        // Update round counter
-        $this->bga->tableStats->inc("rounds_number", 1);
+        $this->gamestate->nextState("next");
+    }
 
-        // Check hand size
+    public function checkHandSize()
+    {
         $playerCardNbr = $this->water->countCardsByLocationArgs('hand');
         foreach ($playerCardNbr as $playerId => $nbr)
         {
@@ -573,38 +564,6 @@ class Game extends \Table
             }
         }
 
-        // Pass First Mate to the left
-        $playerInfo = $this->getCollectionFromDB("SELECT `player_id`, `player_no` FROM player ORDER BY `player_no`", true);
-        $oldFirstMate = $this->globals->get('FIRST_MATE');
-        $newFirstMateIndex = $playerInfo[$oldFirstMate] % count($playerInfo); // Going from 1 indexed to 0 indexed, so we don't need the + 1 you'd expect here
-        $newFirstMate = array_keys($playerInfo)[$newFirstMateIndex];
-        $this->globals->set('FIRST_MATE', $newFirstMate);
-
-        // Update the custom_order field to reflect the new First mate
-        $updateString = '';
-        $newFirstMateIndex++; // Adjust for player_no and custom_order being 1 indexed instead of 0 indexed
-        for ($i = 1; $i <= count($playerInfo); $i++)
-            $updateString .= "WHEN $i THEN " . ($i - $newFirstMateIndex + 60) % count($playerInfo) + 1 . ' '; 
-        //  The + 60 is to avoid the negative domain of %, LCM({3,4,5,6}) = 60. Really it could have been any multiple of current player count
-        $this->DbQuery("UPDATE `player` SET `custom_order` = CASE `player_no` $updateString END");
-
-        // Reset globals for a new round
-        $this->DbQuery("UPDATE `player` SET `dial_location` = 'player'");
-        $this->globals->set('PREVIOUS_PLAYER', 'none');
-        $this->globals->set('FLAG', true);
-        $this->globals->set('COUNTER', 0);
-        $this->globals->set('LIST', []);
-
-        // Enemy items  
-        $this->globals->set('KRAKEN_ANGERED', 0);
-        $this->globals->set('SHARK_CHOMP_CHOMP', 0);
-        $this->globals->set('SHARK_SUBMERGED', 0);
-        $this->globals->set('SIRENS_TEMPTING_TUNE', 0);
-        $this->globals->set('SIRENS_SCREECH', false);
-
-        // If we have met either end game condition, proceed to game end. Else start a new round
-        ($this->globals->get('ENEMY_HP') > 0 && $this->globals->get('THRESHOLD_LEVEL') <= 4) ? 
-            $this->gamestate->nextState('anotherRound') : $this->gamestate->nextState('gameEnd');
     }
 
 //  public function stEndGameScoring()
@@ -1169,6 +1128,76 @@ class Game extends \Table
         ($this->globals->get('ENEMY_HP') > 0) ? $this->gamestate->nextState('again') : $this->gamestate->nextState('endGame');
     }
 
+    public function actPlayCard(int $cardId)
+    {
+        $args = $this->argPlayCard();
+
+        // Fail if actPlayCard is not allowed or the card in question is not viable
+        $message = '';
+        if (!in_array('PlayCard', $args['possibleActions']))
+        {
+            $possibleActions = implode(',', $args['possibleActions']);
+            $message = "PlayCard not in possibleActions: <$possibleActions>";
+        }
+        else if (!in_array($cardId, array_column($args['validPlays'], 'id')))
+        {
+            $possibleIds = implode(',', array_column($args['validPlays'], 'id'));
+            $message = "CardId given: $cardId, expected to be one of <$possibleIds>";
+        }
+
+        if ($message !== '')
+            throw new \BgaSystemException("playCard: item: $cardName, sourcePlayer: $sourcePlayer not allowed in state {$this->getStateName()}\n($message)");
+
+
+        // If no additional information is required then immediately play the card!
+        if (true)
+        {
+            $this->playCard($cardId);
+            $this->gamestate->setPlayerNonMultiactive($this->globals->get('PREVIOUS_PLAYER'), 'next');  
+        }
+        // Additional information is required to play the card
+        else
+        {
+            $list = (array) $this->globals->get('LIST');
+            $list['playCardInfo'] = array('id' => $cardId, 'name' => '', 'input' => array());
+            $this->globals->set('LIST', $list);
+            $this->gamestate->nextState('again');
+        }
+    }
+
+    public function actContributeInformation(int $information)
+    {
+        $args = $this->argPlayCard();
+
+        $message = '';
+        if (!in_array('ContributeInformation', $args['possibleMoves']))
+            $message = 'ContributeInformation not in possible moves';
+        else if (!in_array($information, $args['possibleValues']))
+        {
+            $expectedValues = implode(',', $args['possibleValues']);
+            $message = "Value given: $information, Expected to be one of: <$expectedValues>";
+        }
+        
+        if ($message !== '')
+            throw new \BgaSystemException("ContributeInformation Value of $information not allowed in state {$this->getStateName()}\n($message)");
+
+        // Update the list so it has this new information
+        $list = (array) $this->globals->get('LIST');
+        $list['playCardInfo']['input'][] = $information;
+        $this->globals->set('LIST', $list);
+
+        // If we have all of the required info then resolve the card play, else repeat!
+        $nextAction = 'again';
+        if (count($list['playCardInfo']['input']) > 100)
+        {
+            $nextAction = 'next';
+            $this->playCard($list['playCardInfo']['id']);
+        }
+
+        // TODO If we need input from a different player we need to give them activeplayer
+        $this->gamestate->nextState($nextAction);
+    }
+
     public function actPass()
     {
         $state = $this->gamestate->getCurrentMainStateId();
@@ -1189,12 +1218,17 @@ class Game extends \Table
             }
         }   
         
-        // Most common pass logic: Resets all globals
-        $this->globals->set('FLAG', true);
-        $this->globals->set('COUNTER', 0);
-        $this->globals->set('LIST', []);
-        $this->globals->set('SIRENS_TEMPTING_TUNE', 0);
-        $this->gamestate->nextState('next');
+        if ($state === STATE_PLAY_CARD)
+            $this->gamestate->setPlayerNonMultiactive($this->globals->get('PREVIOUS_PLAYER'), 'next');  
+        else
+        {
+            // Most common pass logic: Resets all globals
+            $this->globals->set('FLAG', true);
+            $this->globals->set('COUNTER', 0);
+            $this->globals->set('LIST', []);
+            $this->globals->set('SIRENS_TEMPTING_TUNE', 0);
+            $this->gamestate->nextState('next');
+        }
     }
     
     public function argDeclareDial()
@@ -1377,6 +1411,39 @@ class Game extends \Table
         // Everything that could be done was done, and the player must now pass.
         $args['possibleActions'] = ['Pass'];
         $args['instruction'] = clienttranslate('must pass');
+        return $args;
+    }
+
+    public function argPlayCard()
+    {
+        $args = [];
+        $args['possibleActions'] = ['Pass'];
+        $args['validPlays'] = array(); 
+
+        $playerId = $this->globals->get('PREVIOUS_PLAYER');
+        $hand = $this->water->getPlayerHand($playerId);
+
+        // TODO Eventually trigger needs to be able to handle the other 3 cases
+        $trigger = $this->getUniqueValueFromDB("SELECT `dial_value` FROM `player` WHERE `player_id`='$playerId'");
+        $trigger = "resolve $trigger";
+    
+        // Determine which cards are playable right now
+        foreach ($hand as $id => $details)
+        {
+            // If this item has a trigger AND that trigger contains trigger (contains to account for the ones with multiple triggers separated by ' OR ')
+            // TODO Add a condition to check that the card specific conditons are met
+//          if (key_exists('trigger', $this->tokens['waterDeck'][$details['type']]) 
+//              && str_contains($this->tokens['waterDeck'][$details['type']]['trigger'], $trigger))
+            if (($cardsTrigger = $this->tokens['waterDeck'][$details['type']]['trigger'] ?? false) &&
+                (str_contains($cardsTrigger, $trigger) || $cardsTrigger === 'resolve dial'))
+            {
+                $args['validPlays'][] = ['id' => $id, 'name' => $this->tokens['waterDeck'][$details['type']]['name']];
+            }
+        }
+
+        if (count($args['validPlays']) > 0)
+            $args['possibleActions'][] = 'PlayCard';
+        
         return $args;
     }
 
@@ -1938,6 +2005,17 @@ class Game extends \Table
         $this->globals->set('THRESHOLD_LEVEL', 4);
     }
 
+    #[Debug(reload: true)]
+    public function debug_getCard(string $cardName)
+    {
+        $player = $this->getCurrentPlayerId();
+        $cardId = $this->DbQuery("SELECT `card_id` FROM `water` WHERE `card_type`='$cardName'");
+        $card = $this->water->getCard($cardId);
+
+        $this->water->moveCard($cardId, 'hand', $player);
+        $this->notifyForCardsDrawn($player, array($card));
+    }
+    
     public function debug_rollEnemyDice()
     {
         $this->stRollEnemyDice();
@@ -2463,103 +2541,195 @@ class Game extends \Table
     // Items!?!
     // All items with actual effects (not just points), in alphabetical order.
     // I'll slowly fill in the logic for each... sounds like fun!
-    public function itemsDoStuffIGuess(array $input): bool 
+    public function playCard($cardId)
     {
-        $message = ''; 
-        $item = $input['item']; 
-        $itemId = $input['itemId'];
-        $card = $this->water->getCard($itemId);
 
-        if ($item == null || !array_key_exists($item, $tokens['waterDeck']))
-            $message = 'Item does not exist!';
-        else if ($card['location'] != 'hand' || $card['location_arg'] != $input['sourcePlayer'])
-            $message = "Source player does not have the card in their hand!";
-        else if (!$in_array($input['condition'], $tokens['waterDeck'][$item]['condition']))
-            $message = "Item must be played in reaction to the condition {$tokens['waterDeck'][$item]['condition']}, not {input['condition']}";
+// OK SO SOMEWHERE IN THIS BLOCK IS THE SYNTAX ERROR, SOMETHING ABOUT A =
+
+        $card = $this->water->getCard($cardId);
+        $cardName = $card['type'];
+        $sourcePlayer = $this->globals->get('PREVIOUS_PLAYER');
+        $input = []; // WHAT IN THE WORLD IS THIS ANYWAYS?? This input that is missing is probably the problem...
+
+        $message = ''; 
+        if ($cardName == null || !array_key_exists($cardName, $this->tokens['waterDeck']))
+            $message = "Item $cardName does not exist!";
         // TODO check that the needed player input are incliuded in $input (a player, a dial value, etc)
 
         if ($message !== '')
         {
             $this->dump('input', $input);
-            throw new \BgaSystemException("itemsDoStuffIGuess: item: {$item}, sourcePlayer: {$input['sourcePlayer']} not allowed in state {$this->getStateName()}\n($message)");
+            throw new \BgaSystemException("playCard: item: $cardName, sourcePlayer: $sourcePlayer not allowed in state {$this->getStateName()}\n($message)");
         }
+        $this->discard($cardId);
 
-        switch ($item)
+        // Heres a big switch statement for all the cards and their descriptions 
+        switch ($cardName)
         {
-            // Heavily based on bottleORum
-            case 'boneClub':
-                if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0 || $this->DbQuery("SELECT `dial_value` FROM `player` WHERE `player_id`='{$input['targetPlayer']}'", true) != 'plunder')
-                    return false;
-                $newCard = $this->getRandomCardFrom($input['targetPlayer']);
-                $this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
-                // TODO notif???
-                break;
-
+            // Swap this card with 1 random card in another player's hand.
             // Very similar to boneClub
             case 'bottleORum':
                 // If the target player has any cards, get a random one, and swap it with the bottleORum
-                if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0)
-                    return false;
-                $newCard = $this->getRandomCardFrom($input['targetPlayer']);
-                $this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
-                $this->water->moveCard($itemId, 'hand', $input['targetPlayer']);
-                // TODO notif???
+//              if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0)
+//                  return false;
+//              $newCard = $this->getRandomCardFrom($input['targetPlayer']);
+//              $this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
+//              $this->water->moveCard($cardId, 'hand', $input['targetPlayer']);
+//              // TODO notif???
                 break;
 
             case 'captainsKey':
+            // Take 1 Chest Token from the Breaches Column.
                 break;
 
-            case 'cheekyChum':
-                $this->globals->inc('SHARK_SUBMERGED', -2);
-                break;
-
+            // Change your Dial to a different action.
             case 'crackedCompass':
                 break;
 
-            case 'cutlass':
-                break;
-
+            // Ignore 1 cannon result.
             case 'decoyCannon':
                 $this->addToLIST('ignoreCannon');
                 break;
 
+            // Peek at the top 5 cards of the Discard Pile. Reveal all Treasures and add them to your hand.
             case 'fishingNet':
+                $topFive = $this->water->getCardsOnTop(5, 'discard');
+                $treasures = array();
+                foreach ($topFive as $cardId => $details)
+                {
+                    if ($details['type'] !== 'clearWater')
+                        $treasures[$cardId] = $details;
+                }
+                
+                if (count($treasures) > 0)
+                {
+                    $this->water->moveCards(array_keys($treasures), 'hand', $sourcePlayer);
+                    $this->setCardsOrientation(array_keys($treasures), false);
+                    $this->notifyForCardsDrawn($sourcePlayer, $treasures);
+                }
+                $this->notify->all('actPlayCard', clienttranslate('${player_name} drew ${nbr} cards with the Fishing Net'), array(
+                    'player_name' => $this->getPlayerNameById($sourcePlayer),
+                    'player_id' => $sourcePlayer,
+                    'nbr' => count($treasures),
+                ));
+                // Private notif for the animations work? With specifics of which cards they saw
                 break;
 
+            // Peek at 1 random card in a player's hand. If it\'s a Treasure, swap it with a Treasure in your hand.
             case 'fishingRod':
                 break;
 
-            case 'fishyBait':
-                break;
-
+            // Roll 1 Single-Shot die against the enemy for each cannon card in the Breaches Column.
             case 'flintPistol':
+                // TODO there is a bug here that it is possible to have more than 3 cannons with ways to get an extra cannon...
+                $nbr = intval($this->cannons->countCardInLocation('breachesColumn'));
+                $singles = array_keys($this->getCollectionFromDB("SELECT `die_id` FROM `dice` WHERE `type`='1'"));
+                $this->fireCannons(array_slice($singles, 0, $nbr));
                 break;
 
+            // Peek at the top 3 cards of the Water Deck. You may reveal 1 Gem and add it to your hand.
             case 'gemSifter':
                 break;
 
+            // Swap this card with a card in the Treasure Column.
             case 'grabbyCrabby':
                 break;
 
-            case 'grenado':
+            // Fix 1 Busted Cannon.
+            case 'metalMallet':
                 break;
 
-            case 'harpoon':
+            // Discard up to 3 face-up Clear Water cards from the Water Column.
+            case 'moldyMop':
                 break;
 
+            // Clear water cards from your hand do not count toward your end-game hand size.
+            case 'rubberDucky':
+                break;
+
+            // Give this card to another player. They must change their Dial to a different action.
+            case 'silverDoubloon':
+                break;
+
+            // Discard 1 face-up Clear Water card in the Water Column or from your hand.
+            case 'smellySponge':
+                break;
+
+            // "Just a dark reminder of your impending doom."
+            case 'somberSkull':
+                break;
+
+            // Upgrade a Cannon card in the Cannon Column.
+            case 'spareBarrel':
+                break;
+
+            // Ignore 1 Breach result.
+            case 'stickyStarfish':
+                $this->addToLIST('ignoreBreach');
+                break;
+
+            // Worth 5 Victory points if you have no Clear Water cards in your hand.
+            case 'treasureMap':
+                break;
+
+            // Worth 1 Victory point for each Clear Water card in your hand.
+            case 'waterFlask':
+                break;
+
+            // Give 1 Clear Water card in your hand to another player.
+            case 'waterPistol':
+                break;
+
+            // Gain 1 extra Hammer this round.
+            case 'woodenMallet':
+                break;
+
+
+            // Enemy Cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // Kraken cards
+            // Ignore 1 Splash result this round.
+            case 'warDrum':
+                $this->globals->set('FLAG', true);
+                break;
+
+            // Ignore 1 Angered result this round.
             case 'hurdyGurdy':
                 $this->globals->inc('KRAKEN_ANGERED', -1);
                 break;
 
-            case 'metalMallet':
+            // Shark cards  
+            // Move the top 3 cards from the Shark's Belly to the Discard.
+            case 'fishyBait':
+                $sharksBelly = $this->water->getCardsInLocation('sharksBelly', null, 'location_arg');   
+                $topCards = array_slice($sharksBelly, 0, 3);
+                foreach (array_keys($topCards) as $id)
+                {
+                    // Moves the card to the discard pile
+                    $this->water->playCard($id);
+
+                    // Obfuscates it so we dont reveal hidden info to the frontend and ensures the animation is handled correctly 
+                    $topCards[$id]['type'] = 'backside';
+                    $topCards[$id]['type_arg'] = 0;
+                }
+
+                $this->notify->all('actPlayCard', clienttranslate('${nbr} cards moved from the Shark\'s Belly to the Discard.'), array(
+                    'cards' => $topCards,
+                ));
+                // TODO notif??
                 break;
 
-            case 'moldyMop':
+            // Ignore all Submerged results this round.
+            case 'cheekyChum':
+                $this->globals->inc('SHARK_SUBMERGED', -2);
                 break;
 
-            case 'silverDoubloon':
+            // Sirens' cards
+            // Ignore all Screech results this round.
+            case 'sirenSilencers':
+                $this->globals->inc('SIREN_SCREECH', -2);
                 break;
-
+                
+            // Before resolving dice, flip all Basic Attack dice to their opposite sides.
             case 'sirenShiner':
                 $dice = $this->getCollectionFromDB("SELECT `die_id`, `value` FROM `dice` WHERE `type`='basic'", true);
                 $updateString = '';
@@ -2572,130 +2742,194 @@ class Game extends \Table
                 $this->DbQuery("UPDATE `dice` SET `value` = CASE `die_id` $updateString END WHERE `die_id` IN ($ids)");
                 break;
 
-            case 'sirenSilencers':
-                $this->globals->inc('SIREN_SCREECH', -2);
+            // Skullsairs   
+            // Collect more for a combined value: 1=1VP, 2=4VP, 4=12VP, 6=24VP.
+            case 'cursedAmulet':
                 break;
 
-            case 'smellySponge':
+            // Player cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
+            // Move your Dial to the top of the Treasure Column.
+            case 'cutlass':
                 break;
 
-            case 'spareBarrel':
-                break;
-
-            case 'spyGlass':
-                break;
-
-            case 'stickyStarfish':
-                $this->addToLIST('ignoreBreach');
-                break;
-
+            // Discard a Minor Breach from the Breaches Column.
             case 'trustyCarrot':
                 break;
 
-            case 'warDrum':
-                $this->globals->set('FLAG', true);
+            // Steal 1 random card from a player who resolved a Treasure this round.
+            // Heavily based on bottleORum
+            case 'boneClub':
+//              if ($this->water->countCardInLocation('hand', $input['targetPlayer']) == 0 || $this->DbQuery("SELECT `dial_value` FROM `player` WHERE `player_id`='{$input['targetPlayer']}'", true) != 'plunder')
+//                  return false;
+//              $newCard = $this->getRandomCardFrom($input['targetPlayer']);
+//              $this->water->moveCard($newCard['id'], 'hand', $input['sourcePlayer']);
+//              // TODO notif???
                 break;
 
-            case 'waterPistol':
+            // Reveal a card in the Water Column. If it's a Treasure, add it to your hand.
+            case 'harpoon':
                 break;
 
-            case 'woodenMallet':
+            // Roll 1 Triple-Shot die against the enemy. On a miss, deal a Breach card to the Breaches Column.
+            case 'grenado':
+                $triple = $this->getObjectFromDB("SELECT `die_id` from `dice` where `type`='3' LIMIT 1")['die_id'];
+                if (!$this->fireCannons([$triple]))
+                    $this->resolveBasicBreach();
+                break;
+
+            // Reveal a player's Dial. If they lied, draw 2 cards from the Water Deck. Otherwise, discard 2 cards.
+            case 'spyGlass':
                 break;
         }
     }
 
-// Well just save that there in case we need that later... maybe for setting up their args? or a helper function?
-//  public function itemsDoStuffIGuess($item)
+
+//  // Heres a big switch statement for all the cards and their descriptions 
+//  switch ($cardName)
 //  {
-//      switch ($item)
-//      {
-//          case 'boneClub':
-//              break;
+//      // Swap this card with 1 random card in another player's hand.
+//      case 'bottleORum':
+//          break;
 //
-//          case 'bottleORum':
-//              break;
+//      case 'captainsKey':
+//      // Take 1 Chest Token from the Breaches Column.
+//          break;
 //
-//          case 'captainsKey':
-//              break;
+//      // Change your Dial to a different action.
+//      case 'crackedCompass':
+//          break;
 //
-//          case 'cheekyChum':
-//              break;
+//      // Ignore 1 cannon result.
+//      case 'decoyCannon':
+//          break;
 //
-//          case 'crackedCompass':
-//              break;
+//      // Peek at the top 5 cards of the Discard Pile. Reveal all Treasures and add them to your hand.
+//      case 'fishingNet':
+//          break;
 //
-//          case 'cutlass':
-//              break;
+//      // Peek at 1 random card in a player's hand. If it\'s a Treasure, swap it with a Treasure in your hand.
+//      case 'fishingRod':
+//          break;
 //
-//          case 'decoyCannon':
-//              break;
+//      // Roll 1 Single-Shot die against the enemy for each cannon card in the Breaches Column.
+//      case 'flintPistol':
+//          break;
 //
-//          case 'fishingNet':
-//              break;
+//      // Peek at the top 3 cards of the Water Deck. You may reveal 1 Gem and add it to your hand.
+//      case 'gemSifter':
+//          break;
 //
-//          case 'fishingRod':
-//              break;
+//      // Swap this card with a card in the Treasure Column.
+//      case 'grabbyCrabby':
+//          break;
 //
-//          case 'fishyBait':
-//              break;
+//      // Fix 1 Busted Cannon.
+//      case 'metalMallet':
+//          break;
 //
-//          case 'flintPistol':
-//              break;
+//      // Discard up to 3 face-up Clear Water cards from the Water Column.
+//      case 'moldyMop':
+//          break;
 //
-//          case 'gemSifter':
-//              break;
+//      // Clear water cards from your hand do not count toward your end-game hand size.
+//      case 'rubberDucky':
+//          break;
 //
-//          case 'grabbyCrabby':
-//              break;
+//      // Give this card to another player. They must change their Dial to a different action.
+//      case 'silverDoubloon':
+//          break;
 //
-//          case 'grenado':
-//              break;
+//      // Discard 1 face-up Clear Water card in the Water Column or from your hand.
+//      case 'smellySponge':
+//          break;
 //
-//          case 'harpoon':
-//              break;
+//      // "Just a dark reminder of your impending doom."
+//      case 'somberSkull':
+//          break;
 //
-//          case 'hurdyGurdy':
-//              break;
+//      // Upgrade a Cannon card in the Cannon Column.
+//      case 'spareBarrel':
+//          break;
 //
-//          case 'metalMallet':
-//              break;
+//      // Ignore 1 Breach result.
+//      case 'stickyStarfish':
+//          break;
 //
-//          case 'moldyMop':
-//              break;
+//      // Worth 5 Victory points if you have no Clear Water cards in your hand.
+//      case 'treasureMap':
+//          break;
 //
-//          case 'silverDoubloon':
-//              break;
+//      // Worth 1 Victory point for each Clear Water card in your hand.
+//      case 'waterFlask':
+//          break;
 //
-//          case 'sirenShiner':
-//              break;
+//      // Give 1 Clear Water card in your hand to another player.
+//      case 'waterPistol':
+//          break;
 //
-//          case 'sirenSilencers':
-//              break;
+//      // Gain 1 extra Hammer this round.
+//      case 'woodenMallet':
+//          break;
 //
-//          case 'smellySponge':
-//              break;
 //
-//          case 'spareBarrel':
-//              break;
+//      // Enemy Cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//      // Kraken cards
+//      // Ignore 1 Splash result this round.
+//      case 'warDrum':
+//          break;
 //
-//          case 'spyGlass':
-//              break;
+//      // Ignore 1 Angered result this round.
+//      case 'hurdyGurdy':
+//          break;
 //
-//          case 'stickyStarfish':
-//              break;
+//      // Shark cards  
+//      // Move the top 3 cards from the Shark's Belly to the Discard.
+//      case 'fishyBait':
+//          break;
 //
-//          case 'trustyCarrot':
-//              break;
+//      // Ignore all Submerged results this round.
+//      case 'cheekyChum':
+//          break;
 //
-//          case 'warDrum':
-//              break;
+//      // Sirens' cards
+//      // Ignore all Screech results this round.
+//      case 'sirenSilencers':
+//          break;
 //
-//          case 'waterPistol':
-//              break;
+//      // Before resolving dice, flip all Basic Attack dice to their opposite sides.
+//      case 'sirenShiner':
+//          break;
 //
-//          case 'woodenMallet':
-//              break;
-//      }
+//      // Skullsairs   
+//      // Collect more for a combined value: 1=1VP, 2=4VP, 4=12VP, 6=24VP.
+//      case 'cursedAmulet':
+//          break;
+//
+//
+//      // Player cards! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
+//      // Move your Dial to the top of the Treasure Column.
+//      case 'cutlass':
+//          break;
+//
+//      // Discard a Minor Breach from the Breaches Column.
+//      case 'trustyCarrot':
+//          break;
+//
+//      // Steal 1 random card from a player who resolved a Treasure this round.
+//      case 'boneClub':
+//          break;
+//
+//      // Reveal a card in the Water Column. If it's a Treasure, add it to your hand.
+//      case 'harpoon':
+//          break;
+//
+//      // Roll 1 Triple-Shot die against the enemy. On a miss, deal a Breach card to the Breaches Column.
+//      case 'grenado':
+//          break;
+//
+//      // Reveal a player's Dial. If they lied, draw 2 cards from the Water Deck. Otherwise, discard 2 cards.
+//      case 'spyGlass':
+//          break;
 //  }
 
     // Special Enemy Dice: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2789,7 +3023,6 @@ class Game extends \Table
         $this->notify->all('resolveCursedSearchMessage', clienttranslate('Resolving Cursed Search'), array());
         $allPlayers = array_keys($this->loadPlayersBasicInfos());
         $playersWithAmulets = array_unique(array_values($this->getCollectionFromDB("SELECT `card_id`, `card_location_arg` FROM `water` WHERE `card_type`='cursedAmulet' AND `card_location`='hand'", true)));
-
         foreach (array_diff($allPlayers, $playersWithAmulets) as $playerId)
             $this->notify->all('resolveCursedSearchMessage', clienttranslate('${player_name} does not have a Cursed Amulet.'), array(
                 'player_id' => $playerId,
@@ -2812,7 +3045,7 @@ class Game extends \Table
             }
         }
     }
-    
+
     // Boarding Party: Move the lowest card in the Treasure column to the Skullsairs' Stash.
     public function resolveSkullsairsAttack2(): void 
     {
