@@ -734,8 +734,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                     }
                     break;
 
-                // Reset dials for a new round
-                case 'upkeep':
+                // Reset dials for a new round (now in checkForBreaches since there is no upkeep state)
+                case 'checkForBreaches':
                     var dialId = `dial_${this.player_id}`;
                     var currentPlayersValue = null; 
                     for (var dial in this.gamedatas.dials)
@@ -952,7 +952,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
             gap = Math.max(water, treasure, breaches, cannons);
             gap += 30; // For the gap at the top and a gap at the bottom
-            console.log(`water:${water}\ntreasure:${treasure}\nbreaches:${breaches}\ncannons:${cannons}\ngap:${gap}`);
+            //console.log(`water:${water}\ntreasure:${treasure}\nbreaches:${breaches}\ncannons:${cannons}\ngap:${gap}`);
 
             dojo.style('gameCenter', 'marginBottom', `${gap}px`);
         },
@@ -1088,7 +1088,12 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.bgaSetupPromiseNotifications();    
 
             dojo.subscribe('sinkingProcedures', this, 'notif_sinkingProcedures');
+            dojo.subscribe('dealWaterAndTreasure', this, 'notif_dealWaterAndTreasure');
+            dojo.subscribe('rollEnemyDice', this, 'notif_rollEnemyDice');
+
             this.bga.gameui.notifqueue.setSynchronous('sinkingProcedures', 2000); // Wait 1000 miliseconds after executing sinkingProcedures handler
+            this.bga.gameui.notifqueue.setSynchronous('dealWaterAndTreasure', 4000); // Wait 1000 miliseconds after executing dealWaterAndTreasure handler
+            this.bga.gameui.notifqueue.setSynchronous('rollEnemyDice', 2000); // Wait 1000 miliseconds after executing rollEnemyDice handler
 
             // Ignore notifications! These notifications have private versions, communicating private information privy only to the current player
             this.notifqueue.setIgnoreNotificationCheck('actDraw', (notif) => (notif.args.player_id == this.player_id));
@@ -1183,7 +1188,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 if (card.type === 'backside' || card.type === 'clearWater')
                     await this.waterColumn.addCard(card, {fromStock: this.waterDeck,});
                 else
-                    await this.treasureColumn.addCard(card, {fromStock: this.waterDeck,});
+                    await this.treasureColumn.addCard(card, {fromStock: this.waterDeck,}).then(() => console.log("Added " + card.type + " to treasure column"));
                 this.correctGapUnderBoard();
             }
         },
@@ -1652,6 +1657,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 // Reveal a player's Dial. If they lied, draw 2 cards from the Water Deck. Otherwise, discard 2 cards.
                 case 'spyGlass':
                     break;
+            }
             this.correctGapUnderBoard();    
         },
 
