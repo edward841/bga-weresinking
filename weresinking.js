@@ -385,8 +385,8 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
         setupCards: function(gamedatas)
         {
-            const gapBetweenCardsAndDials = 10;
-            const gapBetweenCannonsAndBreaches = (this.permanentBreaches > 0) ? 30 : 20;
+            this.gapBetweenCardsAndDials = 10;
+            this.gapBetweenCannonsAndBreaches = (this.permanentBreaches > 0) ? 30 : 20;
 
             this.waterDeck = this.setupDeck('waterDrawPile', this.waterManager, gamedatas.deckCount.water);
 ///* FLAG */    this.waterDeck.onCardClick = (card) => {this.onCardClick('deck', card);};
@@ -395,9 +395,9 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
             this.waterDiscard.addCards(gamedatas.discardDeck);
 
             this.waterColumn = this.setupColumnStock('waterColumn', null, this.waterManager);
-            this.waterColumn.onCardCountChange = (cardCount) => {dojo.style('waterColumnDials', 'margin-top', `${this.calculateStockHeight(cardCount, this.smallCardGap) + gapBetweenCardsAndDials}px`)};
+            this.waterColumn.onCardCountChange = (cardCount) => {dojo.style('waterColumnDials', 'margin-top', `${this.calculateStockHeight(cardCount, this.smallCardGap) + this.gapBetweenCardsAndDials}px`)};
             this.treasureColumn = this.setupColumnStock('treasureColumn', null, this.waterManager);
-            this.treasureColumn.onCardCountChange = (cardCount) => {dojo.style('treasureColumnDials', 'margin-top', `${this.calculateStockHeight(cardCount, this.smallCardGap) + gapBetweenCardsAndDials}px`)};
+            this.treasureColumn.onCardCountChange = (cardCount) => {dojo.style('treasureColumnDials', 'margin-top', `${this.calculateStockHeight(cardCount, this.smallCardGap) + this.gapBetweenCardsAndDials}px`)};
         
             const playerHandStock = BgaCards.LineStock;
             this.playerHand = new playerHandStock(this.waterManager, document.getElementById('myHand'), {
@@ -409,35 +409,16 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
 
             //this.cannonsDeck = this.setupDeck('cannonDrawPile', this.cannonManager, 1);   
             this.bustedCannons = this.setupColumnStock('breachesColumn', 'bustedCannons', this.cannonsManager, this.bigCardGap);
-            this.bustedCannons.onCardCountChange = (cardCount) => {
-                dojo.style('breaches', 'margin-top', `${this.calculateStockHeight(cardCount, this.bigCardGap) + (cardCount == 0 || this.breaches.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches)}px`);
-                dojo.style('breachesColumnDials', 'margin-top', `${
-                          (this.permanentBreaches > 0 ? 15: 0)
-                        + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) 
-                        + (this.bustedCannons.getCardCount() == 0 || this.breaches.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches) 
-                        + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) 
-                        + gapBetweenCardsAndDials
-                }px`); 
-            };
+            this.bustedCannons.onCardCountChange = (cardCount) => this.correctBreachesColumnSpacing();
             this.bustedCannons.setSort((a, b) => a.type - b.type);
 
             this.operationalCannons = this.setupColumnStock('cannonsColumn', null, this.cannonsManager, this.bigCardGap);
-            this.operationalCannons.onCardCountChange = (cardCount) => {dojo.style('cannonsColumnDials', 'margin-top', `${this.calculateStockHeight(cardCount, this.bigCardGap) + gapBetweenCardsAndDials}px`)};
+            this.operationalCannons.onCardCountChange = (cardCount) => {dojo.style('cannonsColumnDials', 'margin-top', `${this.calculateStockHeight(cardCount, this.bigCardGap) + this.gapBetweenCardsAndDials}px`)};
             this.operationalCannons.onSelectionChange = (selection, lastChange) => this.updatePageTitle();
 
             this.breachesDeck = this.setupDeck('breachesDrawPile', this.breachesManager, gamedatas.deckCount.breaches);
             this.breaches = this.setupColumnStock('breachesColumn', 'breaches', this.breachesManager, this.bigCardGap);
-            this.breaches.onCardCountChange = (cardCount) => {
-                dojo.style('breaches', 'margin-top', `${this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) + (cardCount == 0 || this.bustedCannons.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches)}px`);
-                // Breaches are 34px tall, have a 5px gap between them, and the bottom one has a margin-bottom of 15px. Plus an extra 15px for margin collapsing
-                dojo.style('breachesColumnDials', 'margin-top', `${
-                          (this.permanentBreaches > 0 ? 15: 0)
-                        + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap) 
-                        + (this.bustedCannons.getCardCount() == 0 || this.breaches.getCardCount() == 0 ? 0 : gapBetweenCannonsAndBreaches) 
-                        + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap) 
-                        + gapBetweenCardsAndDials
-                }px`); 
-            };
+            this.breaches.onCardCountChange = (cardCount) => this.correctBreachesColumnSpacing();
 
             // Set it up so you cannot select a cannon and breach at the same time
             this.resetBreachesSelection();
@@ -911,6 +892,25 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
         },
         
         // Animation helpers
+        correctBreachesColumnSpacing: function()
+        {
+            this.gapBetweenCannonsAndBreaches = (this.permanentBreaches > 0) ? 30 : 20;
+            
+            dojo.style('breaches', 'margin-top', `${
+                this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap)
+                    + (this.bustedCannons.getCardCount() == 0 || this.breaches.getCardCount() == 0 ? 0 : this.gapBetweenCannonsAndBreaches)
+            }px`);
+
+            // Breaches are 34px tall, have a 5px gap between them, and the bottom one has a margin-bottom of 15px. Plus an extra 15px for margin collapsing
+            dojo.style('breachesColumnDials', 'margin-top', `${
+                      (this.permanentBreaches > 0 ? 15: 0)
+                    + this.calculateStockHeight(this.bustedCannons.getCardCount(), this.bigCardGap)
+                    + (this.bustedCannons.getCardCount() == 0 || this.breaches.getCardCount() == 0 ? 0 : this.gapBetweenCannonsAndBreaches)
+                    + this.calculateStockHeight(this.breaches.getCardCount(), this.bigCardGap)
+                    + this.gapBetweenCardsAndDials
+            }px`);
+        },
+        
         correctGapUnderBoard: function()
         {
             var water = 0, treasure = 0, breaches = 0, cannons = 0;
@@ -1166,6 +1166,7 @@ function (dojo, declare, gamegui, counter, stock, BgaAnimations, BgaCards, BgaDi
                 this.breachesDeck.addCards(this.breaches.getCards().map(card => ({id: card.id,})));
                 dojo.create('div', {class: 'permanentBreach'}, 'permanentBreaches');
                 this.permanentBreaches++;
+                this.correctBreachesColumnSpacing();
                 console.log('Permanent breach added.'); 
             }
     
